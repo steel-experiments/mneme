@@ -1,9 +1,9 @@
 ---
-title: Mneme for Discord — Final Implementation Specification
+title: Mneme — Final Implementation Specification
 status: Final v1 specification
-version: 1.4
+version: 1.5
 date: 2026-08-21
-last_amended: 2026-09-18
+last_amended: 2026-10-01
 target_runtime: Node.js container
 target_platforms:
   - Coolify on a single VM
@@ -13,13 +13,13 @@ agent_runtime: Pi Agent Core
 prompt_template_engine: Handlebars
 ---
 
-# Mneme for Discord — Final Implementation Specification
+# Mneme — Final Implementation Specification
 
 ## Navigation
 
 - [Goals and final technology decisions](#2-goals)
 - [Architecture](#5-system-architecture)
-- [Discord access and visibility boundaries](#6-discord-application-configuration)
+- [Platform access and visibility boundaries](#6-platform-application-configuration)
 - [Ingestion, backfill, and reconciliation](#9-ingestion-model)
 - [Organizational memory](#12-organizational-memory)
 - [Personality and complete prompts](#13-mneme-personality)
@@ -33,12 +33,15 @@ prompt_template_engine: Handlebars
 
 ## 1. Executive summary
 
-Mneme is a quiet organizational-memory agent for one Discord server. It ingests every message the bot is permitted to see, backfills existing channel and thread history, stays current through the Discord Gateway, builds a searchable institutional memory, and occasionally surfaces a contradiction, forgotten decision, risky assumption, overdue prediction, or repeated failure pattern.
+Mneme is a quiet organizational-memory agent for one Discord server or one Slack workspace (one platform for each deployment). It ingests every message the bot is permitted to see, backfills existing channel and thread history, stays current through the platform event connection (the Discord Gateway or Slack Socket Mode), builds a searchable institutional memory, and occasionally surfaces a contradiction, forgotten decision, risky assumption, overdue prediction, or repeated failure pattern.
+
+(Amendment (plan 003): specified, not implemented. Plan 006 implements this
+rule. Until then, Mneme runs only on Discord.)
 
 The v1 system is intentionally small:
 
 ```text
-one Discord bot
+one chat-platform bot (Discord or Slack)
 + one long-running Node.js process
 + one SQLite database on a persistent volume
 + Pi Agent Core for reasoning
@@ -48,11 +51,11 @@ one Discord bot
 
 It does **not** require PostgreSQL, Redis, a message broker, a vector database, Kubernetes, Cloudflare Workers, or a separate ingestion service.
 
-The production package is a singleton stateful service. It runs as one container, mounts `/app/data`, opens `/app/data/mneme.sqlite`, connects one Discord Gateway client, and exposes a small HTTP server for health and operations.
+The production package is a singleton stateful service. It runs as one container, mounts `/app/data`, opens `/app/data/mneme.sqlite`, connects one platform event connection, and exposes a small HTTP server for health and operations.
 
 The default rollout mode is `observe`:
 
-- Discord history is ingested.
+- Chat history is ingested.
 - Episodes and memories are created.
 - Proposed interventions are stored.
 - Mneme does not post autonomously.
@@ -71,6 +74,14 @@ The final optional mode is `autonomous`:
 The most important safety invariant is:
 
 > Mneme may only use information in an outbound message when that information is permitted in the target channel. Access to a private channel must never silently become permission to disclose its contents elsewhere.
+
+This specification uses these terms:
+
+- **Workspace**: the one Discord server (guild) or Slack workspace (team) that a
+  deployment serves.
+- **Channel**: a conversation container that has a visibility class.
+- **Thread**: a `channels` row with `is_thread = 1` and a `parent_id`. A Discord
+  thread is a native channel. A Slack thread is a synthetic row (Section 9.7).
 
 ---
 
@@ -134,10 +145,10 @@ The following are out of scope:
 - User-account automation or self-bots.
 - Voice-channel recording or transcription.
 - OCR or rich document extraction from every attachment.
-- Training or fine-tuning a model on Discord messages.
+- Training or fine-tuning a model on chat messages.
 - Employee scoring, performance evaluation, sentiment surveillance, or inferred psychological profiles.
 - Automated moderation or disciplinary action.
-- Multi-guild SaaS tenancy.
+- Multi-workspace SaaS tenancy, and one deployment that serves more than one platform.
 - Horizontal replicas or active-active high availability.
 - A public web dashboard. An authenticated, admin-only, inspect-only web surface
   is permitted (Section 32.6); anything reachable without an inspector token or by
@@ -145,7 +156,12 @@ The following are out of scope:
 - A vector database or embedding every raw message.
 - A full knowledge graph.
 - Automatic ingestion from GitHub, Linear, email, or documents in v1.
-- Running the Pi coding-agent shell, filesystem, or arbitrary network tools against Discord content.
+- Running the Pi coding-agent shell, filesystem, or arbitrary network tools against chat content.
+- Slack Marketplace distribution, or a hosted multi-tenant Slack service.
+- Enterprise Grid org-wide Slack installs. Mneme installs in one Slack workspace.
+- Reading Slack DMs or group DMs (`mpim`).
+- Slack huddles, canvases, lists, and workflow steps.
+- Automatic join of public Slack channels. An admin invites the bot (Section 6.7.4).
 
 ---
 
@@ -154,7 +170,9 @@ The following are out of scope:
 | Concern | Decision | Rationale |
 |---|---|---|
 | Runtime | Node.js 24 LTS, TypeScript, ESM | Compatible with Pi’s Node requirements and provides built-in `node:sqlite`. |
+| Platform selection | `MNEME_PLATFORM=discord\|slack`, required, no default | One platform for each deployment keeps one database and one visibility model. |
 | Discord integration | `discord.js` 14.x | Handles Gateway lifecycle, intents, REST rate limits, messages, threads, and interactions. |
+| Slack integration | `@slack/bolt` 5.x in Socket Mode | No public inbound URL; one process. |
 | Agent runtime | `@earendil-works/pi-agent-core` | Stateful tool-calling loop without the coding-agent surface. |
 | Model abstraction | `@earendil-works/pi-ai` | Keeps model/provider selection configurable. |
 | Prompt templates | Handlebars `.hbs` templates | Mature, simple partials/loops, strict rendering, easy prompt versioning. |
@@ -166,6 +184,9 @@ The following are out of scope:
 | HTTP server | Node built-in `node:http` | Only health/status endpoints are needed. |
 | Deployment | One Docker image, one replica, one persistent volume | Matches Discord Gateway and SQLite’s operating model. |
 | Default autonomy | `observe` | Safest way to collect evaluation data before posting. |
+
+The platform-selection and Slack rows: (Amendment (plan 003): specified, not implemented. Plan 006 implements this
+rule. Until then, Mneme runs only on Discord.)
 
 ### 4.1 Pi usage decision
 
@@ -230,8 +251,8 @@ A migration is considered only when the scale triggers in Section 31 are reached
 
 ```mermaid
 flowchart LR
-    D[Discord Gateway] --> I[Ingestion adapter]
-    R[Discord REST API] --> I
+    D[Platform events] --> I[Platform adapter]
+    R[Platform API] --> I
     I --> DB[(SQLite + WAL + FTS5)]
     DB --> E[Episode builder]
     E --> J[SQLite jobs]
@@ -243,8 +264,8 @@ flowchart LR
     P --> M[Memory mutations]
     P --> O[SQLite outbox]
     M --> DB
-    O --> S[Discord sender]
-    S --> D2[Discord channels]
+    O --> S[Platform sender]
+    S --> D2[Chat channels]
 
     H[HTTP health/status] --> DB
     H --> I
@@ -333,9 +354,49 @@ Do not configure:
 
 The service intentionally accepts a short restart window during deployment.
 
+### 5.3 Platform adapters
+
+(Amendment (plan 003): specified, not implemented. Plan 005 implements this
+rule. Until then, Mneme runs only on Discord.) Plan 006 implements the Slack adapter.
+
+One platform adapter is active in a process. `MNEME_PLATFORM` selects it. A
+missing or unknown value stops startup. One database holds data from one
+platform.
+
+The core does not import a platform SDK. The adapter supplies:
+
+- the connection lifecycle and its health;
+- channel discovery with capabilities;
+- history pagination with an opaque `before` cursor;
+- normalized live events;
+- outbound send that never pings a user, role, or group;
+- review cards and their buttons;
+- command registration and dispatch;
+- actor resolution to `{ userId, isAdmin }`;
+- message links (Section 30.3);
+- the id validator;
+- the text-format object;
+- attachment download;
+- the MCP OAuth identity provider (Section 32.5.2.1).
+
+Platform ids match `^[A-Za-z0-9.-]+$`. The core orders messages by
+`created_at_ms` and uses the id as a tie-break. The adapter computes
+`created_at_ms` from the platform message id or timestamp.
+
+A channel row stores a platform-neutral `kind` value. It replaces the Discord
+numeric channel type. The Discord adapter maps each numeric type to a `kind`.
+
+The core emits one Markdown subset: `**bold**`, `*italic*`, `[label](url)`,
+`> quote`, and inline code. The adapter converts this subset to the platform
+format and escapes all other text.
+
+The review-card HMAC secret comes from the active platform bot token.
+
 ---
 
-## 6. Discord application configuration
+## 6. Platform application configuration
+
+Sections 6.1–6.6 apply to Discord. Section 6.7 applies to Slack.
 
 ### 6.1 Bot scopes
 
@@ -412,6 +473,66 @@ Guild-scoped Mneme commands shall be limited to configured role IDs in `MNEME_AD
 
 Commands that disclose restricted content, modify channel policy, delete data, approve an intervention, or force a sync must always require an admin role.
 
+### 6.7 Slack application configuration
+
+(Amendment (plan 003): specified, not implemented. Plan 006 implements this
+rule. Until then, Mneme runs only on Discord.)
+
+#### 6.7.1 App type
+
+Each team creates its own Slack app in its own workspace and does not
+distribute it. An internal app keeps Tier 3 limits for `conversations.history`
+and `conversations.replies`. Socket Mode is on. The app-level token (`xapp-`)
+has `connections:write`. The bot token starts with `xoxb-`.
+
+#### 6.7.2 Bot scopes
+
+Request these bot scopes: `channels:history`, `groups:history`,
+`channels:read`, `groups:read`, `users:read`, `reactions:read`, `files:read`,
+`chat:write`, `commands`, and `im:write`.
+
+Do not request `channels:join`, `im:history`, `mpim:history`, or `mpim:read`.
+
+Outbox deduplication attaches message metadata to each sent message. The scope
+that reads message metadata is to be confirmed by plan 007. If that scope is
+not available, the sender puts the deduplication marker in a Block Kit
+`block_id`, which needs no extra scope.
+
+#### 6.7.3 Events
+
+Subscribe to these bot events: `message.channels`, `message.groups`,
+`reaction_added`, `reaction_removed`, `channel_created`, `channel_rename`,
+`channel_deleted`, `channel_archive`, `channel_unarchive`, `channel_left`,
+`group_rename`, `group_deleted`, `group_archive`, `group_unarchive`,
+`group_left`, `member_joined_channel`, `member_left_channel`,
+`channel_shared`, and `channel_unshared`.
+
+#### 6.7.4 "All chats" on Slack
+
+"All chats" means the public and private channels where the bot is a member
+and that are not Slack Connect channels. The bot does not join channels
+itself. An admin invites it, and the invite is the consent.
+
+#### 6.7.5 Direct messages
+
+Mneme does not read DMs. The App Home Messages tab stays visible but does not
+accept user input, so Mneme sends no unsupported-DM notice on Slack. Admin
+notices, for example backup notices, use `chat.postMessage` with the user id
+(`im:write`). That admins can see these notices is to be confirmed by plan
+007.
+
+#### 6.7.6 Admin permissions
+
+Slack has no roles. `MNEME_ADMIN_USER_IDS` lists Slack user ids. The
+Section 6.6 rule applies without change: commands that disclose restricted
+content, modify channel policy, delete data, approve an intervention, or force
+a sync always require an admin.
+
+#### 6.7.7 App manifest
+
+The repository ships `config/slack-app-manifest.yml` with the scopes and
+events above. Plan 010 adds it.
+
 ---
 
 ## 7. Channel visibility and information barriers
@@ -424,7 +545,7 @@ Every ingested channel resolves to one of:
 
 | Class | Meaning |
 |---|---|
-| `org` | Content may support interventions in other `org` channels in the same guild. |
+| `org` | Content may support interventions in other `org` channels in the same workspace. |
 | `restricted` | Content may only be used in the same channel/thread and the secure review channel. |
 | `review_only` | Content may only be shown in the secure review channel. |
 | `excluded` | Do not ingest or reason over the channel. |
@@ -436,6 +557,20 @@ The policy resolver persists that resolved class on the thread row. Retrieval an
 outbound validation use the thread row's resolved class, so an explicit thread
 override is preserved; the live parent remains a required availability dependency
 and the canonical restricted-scope anchor, but does not replace the thread's class.
+
+Slack visibility rules: (Amendment (plan 003): specified, not implemented. Plan 006 implements this
+rule. Until then, Mneme runs only on Discord.)
+
+- A Slack Connect channel (`is_ext_shared` or `is_pending_ext_shared` is true)
+  always resolves to `excluded`. Policy cannot override this. A channel that
+  becomes shared is excluded at once, and its stored content stops being
+  retrievable on the next read.
+- The policy resolver has a `platform_boundary` source that the adapter
+  supplies. It wins over every other source, including explicit thread rules
+  and review decisions. The Slack Connect rule uses this source.
+- A channel that the bot leaves, or is removed from, becomes unavailable and
+  fails closed.
+- A Slack thread inherits its channel's class, as a Discord thread does.
 
 Channels whose names contain `mneme` (case-insensitive), and threads below such a
 channel, are test-only surfaces: no history backfill or reconciliation is scheduled,
@@ -854,9 +989,9 @@ Startup shall occur in this order:
 
 Connecting the Gateway before historical import prevents a gap while the backfill is running.
 
-### 9.3 Gateway events
+### 9.3 Platform events
 
-Handle at minimum:
+On Discord, handle at minimum these Gateway events:
 
 - `MESSAGE_CREATE`
 - `MESSAGE_UPDATE`
@@ -873,6 +1008,25 @@ Handle at minimum:
 - `THREAD_DELETE`
 - `THREAD_LIST_SYNC`
 - client ready, reconnect, error, invalidation, and shard lifecycle events
+
+On Slack, map each event in Section 6.7.3 to the same ingest action. (Amendment (plan 003): specified, not implemented. Plan 006 implements this
+rule. Until then, Mneme runs only on Discord.)
+
+- `message` with no subtype, `bot_message`, `file_share`, or `me_message` →
+  message create;
+- `message` with subtype `thread_broadcast` → message create in the thread
+  (Section 9.7);
+- `message` with subtype `message_changed` → message update;
+- `message` with subtype `message_deleted` → message delete;
+- `reaction_added` and `reaction_removed` → reaction add and remove;
+- `channel_created`, `channel_rename`, `group_rename`, `channel_archive`,
+  `channel_unarchive`, `group_archive`, `group_unarchive`, `channel_shared`,
+  and `channel_unshared` → channel update;
+- `channel_deleted`, `group_deleted`, `channel_left`, and `group_left` →
+  channel delete or unavailable;
+- `member_joined_channel` and `member_left_channel` for the bot user →
+  channel discovery for that channel;
+- Socket Mode connect, disconnect, and error events → connection health.
 
 Store Mneme’s own messages, but do not let them open or extend a human episode.
 
@@ -920,7 +1074,13 @@ For each accessible channel or thread:
 6. Store oldest/newest IDs and timestamps.
 7. On error, retain the cursor and retry through the jobs table.
 
-Default backfill concurrency is `2`. Let `discord.js` and Discord REST rate-limit handling control pacing.
+Default backfill concurrency is `2`. The adapter's SDK controls pacing.
+
+On Slack, backfill uses `conversations.history` for each channel and
+`conversations.replies` for each parent message whose `reply_count > 0`. It
+obeys `Retry-After`. It never uses the Data Access API or the Real-Time Search
+API. (Amendment (plan 003): specified, not implemented. Plan 006 implements this
+rule. Until then, Mneme runs only on Discord.)
 
 Backfill and reconciliation share one current ingestion-eligibility predicate covering
 the concrete channel, a thread's required live/ingestion-enabled parent, and Mneme-
@@ -1053,6 +1213,26 @@ Archive pagination and reconciliation may overlap. A delayed complete archive pa
 not transiently disable a positively known archived thread during its active-only phase;
 the reconciliation eligibility recheck above prevents a later quarantine from accepting
 an already-fetched page.
+
+Slack threads: (Amendment (plan 003): specified, not implemented. Plan 006 implements this
+rule. Until then, Mneme runs only on Discord.)
+
+- A Slack thread is a synthetic channel row with the id
+  `<channelId>-T<thread_ts>` and `parent_id = <channelId>`.
+- A Slack message id is `<channelId>-<ts>`. A reply has the parent channel id
+  in its message id and the thread row id in `channel_id`. The root message
+  stays in the parent channel. A `thread_broadcast` reply is stored once, in
+  the thread.
+- Slack threads are never archived. The archive discovery and quarantine rules
+  above apply only to Discord. Discovery finds threads from parent messages
+  with `reply_count > 0` and from live messages with `thread_ts`.
+- Slack cannot list threads, so the adapter builds thread descriptors from
+  stored thread rows whose parent is present. Discovery uses the `close`
+  missing-thread mode for Slack, not `quarantine`.
+- A Slack attachment id is `<messageId>-<fileId>`. One Slack file can be shared
+  into more than one message, so a bare file id is not unique to one message.
+  (Amendment (plan 003): specified, not implemented. Plan 009 implements this
+  rule. Until then, Mneme runs only on Discord.)
 
 ### 9.8 Edits and deletes
 
@@ -1222,6 +1402,9 @@ The episode key is:
 
 - thread ID for thread messages;
 - channel ID otherwise.
+
+For Slack, the thread id is the synthetic thread row id (Section 9.7). (Amendment (plan 003): specified, not implemented. Plan 006 implements this
+rule. Until then, Mneme runs only on Discord.)
 
 ### 11.2 Opening an episode
 
@@ -3196,7 +3379,9 @@ Defaults:
 
 Explicit direct questions do not count as autonomous interventions, but rate limits still apply.
 
-### 24.5 Discord message formatting
+### 24.5 Message formatting
+
+On Discord:
 
 - send as a reply when a clear anchor exists;
 - disable all automatic mentions with `allowed_mentions.parse = []`;
@@ -3213,9 +3398,24 @@ Explicit direct questions do not count as autonomous interventions, but rate lim
   or more than three of them — rejects the whole proposal before any card or
   delivery.
 
+On Slack: (Amendment (plan 003): specified, not implemented. Plan 007 implements this
+rule. Until then, Mneme runs only on Discord.)
+
+- convert the Markdown subset of Section 5.3 to mrkdwn;
+- escape `&`, `<`, and `>` in all text that the host did not build;
+- never send `link_names`;
+- remove `<@…>`, `<!…>`, and `<!subteam^…>` sequences that the host did not
+  build;
+- keep the 1,800-character model limit and the 2,000-character assembled limit;
+- a reply anchor becomes a thread reply under the anchor's thread root.
+
 ---
 
 ## 25. Review workflow
+
+On Slack, review cards are Block Kit messages. Button action ids keep the same
+HMAC format. (Amendment (plan 003): specified, not implemented. Plan 007 implements this
+rule. Until then, Mneme runs only on Discord.)
 
 In `review` mode, the secure channel receives:
 
@@ -3427,6 +3627,9 @@ host keeps only the sender ID and last-notice time in process memory, sends at m
 notice per sender per 24 hours, and clears that state on restart. Send failure is logged
 without message content or user identity and permits the next inbound DM to retry.
 
+This notice applies to Discord. Slack has no DM surface for questions
+(Section 6.7.5).
+
 ### 26.2 Durable deep recaps
 
 The normal mention-based catch-up is deliberately one bounded snapshot. An administrator
@@ -3537,6 +3740,12 @@ the new report can be queued.
 ---
 
 ## 27. Slash commands
+
+On Slack, one `/mneme` command carries all subcommands. The adapter parses the
+command text into the same subcommand path and options as the Discord
+commands below, for example `/mneme recap status 42`. Replies are ephemeral.
+Slack does not allow slash commands in threads. (Amendment (plan 003): specified, not implemented. Plan 007 implements this
+rule. Until then, Mneme runs only on Discord.)
 
 Recommended guild-scoped commands:
 
@@ -4728,13 +4937,23 @@ The same SQL-first visibility rule applies to memory inventory candidate selecti
 Current effective memory scope is additionally recomputed from evidence after selection
 as a fail-closed defense against stale cached scope.
 
-### 30.3 Discord links
+### 30.3 Message links
 
-Construct:
+On Discord, construct:
 
 ```text
 https://discord.com/channels/{guild_id}/{channel_id}/{message_id}
 ```
+
+On Slack, construct: (Amendment (plan 003): specified, not implemented. Plan 006 implements this
+rule. Until then, Mneme runs only on Discord.)
+
+```text
+https://{team_domain}.slack.com/archives/{channel}/p{ts without dot}
+```
+
+For a thread reply, add `?thread_ts={root_ts}&cid={channel}`. The adapter reads
+`team_domain` from `auth.test` at startup.
 
 Links are generated by the host, not trusted from message content.
 For direct answers, the model supplies source message IDs in `citedMessageIds`. A Discord
@@ -4957,6 +5176,12 @@ Every refusal reports `access_denied` identically. A member without the role, a
 non-member, a declined consent, and a failed exchange are indistinguishable to the client;
 distinguishing them would make the connector URL a guild-membership oracle. The reason is
 recorded in the server log instead.
+
+On Slack, sign-in uses Sign in with Slack (OpenID Connect). The callback accepts a
+user only when the `https://slack.com/team_id` claim equals the configured
+workspace. Admin status comes from `MNEME_ADMIN_USER_IDS`. The grant stays `org`
+scope. (Amendment (plan 003): specified, not implemented. Plan 008 implements this
+rule. Until then, Mneme runs only on Discord.)
 
 Authorization codes and refresh tokens are stored only as SHA-256 hashes, and a consumed
 row outlives its use so a second presentation is recognized as interception rather than as
@@ -5325,6 +5550,8 @@ change, or the parity test fails.
 ### 35.1 Required
 
 ```dotenv
+MNEME_PLATFORM=discord
+
 DISCORD_TOKEN=
 DISCORD_APPLICATION_ID=
 DISCORD_GUILD_ID=
@@ -5339,6 +5566,18 @@ ORG_TIMEZONE=UTC
 ```
 
 Only the selected provider key is required.
+
+`MNEME_PLATFORM` is required and has no default. The `DISCORD_*` block is required
+only when `MNEME_PLATFORM=discord`. When `MNEME_PLATFORM=slack`, this block replaces
+it. (Amendment (plan 003): specified, not implemented. Plan 005 implements this
+rule. Until then, Mneme runs only on Discord.) Plan 006 implements the Slack block.
+
+```dotenv
+SLACK_BOT_TOKEN=
+SLACK_APP_TOKEN=
+SLACK_TEAM_ID=
+MNEME_ADMIN_USER_IDS=
+```
 
 `LLM_PROVIDER` and `LLM_MODEL` are not required. When unset or blank,
 `LLM_PROVIDER` defaults to `openai` and `LLM_MODEL` defaults to `gpt-5.6-terra`.
@@ -5562,6 +5801,10 @@ MCP_OAUTH_REDIRECT_URIS=
 DISCORD_OAUTH_CLIENT_ID=
 DISCORD_OAUTH_CLIENT_SECRET=
 ```
+
+On Slack, `SLACK_OAUTH_CLIENT_ID=` and `SLACK_OAUTH_CLIENT_SECRET=` replace the two
+`DISCORD_OAUTH_*` keys. (Amendment (plan 003): specified, not implemented. Plan 008 implements this
+rule. Until then, Mneme runs only on Discord.)
 
 With `MCP_OAUTH_ENABLED=true`, startup fails unless `MCP_OAUTH_CLIENT_ID`,
 `DISCORD_OAUTH_CLIENT_ID`, `DISCORD_OAUTH_CLIENT_SECRET`, and at least one
@@ -6245,9 +6488,9 @@ The server should have a visible notice explaining:
 - which channels are excluded;
 - whether Mneme is observe, review, or autonomous.
 
-### 43.2 Discord data policy
+### 43.2 Platform data policy
 
-Use Discord API data only for Mneme’s stated functionality.
+On Discord, use Discord API data only for Mneme’s stated functionality.
 
 Do not:
 
@@ -6257,6 +6500,16 @@ Do not:
 - train or fine-tune an AI/ML model on Discord message content without Discord’s express permission.
 
 Mneme uses model API inference only.
+
+On Slack, the Slack API Terms apply: (Amendment (plan 003): specified, not implemented. Plan 006 implements this
+rule. Until then, Mneme runs only on Discord.)
+
+- the app is internal to the installing organization and is not distributed;
+- do not train or fine-tune a model on Slack data;
+- read history only with `conversations.history` and `conversations.replies`;
+  never use the Data Access API or the Real-Time Search API, because they
+  forbid long-term stores;
+- a hosted multi-tenant service is out of scope (Section 3).
 
 ### 43.3 Model-provider controls
 
@@ -6860,6 +7113,19 @@ The v1 implementation is complete when all are true:
 - The production CLI deploy refuses dirty, unpushed, wrong-target, unverified-migration,
   or identity-mismatched releases and supports a non-mutating dry run.
 
+### Slack
+
+(Amendment (plan 003): specified, not implemented. Plans 006–010 implement
+these rules. Until then, Mneme runs only on Discord.)
+
+- Slack Connect channels are excluded, and no policy rule or review decision
+  overrides this.
+- Content from a channel that becomes shared stops being retrievable on the next
+  read.
+- No outbound message pings a user, a group, `@here`, `@channel`, or `@everyone`.
+- Each thread's replies form their own conversation.
+- Links that the host builds open the correct message.
+
 ---
 
 ## 49. Deferred enhancements
@@ -6921,6 +7187,22 @@ The implementation should verify current platform behavior against official docu
 - Application commands: https://docs.discord.com/developers/interactions/application-commands
 - Privileged intents: https://support-dev.discord.com/hc/en-us/articles/6207308062871-What-are-Privileged-Intents
 - Developer Policy: https://support-dev.discord.com/hc/en-us/articles/8563934450327-Discord-Developer-Policy
+
+### Slack
+
+- Rate limit changes for non-Marketplace apps: https://docs.slack.dev/changelog/2025/05/29/rate-limit-changes-for-non-marketplace-apps
+- `conversations.history`: https://docs.slack.dev/reference/methods/conversations.history
+- `conversations.replies`: https://docs.slack.dev/reference/methods/conversations.replies
+- Socket Mode: https://docs.slack.dev/apis/events-api/using-socket-mode
+- Message events: https://docs.slack.dev/reference/events/message
+- Conversation object: https://docs.slack.dev/reference/objects/conversation-object
+- Retrieving messages and threads: https://docs.slack.dev/messaging/retrieving-messages
+- Formatting message text: https://docs.slack.dev/messaging/formatting-message-text
+- `chat.getPermalink`: https://docs.slack.dev/reference/methods/chat.getPermalink
+- Sign in with Slack: https://docs.slack.dev/authentication/sign-in-with-slack
+- Slash commands: https://docs.slack.dev/interactivity/implementing-slash-commands
+- Rate limits: https://docs.slack.dev/apis/web-api/rate-limits
+- Slack API Terms: https://slack.com/terms-of-service/api
 
 ### Pi
 
