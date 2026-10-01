@@ -4,6 +4,7 @@ import {
   STRONG_EVIDENCE_THRESHOLD,
   type ForcedReviewInput,
 } from '../../src/agent/policy.js';
+import { discordFormat } from '../../src/platform/discord/format.js';
 
 /**
  * Forced secure-review classification (Section 24.3).
@@ -16,6 +17,7 @@ import {
 function base(over: Partial<ForcedReviewInput> = {}): ForcedReviewInput {
   return {
     message: 'A reasonable, neutral intervention message.',
+    format: discordFormat,
     reason: 'routine reminder',
     urgency: 'normal',
     evidenceStrength: 0.8,

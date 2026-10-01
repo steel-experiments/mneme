@@ -44,6 +44,7 @@ import type { Logger } from '../../logger.js';
 import type { JobHandler } from '../worker.js';
 import type { JobRow } from '../types.js';
 import { DeferJobError, PermanentJobError, TransientJobError } from '../errors.js';
+import type { PlatformFormat } from '../../platform/types.js';
 import {
   assembleScheduledDelivery,
   scheduledSourceLinkContext,
@@ -149,6 +150,8 @@ export interface ScheduledNotificationProposal {
 }
 
 export interface ReviewDueMemoriesHandlerDeps {
+  /** The active platform's text conventions (Section 24.5). */
+  format: PlatformFormat;
   db: DatabaseSync;
   guildId: string;
   promptCompiler: PromptCompiler | (() => PromptCompiler);
@@ -314,6 +317,7 @@ interface PreparedScheduledNotification {
 function prepareScheduledNotification(
   db: DatabaseSync,
   guildId: string,
+  format: PlatformFormat,
   notification: ScheduledNotificationProposal | undefined,
   provenance: AgentRunResult['provenance'],
   dueMemoryIds: ReadonlySet<string>,
@@ -409,6 +413,7 @@ function prepareScheduledNotification(
       {
         content: trimmedMessage,
         guildId,
+        format,
         sourceLinkMessageIds: evidenceMessageIds,
       },
       scheduledSourceLinkContext(db, guildId),
@@ -672,6 +677,7 @@ export function createReviewDueMemoriesHandler(
     const preparedNotification = prepareScheduledNotification(
       db,
       deps.guildId,
+      deps.format,
       notification,
       result.provenance,
       new Set(due.map((memory) => memory.memoryId)),

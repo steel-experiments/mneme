@@ -40,6 +40,7 @@ import {
   type ScheduledSubjectSnapshot,
 } from '../../src/memory/scheduled-notifications.js';
 import { emptyAgentRunUsage } from '../../src/agent/usage.js';
+import { discordFormat } from '../../src/platform/discord/format.js';
 
 /**
  * Scheduled-memory review job (Sections 12.4, 20, 24.3).
@@ -276,6 +277,7 @@ async function persistScheduledNotification(
     ? { ...proposed, subjectMemoryIds: [memoryId] }
     : proposed;
   const handler = createReviewDueMemoriesHandler({
+    format: discordFormat,
     db: env.db,
     guildId: GUILD,
     promptCompiler: fakeCompiler,
@@ -353,6 +355,7 @@ describe('scheduled-review approval regression', () => {
   // attention claim now expire instead of retaining retryable review controls.
   function approvalContext(): BootstrapContext {
     return {
+      format: discordFormat,
       db: env.db,
       now: () => NOW,
       config: {
@@ -941,6 +944,7 @@ describe('scheduled-review subject reminder policy', () => {
 describe('createReviewDueMemoriesHandler', () => {
   it('reports nothing due when no memory is overdue', async () => {
     const handler = createReviewDueMemoriesHandler({
+      format: discordFormat,
       db: env.db,
       guildId: GUILD,
       promptCompiler: fakeCompiler,
@@ -958,6 +962,7 @@ describe('createReviewDueMemoriesHandler', () => {
     const compiler = loadPromptCompiler(promptDir);
     let captured: ExecuteAgentRunDeps | undefined;
     const handler = createReviewDueMemoriesHandler({
+      format: discordFormat,
       db: env.db,
       guildId: GUILD,
       promptCompiler: compiler,
@@ -998,6 +1003,7 @@ describe('createReviewDueMemoriesHandler', () => {
     };
 
     const handler = createReviewDueMemoriesHandler({
+      format: discordFormat,
       db: env.db,
       guildId: GUILD,
       promptCompiler: fakeCompiler,
@@ -1058,6 +1064,7 @@ describe('createReviewDueMemoriesHandler', () => {
       durabilityReason: 'The result closes a project prediction.',
     };
     const handler = createReviewDueMemoriesHandler({
+      format: discordFormat,
       db: env.db,
       guildId: GUILD,
       promptCompiler: fakeCompiler,
@@ -1085,6 +1092,7 @@ describe('createReviewDueMemoriesHandler', () => {
     const memoryId = seedDueMemory();
     let execution = 0;
     const handler = createReviewDueMemoriesHandler({
+      format: discordFormat,
       db: env.db,
       guildId: GUILD,
       promptCompiler: fakeCompiler,
@@ -1122,6 +1130,7 @@ describe('createReviewDueMemoriesHandler', () => {
   it('stores a recommended notification with no subject observed', async () => {
     seedDueMemory();
     const handler = createReviewDueMemoriesHandler({
+      format: discordFormat,
       db: env.db,
       guildId: GUILD,
       promptCompiler: fakeCompiler,
@@ -1146,6 +1155,7 @@ describe('createReviewDueMemoriesHandler', () => {
   it('stores a recommended notification with a non-due subject observed', async () => {
     seedDueMemory();
     const handler = createReviewDueMemoriesHandler({
+      format: discordFormat,
       db: env.db,
       guildId: GUILD,
       promptCompiler: fakeCompiler,
@@ -1278,6 +1288,7 @@ describe('createReviewDueMemoriesHandler', () => {
     const memId = seedDueMemory();
     env.db.prepare('UPDATE channels SET name = ? WHERE id = ?').run('mneme-test', CHANNEL);
     const handler = createReviewDueMemoriesHandler({
+      format: discordFormat,
       db: env.db,
       guildId: GUILD,
       promptCompiler: fakeCompiler,
@@ -1303,6 +1314,7 @@ describe('createReviewDueMemoriesHandler', () => {
   it('stores a non-recommended notification observed and creates no review post', async () => {
     seedDueMemory();
     const handler = createReviewDueMemoriesHandler({
+      format: discordFormat,
       db: env.db,
       guildId: GUILD,
       promptCompiler: fakeCompiler,
@@ -1337,6 +1349,7 @@ describe('createReviewDueMemoriesHandler', () => {
       durabilityReason: 'This would affect future delivery work.',
     };
     const handler = createReviewDueMemoriesHandler({
+      format: discordFormat,
       db: env.db,
       guildId: GUILD,
       promptCompiler: fakeCompiler,
@@ -1363,6 +1376,7 @@ describe('createReviewDueMemoriesHandler', () => {
     seedDueMemory();
     let applyCalled = false;
     const handler = createReviewDueMemoriesHandler({
+      format: discordFormat,
       db: env.db,
       guildId: GUILD,
       promptCompiler: fakeCompiler,
@@ -1387,6 +1401,7 @@ describe('createReviewDueMemoriesHandler', () => {
   it('an executor throw is recorded as an error without throwing', async () => {
     seedDueMemory();
     const handler = createReviewDueMemoriesHandler({
+      format: discordFormat,
       db: env.db,
       guildId: GUILD,
       promptCompiler: fakeCompiler,
@@ -1412,6 +1427,7 @@ describe('createReviewDueMemoriesHandler', () => {
     const compiler = loadPromptCompiler(promptDir);
     let executeCalls = 0;
     const handler = createReviewDueMemoriesHandler({
+      format: discordFormat,
       db: env.db,
       guildId: GUILD,
       promptCompiler: compiler,

@@ -600,7 +600,7 @@ export function buildApprovalRecheck(
       // assembled durable text. Scheduled notifications store marker text —
       // links are substituted at delivery — so re-run the full
       // model-authored-text sanitizer here without changing episode logic.
-      const sanitized = sanitizeOutboundMessage({ content: durableMessage, guildId: null });
+      const sanitized = sanitizeOutboundMessage({ content: durableMessage, guildId: null, format: ctx.format });
       if (sanitized.outcome === 'reject') {
         textSafetyReasons.push(...sanitized.reasons);
       }
@@ -920,7 +920,7 @@ export async function routeEpisodeIntervention(
     return scope ? { stored, scope } : undefined;
   };
   const sanitized = sanitizeOutboundMessage({ content: message, sourceLinkMessageIds: evidenceIds,
-    guildId: ctx.config.workspaceId }, {
+    guildId: ctx.config.workspaceId, format: ctx.format }, {
     resolveChannelId: (id) => resolveCurrentEvidenceMessage(id)?.stored.channel_id,
     resolveLabel: (id) => {
       const current = resolveCurrentEvidenceMessage(id);
@@ -977,7 +977,7 @@ export async function routeEpisodeIntervention(
       allowInterventions: c.allow_interventions === 1, deletedAtMs: c.deleted_at_ms }; },
   });
   const restrictedChannels = new Set(provenanceEntries.filter((p) => p.visibility === 'restricted').map((p) => p.channelId).filter(Boolean));
-  const forcedReview = evaluateForcedReview({ message, reason: intervention.reason, urgency: intervention.urgency ?? 'normal',
+  const forcedReview = evaluateForcedReview({ message, format: ctx.format, reason: intervention.reason, urgency: intervention.urgency ?? 'normal',
     evidenceStrength: intervention.dimensions.evidenceStrength, distinctRestrictedChannelCount: restrictedChannels.size,
     uncertain: provenanceGate.outcome === 'force_review' || outboundEvidence.outcome === 'force_review' });
   const rate = recentChecks(ctx, target.channelId, message, input.now, 'autonomous');
@@ -1456,7 +1456,7 @@ export async function createProductionJobRuntime(
       observer: createIngestionObserver(ctx.counters) }));
   worker.register('close_episode', 1, createCloseEpisodeHandler({ db: ctx.db, timing: ctx.config.episodes, now: ctx.now, logger: ctx.logger }));
   worker.register('direct_answer', ctx.config.agentRuntime.maxConcurrency, createDirectAnswerHandler({
-    db: ctx.db, guildId: ctx.config.workspaceId, promptCompiler: () => snapshot().promptCompiler,
+    db: ctx.db, guildId: ctx.config.workspaceId, format: ctx.format, promptCompiler: () => snapshot().promptCompiler,
     channelPolicyYml: () => snapshot().channelPolicyYml, mnemeYml: safeRead(ctx.config.mnemeConfigPath),
     systemPrompt, resolveChannelScope: scope, rateChecks: (channelId, content, now) => recentChecks(ctx, channelId, content, now),
     mode: () => ctx.config.mode, agent, docs: docsIndex, executeRun: gatedExecute, now: ctx.now, limits, logger: ctx.logger,
@@ -1464,6 +1464,7 @@ export async function createProductionJobRuntime(
   worker.register('deep_recap', 1, createDeepRecapHandler({
     db: ctx.db,
     guildId: ctx.config.workspaceId,
+    format: ctx.format,
     promptCompiler: () => snapshot().promptCompiler,
     systemPrompt,
     resolveChannelScope: scope,
@@ -1546,6 +1547,7 @@ export async function createProductionJobRuntime(
       ...routeOptions(),
       currentRouteOptions: routeOptions,
       base: {
+        format: ctx.format,
         promptCompiler: () => snapshot().promptCompiler,
         channelPolicyYml: () => snapshot().channelPolicyYml,
         mnemeYml: safeRead(ctx.config.mnemeConfigPath),

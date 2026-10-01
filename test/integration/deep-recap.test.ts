@@ -19,6 +19,7 @@ import { loadPromptCompiler } from '../../src/agent/prompts.js';
 import { fingerprintExposedMessage } from '../../src/agent/run-context.js';
 import type { AgentRunResult, ExecuteAgentRunDeps } from '../../src/agent/runtime.js';
 import { emptyAgentRunUsage } from '../../src/agent/usage.js';
+import { discordFormat } from '../../src/platform/discord/format.js';
 
 const NOW = 1_700_000_000_000;
 const CHANNEL = '100000000000000099';
@@ -103,6 +104,7 @@ describe('durable deep recap worker', () => {
     }),
   ) {
     return createDeepRecapHandler({
+      format: discordFormat,
       db: env.db,
       guildId: ids.guildId,
       promptCompiler: loadPromptCompiler('prompts'),

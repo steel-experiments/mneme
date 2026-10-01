@@ -71,6 +71,7 @@ import {
   fingerprintExposedMessage,
 } from '../../agent/run-context.js';
 import { messageLink } from '../../platform/links.js';
+import type { PlatformFormat } from '../../platform/types.js';
 
 /**
  * `direct_answer` job handler (Sections 19, 26, 46.3).
@@ -313,6 +314,8 @@ export interface DirectAnswerRateChecks {
 export interface DirectAnswerHandlerDeps {
   db: DatabaseSync;
   guildId: string;
+  /** The active platform's text conventions (Section 24.5). */
+  format: PlatformFormat;
   promptCompiler: PromptCompiler | (() => PromptCompiler);
   channelPolicyYml?: string | (() => string);
   mnemeYml?: string;
@@ -580,6 +583,7 @@ export function createDirectAnswerHandler(
       pinnedChannelId,
       target: scope.target,
       guildId: deps.guildId,
+      format: deps.format,
       replyToMessageId,
       rateChecks: deps.rateChecks(pinnedChannelId, proposal.message, clock()),
       provenance: result.provenance,
@@ -1046,6 +1050,7 @@ function validateSafeFallback(
       content: DIRECT_ANSWER_FALLBACK_MESSAGE,
       sourceLinkMessageIds: [],
       guildId: deps.guildId,
+      format: deps.format,
     },
     { resolveChannelId: () => undefined },
   );
@@ -1105,6 +1110,8 @@ export function validateDirectAnswer(
     pinnedChannelId: string;
     target: TargetScope;
     guildId: string;
+    /** The active platform's text conventions (Section 24.5). */
+    format: PlatformFormat;
     replyToMessageId?: string;
     rateChecks: DirectAnswerRateChecks;
     provenance: AgentRunResult['provenance'];
@@ -1360,6 +1367,7 @@ export function validateDirectAnswer(
       content: input.proposal.message,
       sourceLinkMessageIds: input.proposal.citedMessageIds,
       guildId: input.guildId,
+      format: input.format,
     },
     { resolveChannelId, resolveLabel },
   );
