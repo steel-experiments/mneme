@@ -89,7 +89,7 @@ import {
   setProposalStatus,
   type ProposalRow,
 } from './db/repositories/proposals.js';
-import { renderInlineCitations, sanitizeOutboundMessage, sourceLinkUrl, stripScheduledFooter, type MessageLink } from './discord/message-safety.js';
+import { renderInlineCitations, sanitizeOutboundMessage, stripScheduledFooter, type MessageLink } from './discord/message-safety.js';
 import {
   evaluateForcedReview,
   evaluateProvenanceGate,
@@ -137,6 +137,7 @@ import {
   setHistoricalCampaignStatus,
   wakeHistoricalCampaignReviews,
 } from './historical/campaign.js';
+import { messageLink } from './platform/links.js';
 
 export { DIRECT_ANSWER_MODEL_SLOT_WAIT_MS } from './agent/model-admission.js';
 
@@ -1612,7 +1613,7 @@ export async function createProductionJobRuntime(
         const proposal = getProposal(ctx.db, report.proposalId);
         if (!proposal?.reviewMessageId) return;
         const label = report.status === 'sent'
-          ? `✅ Sent — [open notification](${sourceLinkUrl(
+          ? `✅ Sent — [open notification](${messageLink(
               ctx.config.workspaceId,
               proposal.targetChannelId,
               report.platformMessageId,

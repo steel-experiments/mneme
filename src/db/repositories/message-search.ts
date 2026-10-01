@@ -8,6 +8,7 @@ import {
   MAX_RESULT_LIMIT,
   DEFAULT_LIMIT,
 } from '../fts-query.js';
+import { messageLink } from '../../platform/links.js';
 
 /**
  * Scope-bound message retrieval (Sections 7.3, 22.1, 30, 32.5.2).
@@ -88,15 +89,6 @@ export interface RecentMessageResult {
   content: string;
   reactionTotal: number;
   link: string;
-}
-
-/** Canonical Discord message jump link (Section 30.3). Host-generated, never trusted. */
-export function discordMessageLink(
-  guildId: string,
-  channelId: string,
-  messageId: string,
-): string {
-  return `https://discord.com/channels/${guildId}/${channelId}/${messageId}`;
 }
 
 /**
@@ -301,7 +293,7 @@ export function searchMessages(
       snippet: String(row.snippet),
       reactionTotal: Number(row.reaction_total),
       rank,
-      link: discordMessageLink(guildId, channelId, messageId),
+      link: messageLink(guildId, channelId, messageId),
     };
   });
 }
@@ -397,7 +389,7 @@ export function listRecentMessages(
       createdAtMs: Number(row.created_at_ms),
       content: String(row.content),
       reactionTotal: Number(row.reaction_total),
-      link: discordMessageLink(guildId, channelId, messageId),
+      link: messageLink(guildId, channelId, messageId),
     };
   });
 }

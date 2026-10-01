@@ -4,11 +4,11 @@ import {
   sanitizeOutboundMessage,
   buildSourceLinks,
   renderInlineCitations,
-  sourceLinkUrl,
   MAX_MESSAGE_CHARS,
   MAX_SOURCE_LINKS,
   type SourceLinkContext,
 } from '../../src/discord/message-safety.js';
+import { messageLink } from '../../src/platform/links.js';
 
 /**
  * Mention and message-content sanitization (Sections 7.4 check 8, 24.5, 30.3,
@@ -89,11 +89,11 @@ describe('sanitizeOutboundMessage — happy path', () => {
     expect(res.outcome).toBe('allow');
     if (res.outcome !== 'allow') return;
     expect(res.sourceLinks.map((l) => l.url)).toEqual([
-      sourceLinkUrl(GUILD, 'c1', 'm1'),
-      sourceLinkUrl(GUILD, 'c2', 'm2'),
-      sourceLinkUrl(GUILD, 'c3', 'm3'),
+      messageLink(GUILD, 'c1', 'm1'),
+      messageLink(GUILD, 'c2', 'm2'),
+      messageLink(GUILD, 'c3', 'm3'),
     ]);
-    expect(res.sourceLinks[0]!.masked).toBe(`[source](${sourceLinkUrl(GUILD, 'c1', 'm1')})`);
+    expect(res.sourceLinks[0]!.masked).toBe(`[source](${messageLink(GUILD, 'c1', 'm1')})`);
   });
 });
 
@@ -378,7 +378,7 @@ describe('sanitizeOutboundMessage — source link construction', () => {
     if (res.outcome !== 'allow') return;
     expect(renderInlineCitations(res.content, res.sourceLinks)).toEqual({
       outcome: 'allow',
-      content: `The deploy is green. [#general · 2026-08-24](${sourceLinkUrl(GUILD, 'c1', 'm1')})`,
+      content: `The deploy is green. [#general · 2026-08-24](${messageLink(GUILD, 'c1', 'm1')})`,
       unusedLinks: [],
       markerCount: 1,
     });
@@ -404,8 +404,8 @@ describe('sanitizeOutboundMessage — source link construction', () => {
     expect(res.sourceLinks).toEqual([]);
   });
 
-  it('sourceLinkUrl produces the Section 30.3 host-generated form', () => {
-    expect(sourceLinkUrl(GUILD, 'c1', 'm1')).toBe(
+  it('messageLink produces the Section 30.3 host-generated form', () => {
+    expect(messageLink(GUILD, 'c1', 'm1')).toBe(
       `https://discord.com/channels/${GUILD}/c1/m1`,
     );
   });

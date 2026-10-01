@@ -21,8 +21,9 @@ import {
 import { parseToolCalls, parseProvenance, buildLedger, renderLedgerSvg, TONES } from './ledger.js';
 import { buildTraceRows, parseModelTurns } from './trace.js';
 import type { DatabaseSync } from '../../db/database.js';
-import { discordMessageLink, type RetrievalGrant } from '../../db/repositories/message-search.js';
+import { type RetrievalGrant } from '../../db/repositories/message-search.js';
 import type { MemoryArchiveCursor, MemoryArchiveSort, MemoryEvidenceCursor } from '../../memory/search.js';
+import { messageLink } from '../../platform/links.js';
 
 /** Everything a renderer needs; supplied by the router after authentication. */
 export interface PageEnv {
@@ -980,7 +981,7 @@ function targetFor(resolved: Resolved, basePath: string): string | null {
 function describeExternal(resolved: Resolved): string {
   if (resolved.kind === 'message') {
     const jump = resolved.guildId && resolved.channelId
-      ? ` <a href="${h(discordMessageLink(resolved.guildId, resolved.channelId, resolved.id))}" rel="noreferrer">Open on Discord</a>`
+      ? ` <a href="${h(messageLink(resolved.guildId, resolved.channelId, resolved.id))}" rel="noreferrer">Open on Discord</a>`
       : '';
     return `<p>Message <code>${h(resolved.id)}</code> in channel <code>${h(resolved.channelId ?? '—')}</code>.${jump}</p>`;
   }

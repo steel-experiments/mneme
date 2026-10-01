@@ -13,7 +13,6 @@ import {
   copyMigrationsToTemp,
   writeMigration,
   makeTempDir,
-  seedIdentity,
 } from '../helpers/db.js';
 import { enqueue, claimNextJob } from '../../src/jobs/queue.js';
 import { getDeadlineDecision } from '../../src/memory/deadline-decisions.js';

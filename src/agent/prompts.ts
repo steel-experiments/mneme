@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import Handlebars from 'handlebars';
+import { messageLink } from '../platform/links.js';
 
 /**
  * Strict prompt compilation and helpers (Section 15.2).
@@ -72,7 +73,7 @@ export function isoDateHelper(ms: unknown): string {
 export function messageLinkHelper(guildId: unknown, channelId: unknown, messageId: unknown): string {
   if (typeof guildId !== 'string' || typeof channelId !== 'string' || typeof messageId !== 'string') return '';
   if (guildId.length === 0 || channelId.length === 0 || messageId.length === 0) return '';
-  return `https://discord.com/channels/${guildId}/${channelId}/${messageId}`;
+  return messageLink(guildId, channelId, messageId);
 }
 
 function registerHelpers(hbs: HandlebarsInstance): void {
