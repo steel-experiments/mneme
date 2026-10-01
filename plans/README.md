@@ -11,7 +11,7 @@ honor its STOP conditions, and update the row when done.
 | 001 | Render episode intervention citations inline with descriptive labels | P1 | M | — | DONE |
 | 002 | Add Slack support (umbrella; records decisions, no code) | P1 | XL | — | TODO |
 | 003 | Amend the spec for platform adapters and Slack | P1 | M | 002 | DONE |
-| 004 | Make names, ids, links, and text format platform-neutral (Discord only) | P1 | M | 003 | TODO |
+| 004 | Make names, ids, links, and text format platform-neutral (Discord only) | P1 | M | 003 | DONE |
 | 005 | Extract the ChatPlatform adapter seam (Discord only) | P1 | L | 004 | TODO |
 | 006 | Add the Slack read path: connection, discovery, visibility, ingestion, backfill | P1 | L | 005 | TODO |
 | 007 | Add the Slack write path: send, outbox recovery, cards, commands | P1 | L | 006 | TODO |
