@@ -8,6 +8,7 @@ import {
   type ChannelPolicy,
   type ChannelRule,
 } from './channel-policy.js';
+import { isPlatformId } from '../platform/ids.js';
 
 /**
  * Basic first-run channel configuration (the small-install path).
@@ -31,7 +32,6 @@ import {
  * mode take effect after a restart.
  */
 
-const SNOWFLAKE_RE = /^\d{17,20}$/;
 
 const ORG_VISIBLE_VAR = 'ORG_VISIBLE_CHANNEL_IDS';
 const RESTRICTED_VAR = 'RESTRICTED_CHANNEL_IDS';
@@ -64,7 +64,7 @@ function parseSelectionList(env: NodeJS.ProcessEnv, key: string): string[] {
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
   for (const part of parts) {
-    if (!SNOWFLAKE_RE.test(part)) {
+    if (!isPlatformId(part)) {
       throw new ChannelPolicyError(`channel policy: "${part}" in ${key} is not a Discord snowflake`);
     }
   }
@@ -73,7 +73,7 @@ function parseSelectionList(env: NodeJS.ProcessEnv, key: string): string[] {
 
 /** Validate the review-channel id with the shared snowflake rule. */
 function parseReviewId(raw: string): string {
-  if (!SNOWFLAKE_RE.test(raw)) {
+  if (!isPlatformId(raw)) {
     throw new ChannelPolicyError(`channel policy: "${raw}" in ${REVIEW_ID_VAR} is not a Discord snowflake`);
   }
   return raw;

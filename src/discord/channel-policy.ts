@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
+import { isPlatformId } from '../platform/ids.js';
 
 /**
  * Channel policy parsing and inheritance (Sections 7, 8).
@@ -89,7 +90,7 @@ function parseRuleMap(raw: unknown, where: string): Map<string, ChannelRule> {
     throw new ChannelPolicyError(`${where}: expected a mapping of id -> rule`);
   }
   for (const [id, rule] of Object.entries(raw as Record<string, unknown>)) {
-    if (!/^\d{17,20}$/.test(id)) {
+    if (!isPlatformId(id)) {
       throw new ChannelPolicyError(`${where}: key "${id}" is not a Discord snowflake`);
     }
     out.set(id, parseRule(rule, `${where}["${id}"]`));
@@ -120,7 +121,7 @@ export function parseChannelPolicy(text: string): ChannelPolicy {
   let review_channel: ReviewChannel | undefined;
   if (d.review_channel !== undefined) {
     const rc = d.review_channel as Record<string, unknown>;
-    if (typeof rc.id !== 'string' || !/^\d{17,20}$/.test(rc.id)) {
+    if (!isPlatformId(rc.id)) {
       throw new ChannelPolicyError('review_channel.id must be a Discord snowflake');
     }
     if (typeof rc.secure !== 'boolean') {

@@ -11,6 +11,7 @@ import {
   protectedResourceMetadataPath,
 } from './mcp/oauth/metadata.js';
 import { DEFAULT_SETTLE_SECONDS, DEFAULT_SETTLE_MAX_MINUTES } from './episodes/settle.js';
+import { isPlatformId } from './platform/ids.js';
 
 /**
  * Typed application configuration (Sections 14, 35).
@@ -41,7 +42,6 @@ export type ThinkingLevel = 'low' | 'medium' | 'high';
 export type ChannelPolicySource = 'basic' | 'file';
 
 /** Discord snowflake: 17–20 decimal digits. */
-const SNOWFLAKE_RE = /^\d{17,20}$/;
 
 const PROVIDER_API_KEY: Record<LlmProvider, string> = {
   openai: 'OPENAI_API_KEY',
@@ -519,7 +519,7 @@ function parseSnowflake(raw: string | undefined, setting: string): string {
   if (raw === undefined || raw === '') {
     throw new ConfigError('required setting is missing', setting);
   }
-  if (!SNOWFLAKE_RE.test(raw)) {
+  if (!isPlatformId(raw)) {
     throw new ConfigError('expected a Discord snowflake (17–20 digits)', setting);
   }
   return raw;
@@ -554,7 +554,7 @@ function parseSnowflakeList(raw: string | undefined, setting: string): string[] 
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
   for (const part of parts) {
-    if (!SNOWFLAKE_RE.test(part)) {
+    if (!isPlatformId(part)) {
       throw new ConfigError(`list contains a non-snowflake value`, setting);
     }
   }
