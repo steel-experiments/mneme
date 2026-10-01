@@ -284,7 +284,7 @@ function interventionRuntimeContext(): BootstrapContext {
     db: env.db,
     now: () => NOW,
     config: {
-      discord: { guildId: GUILD, applicationId: CASS },
+      workspaceId: GUILD, discord: { applicationId: CASS },
       mode: 'review',
       reviewChannelId: undefined,
       organization: { timezone: 'UTC' },

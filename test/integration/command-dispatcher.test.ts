@@ -89,7 +89,7 @@ function makeDeps(db: DatabaseSync, ctxOverrides: Record<string, unknown> = {}):
     now: () => NOW,
     db,
     config: {
-      discord: { guildId: GUILD },
+      workspaceId: GUILD,
       adminRoleIds: ADMIN_ROLES,
       deletionApproverUserIds: [ADMIN],
       mcp: { enabled: false },
@@ -169,7 +169,7 @@ describe('command dispatcher routing', () => {
 
   it('rejects interactions from another guild before any route runs', async () => {
     const replies = await runCommand(db, { subcommand: 'channels', group: null },
-      { config: { discord: { guildId: '999999999999999999' }, adminRoleIds: ADMIN_ROLES, mcp: { enabled: false } } });
+      { config: { workspaceId: '999999999999999999', adminRoleIds: ADMIN_ROLES, mcp: { enabled: false } } });
     expect(replies).toEqual(['This command only works in the configured server.']);
   });
 

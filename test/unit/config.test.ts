@@ -75,7 +75,7 @@ describe('config', () => {
   });
   it('loads a minimal valid configuration', () => {
     const cfg = loadConfig({ env: baseEnv() });
-    expect(cfg.discord.guildId).toBe('234567890123456789');
+    expect(cfg.workspaceId).toBe('234567890123456789');
     expect(cfg.llm.provider).toBe('openai');
     expect(cfg.llm.apiKey).toBe('sk-test-key-value');
     expect(cfg.mode).toBe('observe');

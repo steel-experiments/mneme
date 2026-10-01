@@ -62,7 +62,6 @@ export class ConfigError extends Error {
 export interface DiscordConfig {
   token: string;
   applicationId: string;
-  guildId: string;
 }
 
 export interface LlmConfig {
@@ -318,6 +317,8 @@ export interface AppConfig {
   channelPolicyPath: string;
   /** Resolved CHANNEL_POLICY_SOURCE; 'basic' never reads {@link AppConfig.channelPolicyPath}. */
   channelPolicySource: ChannelPolicySource;
+  /** The one Discord server or Slack workspace that this deployment serves. */
+  workspaceId: string;
   discord: DiscordConfig;
   llm: LlmConfig;
   organization: { name: string; timezone: string };
@@ -1112,7 +1113,8 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
     mnemeConfigPath,
     channelPolicyPath,
     channelPolicySource,
-    discord: { token, applicationId, guildId },
+    workspaceId: guildId,
+    discord: { token, applicationId },
     llm: { provider, model, triageModel, baseUrl, apiKey, dailyBudgetUsd },
     organization,
     agent,

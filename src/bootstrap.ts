@@ -312,7 +312,7 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
             clientId: config.mcp.oauthDiscordClientId,
             clientSecret: config.mcp.oauthDiscordClientSecret,
             publicBaseUrl: config.mcp.publicBaseUrl,
-            guildId: config.discord.guildId,
+            guildId: config.workspaceId,
           }),
           adminRoleIds: config.adminRoleIds,
           rateLimiter: unauthRateLimiter,
@@ -549,7 +549,7 @@ async function defaultConnectDiscord(ctx: BootstrapContext): Promise<DiscordWiri
   const { createDiscordClient } = await import('./discord/client.js');
   const { client, tracker } = createDiscordClient({
     token: ctx.discordToken,
-    guildId: ctx.config.discord.guildId,
+    guildId: ctx.config.workspaceId,
     logger: ctx.logger,
     clock: ctx.now,
   });
@@ -571,7 +571,7 @@ async function defaultConnectDiscord(ctx: BootstrapContext): Promise<DiscordWiri
   const { upsertGuild } = await import('./db/repositories/workspaces.js');
   const seededAt = ctx.now();
   upsertGuild(ctx.db, {
-    id: ctx.config.discord.guildId,
+    id: ctx.config.workspaceId,
     name: ctx.config.organization.name,
     ownerId: null,
     joinedAtMs: null,
@@ -581,8 +581,8 @@ async function defaultConnectDiscord(ctx: BootstrapContext): Promise<DiscordWiri
   });
   await client.login(ctx.discordToken);
   const { assertExpectedGuild } = await import('./discord/client.js');
-  assertExpectedGuild([...client.guilds.cache.keys()], ctx.config.discord.guildId);
-  const guild = await client.guilds.fetch(ctx.config.discord.guildId);
+  assertExpectedGuild([...client.guilds.cache.keys()], ctx.config.workspaceId);
+  const guild = await client.guilds.fetch(ctx.config.workspaceId);
   const observedAt = ctx.now();
   upsertGuild(ctx.db, {
     id: guild.id,
@@ -624,7 +624,7 @@ async function defaultBeginIngestion(ctx: BootstrapContext, discord: DiscordWiri
   registerIngestionHandlers(discord.client, {
     db: ctx.db,
     opts: () => ({
-      guildId: ctx.config.discord.guildId,
+      guildId: ctx.config.workspaceId,
       storeRawJson: ing.storeRawJson,
       retainEditHistory: ing.retainEditHistory,
       retainDeletedContent: ing.retainDeletedContent,
@@ -660,7 +660,7 @@ async function defaultBeginIngestion(ctx: BootstrapContext, discord: DiscordWiri
     onMissingDependency: ({ reason, channelId, messageId }) => {
       const now = ctx.now();
       const recovery = requestIngestionRecovery(ctx.db, {
-        guildId: ctx.config.discord.guildId, channelId, messageId, reason, now,
+        guildId: ctx.config.workspaceId, channelId, messageId, reason, now,
       });
       enqueue(ctx.db, {
         type: 'recover_message', payload: { recoveryId: recovery.id, generation: recovery.generation },
@@ -677,7 +677,7 @@ async function defaultBeginIngestion(ctx: BootstrapContext, discord: DiscordWiri
           { mnemeId: ctx.config.discord.applicationId },
           {
             db: ctx.db,
-            guildId: ctx.config.discord.guildId,
+            guildId: ctx.config.workspaceId,
             now: observedAt,
             timing: {
               quietSeconds: ctx.config.episodes.quietSeconds,
@@ -758,7 +758,7 @@ async function defaultRegisterCommands(ctx: BootstrapContext, discord: DiscordWi
   const result = await registerGuildCommands({
     rest: discord.client.rest,
     applicationId: ctx.config.discord.applicationId,
-    guildId: ctx.config.discord.guildId,
+    guildId: ctx.config.workspaceId,
   });
   if (!result.ok) {
     throw new BootstrapError(`Discord command registration failed: ${result.error}`);
@@ -775,11 +775,11 @@ async function defaultDiscoverAndBackfill(
   if (!discord.client || !snapshot) return;
   const { fetchDiscoveryDescriptors, createDiscordThreadArchiveSource } = await import('./discord/production-adapters.js');
   const { runStartupSync } = await import('./discord/sync.js');
-  const descriptors = await fetchDiscoveryDescriptors(discord.client, ctx.config.discord.guildId);
+  const descriptors = await fetchDiscoveryDescriptors(discord.client, ctx.config.workspaceId);
   const canManageThreads = descriptors.some((d) => d.capabilities?.canManageThreads === true);
   await runStartupSync({
     db: ctx.db,
-    guildId: ctx.config.discord.guildId,
+    guildId: ctx.config.workspaceId,
     policy: snapshot.channelPolicy,
     channelPolicySource: ctx.config.channelPolicySource,
     now: ctx.now(),
