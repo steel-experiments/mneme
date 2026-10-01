@@ -2,7 +2,6 @@ import type { DatabaseSync } from '../../db/database.js';
 import { getIngestionRecovery, completeIngestionRecovery } from '../../db/repositories/ingestion-recovery.js';
 import { channelIngestionIneligibilityReason } from '../../ingestion/ingestion-eligibility.js';
 import { ingestMessageCreate, type IngestOptions } from '../../ingestion/ingest.js';
-import { normalizeMessage } from '../../platform/discord/normalize.js';
 import type { BackfillMessageFetcher } from '../../ingestion/backfill.js';
 import type { JobHandler } from '../worker.js';
 import { DeferJobError } from '../errors.js';
@@ -57,7 +56,7 @@ export function createRecoverMessageHandler(deps: {
       if (completeIngestionRecovery(deps.db, request.id, currentGeneration, 'unavailable', now)) deps.observer?.recovery('unavailable', 'unavailable_source');
       return;
     }
-    const message = normalizeMessage(raw);
+    const message = deps.fetcher.normalize(raw);
     if (message.id !== request.messageId || message.channelId !== request.channelId || message.guildId !== request.guildId) {
       if (completeIngestionRecovery(deps.db, request.id, currentGeneration, 'unavailable', now)) deps.observer?.recovery('unavailable', 'unavailable_source');
       return;

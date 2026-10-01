@@ -20,6 +20,7 @@ import { getChannel } from '../../src/db/repositories/channels.js';
 import { createReconcileChannelHandler } from '../../src/jobs/handlers/reconcile-channel.js';
 import type { JobRow } from '../../src/jobs/types.js';
 import { opts as messageOptions } from '../helpers/messages.js';
+import { normalizeMessage } from '../../src/platform/discord/normalize.js';
 
 /** Neutral channel kinds, named after the Discord channel types they replace. */
 
@@ -235,6 +236,7 @@ describe('runStartupSync — phase ordering', () => {
     const handler = createReconcileChannelHandler({
       db,
       fetcher: {
+        normalize: normalizeMessage,
         async fetchMessages(channelId) {
           expect(channelId).toBe(ARCHIVED);
           reconcileFetches += 1;
@@ -251,6 +253,39 @@ describe('runStartupSync — phase ordering', () => {
     const result = await discoveryRun;
     expect(result.archivedCoverageComplete).toBe(true);
     expect(getChannel(db, ARCHIVED)?.ingest_enabled).toBe(1);
+  });
+});
+
+describe('runStartupSync — complete thread snapshot', () => {
+  it('closes a stored thread that the snapshot omits and makes no archive call', async () => {
+    const policy = parseChannelPolicy(POLICY_YAML);
+    await runStartupSync({
+      db, guildId: GUILD, policy, now: NOW, channels: baseDescriptors(),
+      archiveSource: fakeArchiveSource(), canManageThreads: true,
+    });
+    expect(getChannel(db, ARCHIVED)?.ingest_enabled).toBe(1);
+
+    let archiveCalls = 0;
+    const countingSource: ThreadArchiveSource = {
+      fetchPublicArchived() { archiveCalls += 1; return { threads: [], hasMore: false }; },
+      fetchPrivateArchived() { archiveCalls += 1; return { threads: [], hasMore: false }; },
+    };
+    const result = await runStartupSync({
+      db, guildId: GUILD, policy, now: NOW + 1, channels: baseDescriptors(),
+      archiveSource: countingSource, completeThreadSnapshot: true, canManageThreads: true,
+    });
+
+    expect(archiveCalls).toBe(0);
+    expect(result.phases).not.toContain('enumerate-archived-threads');
+    const closed = getChannel(db, ARCHIVED);
+    expect(closed?.ingest_enabled).toBe(0);
+    expect(closed?.visibility_class).toBe('excluded');
+    const audit = db.prepare(
+      'SELECT warning FROM channel_access_audits WHERE channel_id = ? ORDER BY checked_at_ms DESC LIMIT 1',
+    ).get(ARCHIVED) as { warning: string | null } | undefined;
+    expect(audit?.warning).toBe('thread was omitted from complete active and archived discovery');
+    // The thread in the snapshot stays eligible.
+    expect(getChannel(db, THREAD)?.ingest_enabled).toBe(1);
   });
 });
 

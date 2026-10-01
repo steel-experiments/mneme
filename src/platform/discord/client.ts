@@ -1,13 +1,12 @@
 import { Client, GatewayIntentBits, Events, Partials } from 'discord.js';
 import type { Logger } from '../../logger.js';
-import { type DatabaseSync } from '../../db/database.js';
 import { type IngestOptions } from '../../ingestion/ingest.js';
-import { handleGatewayEvent } from './gateway-events.js';
+import { channelInputFromRaw, handleGatewayEvent } from './gateway-events.js';
 import { normalizeMessage } from './normalize.js';
-import type { NormalizedMessage } from '../types.js';
 import { getMessage } from '../../db/repositories/messages.js';
-import type { IngestionObserver, IngestionOutcome, IngestionReason } from '../../observability.js';
+import type { IngestionOutcome, IngestionReason } from '../../observability.js';
 import { isPlatformId } from '../ids.js';
+import type { LiveIngestionDeps } from '../../ingestion/live.js';
 
 /**
  * Discord client (Sections 6.2, 9.3).
@@ -621,27 +620,10 @@ export function rawChannelFromJs(ch: JsChannelLike | null): Record<string, unkno
   };
 }
 
-export interface IngestionHandlerDeps {
-  db: DatabaseSync;
-  /** Event-time options. A factory avoids freezing observation timestamps at startup. */
-  opts: IngestOptions | (() => IngestOptions);
-  /** Fail-closed policy hook evaluated before a new message is persisted. */
-  shouldIngestMessage?: (channelId: string, message: NormalizedMessage) => boolean;
-  /** Called only after a MESSAGE_CREATE was successfully persisted. */
-  onMessageCreate?: (message: NormalizedMessage) => void;
-  /** Resolve policy-aware channel metadata for gateway create/update events. */
-  resolveChannelInput?: Parameters<typeof handleGatewayEvent>[4];
-  /** Called after a channel/thread mutation has committed; must not perform inline network I/O. */
-  onChannelChange?: (event: 'create' | 'update' | 'delete', channelId: string) => void;
-  /** Queue an id-only recovery after a known-guild dependency arrives out of order. */
-  onMissingDependency?: (input: { reason: 'missing_channel' | 'missing_message'; channelId: string; messageId: string }) =>
-    { recoveryId: string; generation: number } | void;
-  /** Content-free outcome counter owner. */
-  observer?: IngestionObserver;
+/** Live ingestion hooks plus the Discord health tracker updated on each event. */
+export interface IngestionHandlerDeps extends LiveIngestionDeps {
   /** Optional health tracker updated with the last event name (telemetry). */
   tracker?: { recordEvent(name: string): void };
-  /** Optional logger for handler errors. */
-  logger?: Pick<Logger, 'debug' | 'info' | 'warn'>;
 }
 
 /**
@@ -653,6 +635,13 @@ export interface IngestionHandlerDeps {
  */
 export function registerIngestionHandlers(client: Client, deps: IngestionHandlerDeps): void {
   const { db } = deps;
+  const applyChannelPolicy = deps.applyChannelPolicy;
+  const resolveChannelInput = applyChannelPolicy
+    ? (raw: unknown, guildId: string, now: number) => {
+      const input = channelInputFromRaw(raw, guildId, now);
+      return input ? applyChannelPolicy(input) : null;
+    }
+    : undefined;
   const opts = (): IngestOptions =>
     typeof deps.opts === 'function' ? deps.opts() : deps.opts;
   const track = (name: string): void => {
@@ -790,7 +779,7 @@ export function registerIngestionHandlers(client: Client, deps: IngestionHandler
     run('channelCreate', () => {
       const r = rawChannelFromJs(channel as JsChannelLike);
       if (r) {
-        const result = handleGatewayEvent(db, opts(), 'CHANNEL_CREATE', r, deps.resolveChannelInput);
+        const result = handleGatewayEvent(db, opts(), 'CHANNEL_CREATE', r, resolveChannelInput);
         if (result.handled && typeof r.id === 'string') deps.onChannelChange?.('create', r.id);
       }
     }),
@@ -799,7 +788,7 @@ export function registerIngestionHandlers(client: Client, deps: IngestionHandler
     run('channelUpdate', () => {
       const r = rawChannelFromJs(channel as JsChannelLike);
       if (r) {
-        const result = handleGatewayEvent(db, opts(), 'CHANNEL_UPDATE', r, deps.resolveChannelInput);
+        const result = handleGatewayEvent(db, opts(), 'CHANNEL_UPDATE', r, resolveChannelInput);
         if (result.handled && typeof r.id === 'string') deps.onChannelChange?.('update', r.id);
       }
     }),
@@ -817,7 +806,7 @@ export function registerIngestionHandlers(client: Client, deps: IngestionHandler
     run('threadCreate', () => {
       const r = rawChannelFromJs(thread as JsChannelLike);
       if (r) {
-        const result = handleGatewayEvent(db, opts(), 'THREAD_CREATE', r, deps.resolveChannelInput);
+        const result = handleGatewayEvent(db, opts(), 'THREAD_CREATE', r, resolveChannelInput);
         if (result.handled && typeof r.id === 'string') deps.onChannelChange?.('create', r.id);
       }
     }),
@@ -826,7 +815,7 @@ export function registerIngestionHandlers(client: Client, deps: IngestionHandler
     run('threadUpdate', () => {
       const r = rawChannelFromJs(thread as JsChannelLike);
       if (r) {
-        const result = handleGatewayEvent(db, opts(), 'THREAD_UPDATE', r, deps.resolveChannelInput);
+        const result = handleGatewayEvent(db, opts(), 'THREAD_UPDATE', r, resolveChannelInput);
         if (result.handled && typeof r.id === 'string') deps.onChannelChange?.('update', r.id);
       }
     }),
@@ -843,6 +832,6 @@ export function registerIngestionHandlers(client: Client, deps: IngestionHandler
   client.on(Events.ThreadListSync, (threads) =>
     run('threadListSync', () => handleGatewayEvent(db, opts(), 'THREAD_LIST_SYNC', {
       threads: toIterable<JsChannelLike>(threads).map(rawChannelFromJs).filter((x): x is Record<string, unknown> => x !== null),
-    }, deps.resolveChannelInput)),
+    }, resolveChannelInput)),
   );
 }

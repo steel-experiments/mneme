@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { get } from 'node:http';
 import { createTestDb, type TestDb } from '../helpers/db.js';
 import { loadConfig } from '../../src/config.js';
-import { bootstrapApplication, BootstrapError, type BootstrapSeams, type DiscordWiring } from '../../src/bootstrap.js';
+import { bootstrapApplication, BootstrapError, type BootstrapSeams, type PlatformWiring } from '../../src/bootstrap.js';
 import { setRuntimeModeOverride } from '../../src/runtime-state.js';
 
 /**
@@ -56,7 +56,7 @@ function recordingSeams(log: string[]): BootstrapSeams {
     compilePromptsAndPolicy: () => {
       log.push('compile');
     },
-    connectDiscord: async (): Promise<DiscordWiring> => {
+    connectPlatform: async (): Promise<PlatformWiring> => {
       log.push('connect');
       return { destroy: () => log.push('discord-destroy') };
     },
@@ -96,7 +96,7 @@ describe('bootstrapApplication — Section 9.2 ordering and singletons', () => {
     let modeSeenAtConnect: string | undefined;
     const seams = recordingSeams([]);
     seams.startHttp = false;
-    seams.connectDiscord = (ctx) => {
+    seams.connectPlatform = (ctx) => {
       modeSeenAtConnect = ctx.config.mode;
       return { destroy() {} };
     };
@@ -177,7 +177,7 @@ describe('bootstrapApplication — Section 9.2 ordering and singletons', () => {
   it('lets the early-started HTTP status provider observe the later live Discord tracker', async () => {
     const adminToken = 'bootstrap-status-admin-token';
     const seams = recordingSeams([]);
-    seams.connectDiscord = () => ({
+    seams.connectPlatform = () => ({
       tracker: {
         snapshot: () => ({
           status: 'resumed',
@@ -242,7 +242,7 @@ describe('bootstrapApplication — clean preconditions', () => {
       seams: {
         startHttp: false,
         compilePromptsAndPolicy: () => {},
-        connectDiscord: () => ({ client: {}, destroy: () => { log.push('discord-destroy'); } }),
+        connectPlatform: () => ({ destroy: () => { log.push('discord-destroy'); } }),
         beginIngestion: () => {},
         registerCommands: () => { throw new Error('command registration failed'); },
       },
@@ -254,10 +254,10 @@ describe('bootstrapApplication — clean preconditions', () => {
     expect(env.db.prepare('SELECT 1 AS n').get()).toEqual({ n: 1 });
   });
 
-  it('fails cleanly when a connectDiscord seam raises a precondition error', async () => {
+  it('fails cleanly when a connectPlatform seam raises a precondition error', async () => {
     const failingSeams: BootstrapSeams = {
       compilePromptsAndPolicy: () => {},
-      connectDiscord: async () => {
+      connectPlatform: async () => {
         throw new BootstrapError('DISCORD_TOKEN is not configured; cannot connect the Discord Gateway');
       },
     };
@@ -279,7 +279,7 @@ describe('bootstrapApplication — clean preconditions', () => {
       httpPort: 0,
       seams: {
         compilePromptsAndPolicy: () => {},
-        connectDiscord: async () => ({ destroy: () => {} }),
+        connectPlatform: async () => ({ destroy: () => {} }),
         beginIngestion: () => {},
       },
       installSignals: false,

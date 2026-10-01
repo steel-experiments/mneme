@@ -6,6 +6,7 @@ import {
 import type { BackfillMessageFetcher } from '../../ingestion/backfill.js';
 import { channelKindOf } from './channel-types.js';
 import { rawMessageFromJs } from './client.js';
+import { normalizeMessage } from './normalize.js';
 import type { DiscoveredChannelDescriptor } from '../../ingestion/discovery.js';
 import type { ThreadArchiveSource, ArchivedThreadPage } from '../../ingestion/threads.js';
 
@@ -52,6 +53,7 @@ export async function fetchDiscoveryDescriptors(client: Client, guildId: string)
 /** discord.js message pagination adapter used by backfill and reconciliation. */
 export function createDiscordMessageFetcher(client: Client): BackfillMessageFetcher {
   return {
+    normalize: normalizeMessage,
     async fetchMessages(channelId, before, limit) {
       const channel = await client.channels.fetch(channelId, { cache: false, force: true });
       if (!channel || !channel.isTextBased() || !('messages' in channel)) return [];

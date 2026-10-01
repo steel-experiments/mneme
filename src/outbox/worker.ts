@@ -9,7 +9,7 @@ import {
 } from './repository.js';
 import { classifyError, PermanentJobError, TransientJobError } from '../jobs/errors.js';
 import { computeRetryDelay } from '../jobs/queue.js';
-import type { OutboxSender } from '../platform/discord/sender.js';
+import type { OutboxSender } from '../platform/types.js';
 import type { Logger } from '../logger.js';
 import type { JobHandler } from '../jobs/worker.js';
 import type { JobRow } from '../jobs/types.js';

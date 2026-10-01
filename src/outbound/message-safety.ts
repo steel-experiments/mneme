@@ -24,6 +24,7 @@
  */
 
 import { messageLink } from '../platform/links.js';
+import type { ParsedMention } from '../platform/types.js';
 
 // Section 24.5 / 23: hard content and citation limits.
 export const MAX_MESSAGE_CHARS = 1800;
@@ -82,13 +83,6 @@ function safeSourceLabel(value: string | undefined): string {
 }
 
 /** Discord mention syntax the host parsed out of the proposed text. */
-export interface ParsedMention {
-  /** Raw matched token, e.g. `<@123>`, `<@&456>`, `@everyone`. */
-  raw: string;
-  kind: 'user' | 'role' | 'everyone' | 'here';
-  /** Snowflake id for user/role mentions; undefined for everyone/here. */
-  id?: string;
-}
 
 // Discord snowflake mention tokens. `<@id>` and `<@!id>` are user mentions (the
 // `!` is the legacy nickname-ping prefix); `<@&id>` is a role mention. Channel

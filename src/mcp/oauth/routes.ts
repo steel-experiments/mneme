@@ -16,7 +16,7 @@ import {
 } from './authorize.js';
 import { completeSignIn, successRedirectUrl } from './callback.js';
 import { exchangeToken } from './token.js';
-import type { DiscordIdentityClient } from '../../platform/discord/oauth-identity.js';
+import type { DiscordIdentityClient } from '../../platform/types.js';
 import type { RateLimiter } from '../rate-limit.js';
 import {
   purgeExpiredAuthorizationCodes,

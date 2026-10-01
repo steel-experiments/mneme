@@ -1,6 +1,5 @@
 import { type DatabaseSync, transaction } from '../db/database.js';
 import { ingestMessagePage, type IngestOptions } from './ingest.js';
-import { normalizeMessage } from '../platform/discord/normalize.js';
 import type { NormalizedMessage } from '../platform/types.js';
 import { beginReconcileScan, completeReconcileScan, ensureSyncCursor, getSyncCursor, recordReconcileScanProgress } from '../db/repositories/sync-cursors.js';
 import type { BackfillMessageFetcher } from './backfill.js';
@@ -49,7 +48,7 @@ export async function reconcileChannel(input: ReconcileOptions): Promise<Reconci
     const messages: NormalizedMessage[] = [];
     for (const raw of raws) {
       try {
-        const message = normalizeMessage(raw);
+        const message = input.fetcher.normalize(raw);
         if (message.createdAtMs >= lowerBoundMs) messages.push(message); else boundaryReached = true;
       } catch (err) {
         malformed = true; messagesSkipped += 1;

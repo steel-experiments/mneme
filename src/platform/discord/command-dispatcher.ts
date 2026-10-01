@@ -1,7 +1,8 @@
 import { statSync } from 'node:fs';
 import { orgDayStartMs } from '../../agent/cooldowns.js';
 import { Events, type ChatInputCommandInteraction, type Client } from 'discord.js';
-import type { BootstrapContext, DiscordWiring } from '../../bootstrap.js';
+import type { BootstrapContext } from '../../bootstrap.js';
+import type { ClientHealthTracker } from './client.js';
 import { authorizeAndAuditAdminAction } from '../../policy/authorization.js';
 import { extractMemberRoleIds } from './authorization.js';
 import { handleStatusCommand, formatStatusReply } from '../../commands/status.js';
@@ -33,7 +34,8 @@ import { MNEME_SUBCOMMANDS, MNEME_SUBCOMMAND_GROUPS } from './commands.js';
 
 export interface CommandDispatcherDeps {
   ctx: BootstrapContext;
-  discord: DiscordWiring;
+  /** The connected Discord client and its health tracker. */
+  discord: { client?: any; tracker?: Pick<ClientHealthTracker, 'snapshot'> };
   buildApprovalRecheck: (proposalId: string) => ApprovalPolicyRecheck;
 }
 

@@ -1,5 +1,4 @@
 import { readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
 import { builtinModels } from '@earendil-works/pi-ai/providers/all';
 import type { RetrievalGrant } from './db/repositories/message-search.js';
 import {
@@ -71,8 +70,6 @@ import { createForgetUserHandler } from './jobs/handlers/forget-user.js';
 import { createExecuteDeletionHandler } from './jobs/handlers/execute-deletion.js';
 import { createArchiveAttachmentHandler } from './jobs/handlers/archive-attachment.js';
 import { createPurgeAttachmentFileHandler } from './jobs/handlers/purge-attachment-file.js';
-import { createDiscordSender } from './platform/discord/sender.js';
-import { createDiscordMessageFetcher, fetchDiscoveryDescriptors, createDiscordThreadArchiveSource } from './platform/discord/production-adapters.js';
 import { runStartupSync } from './ingestion/sync.js';
 import { isMnemeTestSurface } from './ingestion/test-channels.js';
 import { PeriodicScheduler, buildSchedules, nodeTimerDriver } from './jobs/scheduler.js';
@@ -81,7 +78,7 @@ import { defaultModelLookup, resolveAgentModels } from './agent/model.js';
 import { evaluateCooldowns, DEFAULT_COOLDOWN_CONFIG } from './agent/cooldowns.js';
 import { evaluateSettle, lastHumanMessageAtMs } from './episodes/settle.js';
 import { detectDuplicate } from './agent/duplicate-policy.js';
-import { reconcileOutboxSending, createDiscordRecentSentLookup } from './outbox/recovery.js';
+import { reconcileOutboxSending } from './outbox/recovery.js';
 import { enqueueOutbox } from './outbox/repository.js';
 import {
   insertProposal,
@@ -100,15 +97,7 @@ import {
   type ProvenanceGateResult,
   type ProvenanceScopeEntry,
 } from './agent/policy.js';
-import { createDiscordReviewChannel, deliverProposalReview, type ReviewProposalInput } from './platform/discord/review-message.js';
-import { createReviewButtonHandler, createDiscordReviewResolver } from './platform/discord/interactions.js';
-import {
-  createDeliverChannelPolicyReviewHandler,
-  createDiscordChannelPolicyReviewPort,
-} from './platform/discord/channel-policy-review-message.js';
-import { createChannelPolicyReviewButtonHandler } from './platform/discord/channel-policy-review-interactions.js';
-import { registerCommandDispatcher } from './platform/discord/command-dispatcher.js';
-import { Events, type Interaction } from 'discord.js';
+import type { ReviewProposalInput } from './platform/types.js';
 import { recheckApprovalPolicy, type ApprovalPolicyRecheck } from './review/workflow.js';
 import { ModelBudgetGate, OrgDayBudget, classifyModelError } from './agent/budget.js';
 import { orgDayStartMs } from './agent/cooldowns.js';
@@ -123,7 +112,8 @@ import {
 } from './agent/model-admission.js';
 import { loadDocsIndex } from './agent/docs-index.js';
 import { DeferJobError, PermanentJobError, TransientJobError } from './jobs/errors.js';
-import type { BootstrapContext, DiscordWiring, JobRuntimeWiring } from './bootstrap.js';
+import type { BootstrapContext, PlatformWiring, JobRuntimeWiring } from './bootstrap.js';
+import type { ChatPlatform } from './platform/types.js';
 import { transactionImmediate, type DatabaseSync } from './db/database.js';
 import {
   repairDeepRecapOwnership,
@@ -702,6 +692,8 @@ function computeEpisodeAttentionAdmission(
   input: {
     intervention: NonNullable<Parameters<NonNullable<Parameters<typeof createReviewEpisodeHandler>[0]['routeIntervention']>>[0]['proposal']['intervention']>;
     memoryOutcome: ApplyMemoryProposalsResult;
+    /** The bot's own user id on the platform. */
+    selfUserId: string;
     episodeMessageIds: ReadonlySet<string>;
     exposedMessageIds: ReadonlySet<string>;
     exposedMemoryIds: ReadonlySet<string>;
@@ -803,7 +795,7 @@ function computeEpisodeAttentionAdmission(
   }
   const validation = validateTriggerEvidence(ctx.db, {
     guildId: ctx.config.workspaceId,
-    mnemeId: ctx.config.discord.applicationId,
+    mnemeId: input.selfUserId,
     evidence,
     now: input.now,
     windowMs,
@@ -898,7 +890,7 @@ export function episodeReviewPresentation(assembled: string): { proposedMessage:
 
 export async function routeEpisodeIntervention(
   ctx: BootstrapContext,
-  client: NonNullable<DiscordWiring['client']>,
+  platform: Pick<ChatPlatform, 'deliverProposalReview' | 'selfUserId'>,
   secret: string,
   input: Parameters<NonNullable<Parameters<typeof createReviewEpisodeHandler>[0]['routeIntervention']>>[0],
 ): Promise<string | undefined> {
@@ -993,7 +985,7 @@ export async function routeEpisodeIntervention(
   // run has finished (Section 11.8). The run takes long enough for the channel
   // to come back to life while it is in flight.
   const liveness = evaluateSettle({
-    lastHumanAtMs: lastHumanMessageAtMs(ctx.db, target.channelId, ctx.config.discord.applicationId),
+    lastHumanAtMs: lastHumanMessageAtMs(ctx.db, target.channelId, platform.selfUserId),
     episodeClosedAtMs: input.episode.ended_at_ms ?? input.episode.last_activity_at_ms,
     now: input.now,
     config: {
@@ -1004,6 +996,7 @@ export async function routeEpisodeIntervention(
   const attention = computeEpisodeAttentionAdmission(ctx, {
     intervention,
     memoryOutcome: input.memoryOutcome,
+    selfUserId: platform.selfUserId,
     episodeMessageIds: input.episodeMessageIds,
     exposedMessageIds,
     exposedMemoryIds: new Set(input.result.provenance.memoryIds ?? []),
@@ -1092,10 +1085,10 @@ export async function routeEpisodeIntervention(
   } else if (routing.state === 'pending_review' && !claimLost && assembled && ctx.config.reviewChannelId) {
     const presentation = episodeReviewPresentation(assembled);
     try {
-      await deliverProposalReview({ proposalId, targetLabel: targetRow?.name ? `#${targetRow.name}` : target.channelId,
+      await platform.deliverProposalReview({ proposalId, targetLabel: targetRow?.name ? `#${targetRow.name}` : target.channelId,
         score: routing.score, reason: routing.reasons.join('; '), proposedMessage: presentation.proposedMessage,
         sources: presentation.sources, expiresAtMs },
-      { db: ctx.db, reviewChannelId: ctx.config.reviewChannelId, channel: createDiscordReviewChannel(client), secret, now: input.now });
+      { db: ctx.db, reviewChannelId: ctx.config.reviewChannelId, secret, now: input.now });
     } catch (err) {
       ctx.logger.warn({ event: 'proposal.review_delivery_failed', proposalId,
         err: err instanceof Error ? err.message : String(err) }, 'proposal remains pending and visible to admin commands');
@@ -1107,12 +1100,12 @@ export async function routeEpisodeIntervention(
 /** Compose and start every durable production job handler and periodic schedule. */
 export async function createProductionJobRuntime(
   ctx: BootstrapContext,
-  discord: DiscordWiring,
+  wiring: PlatformWiring,
 ): Promise<JobRuntimeWiring> {
-  const client = discord.client;
-  if (!client) throw new Error('production job runtime requires a Discord client');
+  const platform = wiring.platform;
+  if (!platform) throw new Error('production job runtime requires a connected chat platform');
   const snapshot = () => ctx.configStore?.get() ?? ctx.snapshot!;
-  const fetcher = createDiscordMessageFetcher(client);
+  const fetcher = platform.history;
   const ingestOptions = (now: number) => ({
     guildId: ctx.config.workspaceId,
     storeRawJson: ctx.config.ingestion.storeRawJson,
@@ -1145,7 +1138,7 @@ export async function createProductionJobRuntime(
   const attentionCutover: AttentionCutoverReport = runAttentionCutover(ctx.db, {
     now: ctx.now(),
     guildId: ctx.config.workspaceId,
-    actorUserId: ctx.config.discord.applicationId,
+    actorUserId: platform.selfUserId,
     attentionWindowMs: ctx.config.intervention.attentionWindowDays * 86_400_000,
   });
   ctx.logger.info(
@@ -1395,7 +1388,7 @@ export async function createProductionJobRuntime(
     organization: ctx.config.organization,
     personality: ctx.config.personality,
   });
-  const reviewSecret = createHash('sha256').update(ctx.config.discord.token).update(':review-components').digest('hex');
+  const reviewSecret = platform.reviewSecret;
   const limits = configuredRunLimits(ctx.config.agentRuntime);
   // Mneme's own documentation, scanned one time: a direct-answer run reads it
   // through `list_docs` / `read_doc` (Section 22.7).
@@ -1486,7 +1479,7 @@ export async function createProductionJobRuntime(
     logger: ctx.logger,
   }));
   const reviewEpisode = createReviewEpisodeHandler({
-    db: ctx.db, guildId: ctx.config.workspaceId, mnemeId: ctx.config.discord.applicationId,
+    db: ctx.db, guildId: ctx.config.workspaceId, mnemeId: platform.selfUserId,
     promptCompiler: () => snapshot().promptCompiler, channelPolicyYml: () => snapshot().channelPolicyYml,
     mnemeYml: safeRead(ctx.config.mnemeConfigPath), systemPrompt,
     resolveChannelScope: (channelId) => {
@@ -1512,7 +1505,7 @@ export async function createProductionJobRuntime(
     },
     attentionWindowMs: ctx.config.intervention.attentionWindowDays * 86_400_000,
     attentionTimezone: ctx.config.organization.timezone,
-    routeIntervention: (input) => routeEpisodeIntervention(ctx, client, reviewSecret, input),
+    routeIntervention: (input) => routeEpisodeIntervention(ctx, platform, reviewSecret, input),
   });
   worker.register('review_episode', ctx.config.agentRuntime.maxConcurrency, async (payload, job) => {
     const episode = ctx.db.prepare('SELECT origin, conversation_channel_id, historical_campaign_id FROM episodes WHERE id = ?').get(payload.episodeId) as
@@ -1568,7 +1561,7 @@ export async function createProductionJobRuntime(
         scheduledReminderIntervalMs: ctx.config.memory.scheduledReviewReminderDays * 86_400_000,
         attentionWindowMs: ctx.config.intervention.attentionWindowDays * 86_400_000,
         attentionTimezone: ctx.config.organization.timezone,
-        mnemeId: ctx.config.discord.applicationId,
+        mnemeId: platform.selfUserId,
       },
       resolveWorkingScope: (targetChannelId) => resolveScheduledWorkingScope(
         ctx.db,
@@ -1584,10 +1577,9 @@ export async function createProductionJobRuntime(
         const proposal = getProposal(ctx.db, outcome.notification.proposalId);
         if (!proposal?.message) return;
         try {
-          await deliverProposalReview(
+          await platform.deliverProposalReview(
             buildScheduledReviewPresentation(ctx.db, ctx.config.workspaceId, proposal),
-            { db: ctx.db, reviewChannelId: ctx.config.reviewChannelId!,
-              channel: createDiscordReviewChannel(client), secret: reviewSecret, now: ctx.now() },
+            { db: ctx.db, reviewChannelId: ctx.config.reviewChannelId!, secret: reviewSecret, now: ctx.now() },
           );
         } catch (err) {
           setProposalStatus(ctx.db, proposal.id, 'failed', ctx.now());
@@ -1606,7 +1598,7 @@ export async function createProductionJobRuntime(
     });
   }
   const deliveryReviewResolver = ctx.config.reviewChannelId
-    ? createDiscordReviewResolver(client, ctx.config.reviewChannelId)
+    ? platform.reviewResolver(ctx.config.reviewChannelId)
     : undefined;
   const reportProposalDelivery = deliveryReviewResolver
     ? async (report: ProposalDeliveryReport) => {
@@ -1630,7 +1622,7 @@ export async function createProductionJobRuntime(
     : undefined;
   const sendOutbox = createSendOutboxHandler({
     db: ctx.db,
-    sender: createDiscordSender(client),
+    sender: platform.sender,
     now: ctx.now,
     logger: ctx.logger,
     reportProposalDelivery,
@@ -1666,12 +1658,10 @@ export async function createProductionJobRuntime(
       ? createProposalDeliverySyncHandler({ db: ctx.db, reporter: reportProposalDelivery })
       : async () => undefined,
   );
-  const channelPolicyReviewPort = createDiscordChannelPolicyReviewPort(client);
   if (ctx.config.reviewChannelId) {
-    worker.register('deliver_channel_policy_review', 1, createDeliverChannelPolicyReviewHandler({
+    worker.register('deliver_channel_policy_review', 1, platform.createChannelPolicyReviewDeliveryHandler({
       db: ctx.db,
       reviewChannelId: ctx.config.reviewChannelId,
-      port: channelPolicyReviewPort,
       secret: reviewSecret,
       now: ctx.now,
     }));
@@ -1688,11 +1678,10 @@ export async function createProductionJobRuntime(
     now: ctx.now,
     logger: ctx.logger,
     notifyCompleted: async ({ requesterUserId, file, bytes }) => {
-      const user = await client.users.fetch(requesterUserId);
-      await user.send({
-        content: `Mneme backup completed: ${file} (${bytes} bytes), integrity_check: ok.\n\nMneme doesn't answer questions in DMs. Ask me in the Discord server by mentioning @Mneme in a channel I can access.`,
-        allowedMentions: { parse: [] },
-      });
+      await platform.sendDirect(
+        requesterUserId,
+        `Mneme backup completed: ${file} (${bytes} bytes), integrity_check: ok.\n\nMneme doesn't answer questions in DMs. Ask me in the Discord server by mentioning @Mneme in a channel I can access.`,
+      );
     },
   }));
   const maintenance = createDatabaseMaintenanceHandler({
@@ -1715,7 +1704,7 @@ export async function createProductionJobRuntime(
       expireAttention: () => expireClosedAttentionRevisions(ctx.db, {
         now: ctx.now(),
         windowMs: ctx.config.intervention.attentionWindowDays * 86_400_000,
-        actorUserId: ctx.config.discord.applicationId,
+        actorUserId: platform.selfUserId,
         guildId: ctx.config.workspaceId,
       }),
       maintainDatabase: () => maintenance.runDatabaseMaintenance(),
@@ -1724,15 +1713,19 @@ export async function createProductionJobRuntime(
     });
   });
   worker.register('rescope_memories', 1, createRescopeMemoriesHandler({ db: ctx.db, guildId: ctx.config.workspaceId,
-    actorUserId: ctx.config.discord.applicationId, now: ctx.now }));
+    actorUserId: platform.selfUserId, now: ctx.now }));
   worker.register('forget_user', 1, createForgetUserHandler());
   worker.register('execute_deletion', 1, createExecuteDeletionHandler({ db: ctx.db, guildId: ctx.config.workspaceId,
     deletionApproverUserIds: ctx.config.deletionApproverUserIds, now: ctx.now }));
   worker.register('discover_threads', ctx.config.ingestion.backfillConcurrency, async () => {
-    const descriptors = await fetchDiscoveryDescriptors(client, ctx.config.workspaceId);
+    if (platform.threadDiscovery.mode === 'complete_snapshot') {
+      ctx.logger.debug({ event: 'thread_discovery.skipped' }, 'thread discovery job skipped: the platform lists every thread at startup');
+      return;
+    }
+    const descriptors = await platform.listChannels();
     await runStartupSync({ db: ctx.db, guildId: ctx.config.workspaceId, policy: snapshot().channelPolicy, now: ctx.now(),
       channelPolicySource: ctx.config.channelPolicySource,
-      channels: descriptors, archiveSource: createDiscordThreadArchiveSource(client),
+      channels: descriptors, archiveSource: platform.threadDiscovery.archive,
       canManageThreads: descriptors.some((d) => d.capabilities?.canManageThreads === true),
       enqueueHistoricalBackfill: ctx.config.ingestion.fullHistory, logger: ctx.logger });
   });
@@ -1742,34 +1735,21 @@ export async function createProductionJobRuntime(
     reviewChannelId: ctx.config.reviewChannelId ?? '',
     reviewAcceptedScopes: snapshot().channelPolicy.review_channel?.accepts_scopes ?? [],
   });
-  registerCommandDispatcher({ ctx, discord, buildApprovalRecheck: (proposalId) =>
+  platform.registerCommandDispatch({ ctx, buildApprovalRecheck: (proposalId) =>
     buildApprovalRecheck(ctx, proposalId, ctx.now(), currentScheduledRouteOptions()) });
-  const reviewButtons = createReviewButtonHandler({ db: ctx.db, secret: reviewSecret,
-    adminRoleIds: ctx.config.adminRoleIds, buildRecheck: (proposalId) =>
-      buildApprovalRecheck(ctx, proposalId, ctx.now(), currentScheduledRouteOptions()),
-    resolveReview: ctx.config.reviewChannelId ? createDiscordReviewResolver(client, ctx.config.reviewChannelId) : undefined,
-    now: ctx.now });
-  const channelPolicyReviewButtons = ctx.config.reviewChannelId
-      ? createChannelPolicyReviewButtonHandler({
-        db: ctx.db,
-        guildId: ctx.config.workspaceId,
-        secret: reviewSecret,
-        adminRoleIds: ctx.config.adminRoleIds,
-        policy: () => snapshot().channelPolicy,
-        reviewChannelId: ctx.config.reviewChannelId,
-        port: channelPolicyReviewPort,
-        channelPolicySource: ctx.config.channelPolicySource,
-        now: ctx.now,
-      })
-    : undefined;
-  client.on(Events.InteractionCreate, (interaction: Interaction) => {
-    if (interaction.isButton()) {
-      void reviewButtons(interaction);
-      if (channelPolicyReviewButtons) void channelPolicyReviewButtons(interaction);
-    }
+  platform.registerReviewControls({
+    db: ctx.db,
+    workspaceId: ctx.config.workspaceId,
+    secret: reviewSecret,
+    adminRoleIds: ctx.config.adminRoleIds,
+    reviewChannelId: ctx.config.reviewChannelId,
+    buildRecheck: (proposalId) => buildApprovalRecheck(ctx, proposalId, ctx.now(), currentScheduledRouteOptions()),
+    policy: () => snapshot().channelPolicy,
+    channelPolicySource: ctx.config.channelPolicySource,
+    now: ctx.now,
   });
 
-  await reconcileOutboxSending(ctx.db, createDiscordRecentSentLookup(client, ctx.config.discord.applicationId), {
+  await reconcileOutboxSending(ctx.db, platform.recentSent, {
     now: ctx.now(),
     reportProposalDelivery,
     validateProposalSend: (proposalId, now) => {

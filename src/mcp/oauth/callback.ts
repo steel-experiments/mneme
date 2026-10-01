@@ -10,7 +10,7 @@ import {
   type LoginSession,
 } from '../../db/repositories/oauth-flows.js';
 import type { McpScopeType } from '../../db/repositories/mcp-tokens.js';
-import type { DiscordIdentityClient, DiscordIdentityFailure } from '../../platform/discord/oauth-identity.js';
+import type { DiscordIdentityClient, DiscordIdentityFailure } from '../../platform/types.js';
 
 /**
  * The identity-provider return leg (Section 32.5.2, amended).

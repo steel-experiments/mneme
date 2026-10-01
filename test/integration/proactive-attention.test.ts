@@ -32,7 +32,19 @@ import { approveProposal, recheckApprovalPolicy } from '../../src/review/workflo
 import { buildApprovalRecheck } from '../../src/production-runtime.js';
 import { createSendOutboxHandler } from '../../src/outbox/worker.js';
 import { enqueueOutbox, claimOutboxForSending, getOutboxByDedupeKey } from '../../src/outbox/repository.js';
-import type { OutboxSender } from '../../src/platform/discord/sender.js';
+import type { OutboxSender } from '../../src/platform/types.js';
+import { createDiscordReviewChannel, deliverProposalReview } from '../../src/platform/discord/review-message.js';
+
+const SELF_ID = '100000000000000099';
+/** The platform members routeEpisodeIntervention uses, with Discord cards sent through `client`. */
+function reviewPlatform(client: unknown = {}) {
+  return {
+    selfUserId: SELF_ID,
+    deliverProposalReview: (input: Parameters<typeof deliverProposalReview>[0], deps: Omit<Parameters<typeof deliverProposalReview>[1], 'channel'>) =>
+      deliverProposalReview(input, { ...deps, channel: createDiscordReviewChannel(client as never) }),
+  };
+}
+
 
 /**
  * End-to-end proactive-attention gating (Section 12.7): episode
@@ -215,7 +227,7 @@ describe('episode intervention attention gating', () => {
   it('suppresses a recommendation without a subject or trigger, whatever its score', async () => {
     const episode = episodeWithMessages([{ id: 'm-trigger', content: 'the team changed the rollout plan' }]);
     const result = runResultFor(['m-trigger'], []);
-    const proposalId = await routeEpisodeIntervention(attentionContext(), {} as never, 'secret', {
+    const proposalId = await routeEpisodeIntervention(attentionContext(), reviewPlatform(), 'secret', {
       proposal: { intervention: interventionProposal() },
       result,
       episode,
@@ -234,7 +246,7 @@ describe('episode intervention attention gating', () => {
     const memory = makeMemory('Rollout happens in Q3.', [ev('m-old')]);
     const episode = episodeWithMessages([{ id: 'm-trigger', content: 'we changed the rollout plan to Friday' }]);
     const result = runResultFor(['m-trigger'], [memory]);
-    const proposalId = await routeEpisodeIntervention(attentionContext(), {} as never, 'secret', {
+    const proposalId = await routeEpisodeIntervention(attentionContext(), reviewPlatform(), 'secret', {
       proposal: {
         intervention: interventionProposal({
           subject: { kind: 'existing_memory', memoryId: memory },
@@ -271,7 +283,7 @@ describe('episode intervention attention gating', () => {
     // Somebody answers while the review is running.
     addMessage('m-still-talking', 'actually we already have a fix for that', NOW - 30_000);
     const result = runResultFor(['m-trigger'], [memory]);
-    const proposalId = await routeEpisodeIntervention(attentionContext(), {} as never, 'secret', {
+    const proposalId = await routeEpisodeIntervention(attentionContext(), reviewPlatform(), 'secret', {
       proposal: {
         intervention: interventionProposal({
           subject: { kind: 'existing_memory', memoryId: memory },
@@ -322,10 +334,10 @@ describe('episode intervention attention gating', () => {
       memoryOutcome: { applied: [], rejected: [], total: 0 },
       episodeMessageIds: new Set(['m-trigger']),
     };
-    const first = await routeEpisodeIntervention(attentionContext(), {} as never, 'secret', input);
+    const first = await routeEpisodeIntervention(attentionContext(), reviewPlatform(), 'secret', input);
     expect(getProposal(env.db, first!)?.status).toBe('pending_review');
     // A second run over the same trigger: consumed.
-    const second = await routeEpisodeIntervention(attentionContext(), {} as never, 'secret', {
+    const second = await routeEpisodeIntervention(attentionContext(), reviewPlatform(), 'secret', {
       ...input,
       result: runResultFor(['m-trigger'], [memory]),
     });
@@ -339,7 +351,7 @@ describe('episode intervention attention gating', () => {
     const memory = makeMemory('Rollout happens in Q3.', [ev('m-old')]);
     const first = episodeWithMessages([{ id: 'm-trigger', content: 'we changed the rollout plan to Friday' }]);
     const resultA = runResultFor(['m-trigger'], [memory]);
-    await routeEpisodeIntervention(attentionContext(), {} as never, 'secret', {
+    await routeEpisodeIntervention(attentionContext(), reviewPlatform(), 'secret', {
       proposal: {
         intervention: interventionProposal({
           subject: { kind: 'existing_memory', memoryId: memory },
@@ -367,7 +379,7 @@ describe('episode intervention attention gating', () => {
     const proposalId = await routeEpisodeIntervention({
       ...attentionContext(),
       now: () => later,
-    } as BootstrapContext, {} as never, 'secret', {
+    } as BootstrapContext, reviewPlatform(), 'secret', {
       proposal: {
         intervention: interventionProposal({
           evidenceMessageIds: ['m-trigger-2'],
@@ -397,7 +409,7 @@ describe('episode intervention attention gating', () => {
     const memory = makeMemory('Rollout happens in Q3.', [ev('m-old')]);
     const episode = episodeWithMessages([{ id: 'm-trigger', content: 'quiet episode' }]);
     const result = runResultFor(['m-trigger', 'm-elsewhere'], [memory]);
-    const proposalId = await routeEpisodeIntervention(attentionContext(), {} as never, 'secret', {
+    const proposalId = await routeEpisodeIntervention(attentionContext(), reviewPlatform(), 'secret', {
       proposal: {
         intervention: interventionProposal({
           subject: { kind: 'existing_memory', memoryId: memory },
@@ -425,7 +437,7 @@ describe('episode intervention attention gating', () => {
     const episode = episodeWithMessages([{ id: 'm-trigger', content: 'we committed to the new gateway' }]);
     const result = runResultFor(['m-trigger'], []);
     const acceptedMemoryId = makeMemory('Use the new gateway.', [ev('m-trigger')]);
-    const proposalId = await routeEpisodeIntervention(attentionContext(), {} as never, 'secret', {
+    const proposalId = await routeEpisodeIntervention(attentionContext(), reviewPlatform(), 'secret', {
       proposal: {
         intervention: interventionProposal({
           subject: { kind: 'memory_proposal', proposalIndex: 0 },
@@ -452,7 +464,7 @@ describe('episode intervention attention gating', () => {
 
     // An out-of-range or rejected index suppresses speech while the memory
     // mutation stands on its own.
-    const bad = await routeEpisodeIntervention(attentionContext(), {} as never, 'secret', {
+    const bad = await routeEpisodeIntervention(attentionContext(), reviewPlatform(), 'secret', {
       proposal: {
         intervention: interventionProposal({
           subject: { kind: 'memory_proposal', proposalIndex: 3 },
@@ -691,7 +703,7 @@ describe('approval and outbox attention enforcement', () => {
   async function routedPendingProposal(memoryId: string, triggerId: string, quote: string): Promise<string> {
     const episode = episodeWithMessages([{ id: triggerId, content: quote }]);
     const result = runResultFor([triggerId], [memoryId]);
-    const proposalId = await routeEpisodeIntervention(attentionContext(), {} as never, 'secret', {
+    const proposalId = await routeEpisodeIntervention(attentionContext(), reviewPlatform(), 'secret', {
       proposal: {
         intervention: interventionProposal({
           evidenceMessageIds: [triggerId],

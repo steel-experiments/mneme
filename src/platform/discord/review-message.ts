@@ -8,6 +8,7 @@ import {
 } from 'discord.js';
 import { type DatabaseSync } from '../../db/database.js';
 import { setProposalReviewMessage } from '../../db/repositories/proposals.js';
+import type { ReviewProposalInput } from '../types.js';
 
 /**
  * Secure-channel review proposal message (Section 25).
@@ -38,27 +39,6 @@ function boundedFieldValue(value: string): string {
   return `${value.slice(0, EMBED_FIELD_MAX_CHARS - 1)}…`;
 }
 
-export interface ReviewProposalInput {
-  proposalId: string;
-  /** Short display id for the embed title (defaults to the proposal id prefix). */
-  shortId?: string;
-  /** Target channel label, e.g. `#product`. */
-  targetLabel: string;
-  /** Host-computed intervention score. */
-  score: number;
-  /** Scheduled reviews use an honest categorical assessment instead of a synthetic score. */
-  assessment?: string;
-  /** Host-owned routing reason. */
-  reason: string;
-  /** Optional model recommendation shown separately on secure review surfaces. */
-  recommendationReason?: string;
-  /** Safe proposed outbound text (already scope-cleared for the target). */
-  proposedMessage: string;
-  /** Permitted source links (masked), at most three (Section 24.5). */
-  sources: readonly string[];
-  /** Optional proposal expiry (Section 25: default 72h). */
-  expiresAtMs?: number | null;
-}
 
 export interface ReviewMessagePayload {
   embeds: EmbedBuilder[];
