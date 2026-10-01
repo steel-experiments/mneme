@@ -23,6 +23,8 @@
  * sources is validated upstream; here we only construct links.
  */
 
+import { messageLink } from '../platform/links.js';
+
 // Section 24.5 / 23: hard content and citation limits.
 export const MAX_MESSAGE_CHARS = 1800;
 export const MAX_SOURCE_LINKS = 3;
@@ -429,11 +431,6 @@ export function parseMentions(content: string): ParsedMention[] {
   return out;
 }
 
-/** Build the trusted, host-generated jump URL for a cited message (Section 30.3). */
-export function sourceLinkUrl(guildId: string, channelId: string, messageId: string): string {
-  return `https://discord.com/channels/${guildId}/${channelId}/${messageId}`;
-}
-
 /**
  * Construct at most {@link MAX_SOURCE_LINKS} trusted masked source links from
  * cited message ids. Links are built solely from the resolved channel and the
@@ -456,7 +453,7 @@ export function buildSourceLinks(
     const channelId = ctx.resolveChannelId(id);
     if (channelId === undefined) continue;
     seen.add(id);
-    const url = sourceLinkUrl(guildId, channelId, id);
+    const url = messageLink(guildId, channelId, id);
     const label = safeSourceLabel(ctx.resolveLabel?.(id));
     links.push({ messageId: id, channelId, url, masked: `[${label}](${url})` });
   }

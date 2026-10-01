@@ -5,7 +5,7 @@ import { prepareCached } from '../../db/repositories/util.js';
 import { getMessage } from '../../db/repositories/messages.js';
 import { getUser } from '../../db/repositories/users.js';
 import { getReactionCountsForMessage } from '../../db/repositories/reactions.js';
-import { discordMessageLink } from '../../db/repositories/message-search.js';
+import {  } from '../../db/repositories/message-search.js';
 import type { RetrievalGrant } from '../../db/repositories/message-search.js';
 import {
   getEpisode,
@@ -57,6 +57,7 @@ import {
   resolveScheduledFeedback,
   type ScheduledFeedbackAssociation,
 } from '../../memory/scheduled-feedback.js';
+import { messageLink } from '../../platform/links.js';
 
 /**
  * `review_episode` job handler (Sections 11, 18, 21.4).
@@ -867,7 +868,7 @@ function loadEpisodeTranscript(
       createdAtIso: new Date(m.created_at_ms).toISOString(),
       replyTo: m.reply_to_message_id,
       reactions,
-      link: discordMessageLink(episode.workspace_id, m.channel_id, m.id),
+      link: messageLink(episode.workspace_id, m.channel_id, m.id),
     });
 
     prefilterMessages.push({
@@ -960,7 +961,7 @@ function loadAsynchronousFollowups(
         emoji: reaction.emojiKey,
         count: reaction.count,
       })),
-      link: discordMessageLink(episode.workspace_id, message.channel_id, message.id),
+      link: messageLink(episode.workspace_id, message.channel_id, message.id),
     }];
   });
 }

@@ -9,7 +9,6 @@ import {
   type VisibilityClass,
 } from '../../db/repositories/channels.js';
 import {
-  discordMessageLink,
   type RetrievalGrant,
 } from '../../db/repositories/message-search.js';
 import {
@@ -71,6 +70,7 @@ import {
   fingerprintExposedMemory,
   fingerprintExposedMessage,
 } from '../../agent/run-context.js';
+import { messageLink } from '../../platform/links.js';
 
 /**
  * `direct_answer` job handler (Sections 19, 26, 46.3).
@@ -217,7 +217,7 @@ function promptQuestion(question: MessageRow): DirectAnswerPromptMessage {
     createdAtMs: question.created_at_ms,
     createdAtIso: new Date(question.created_at_ms).toISOString(),
     replyToMessageId: question.reply_to_message_id,
-    link: discordMessageLink(question.workspace_id, question.channel_id, question.id),
+    link: messageLink(question.workspace_id, question.channel_id, question.id),
   };
 }
 

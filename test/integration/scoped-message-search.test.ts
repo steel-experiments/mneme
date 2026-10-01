@@ -6,9 +6,9 @@ import {
   searchMessages,
   listRecentMessages,
   sanitizeFtsQuery,
-  discordMessageLink,
   type RetrievalGrant,
 } from '../../src/db/repositories/message-search.js';
+import { messageLink } from '../../src/platform/links.js';
 
 const GUILD = '100000000000000001';
 const USER = '100000000000000003';
@@ -239,7 +239,7 @@ describe('scoped message search', () => {
 
   it('generates host-built Discord jump links', () => {
     const r = searchMessages(env.db, ORG_GRANT, { query: 'onboarding' });
-    expect(r[0]!.link).toBe(discordMessageLink(GUILD, ORG, 'm-org'));
+    expect(r[0]!.link).toBe(messageLink(GUILD, ORG, 'm-org'));
     expect(r[0]!.link).toBe('https://discord.com/channels/' + GUILD + '/' + ORG + '/m-org');
   });
 

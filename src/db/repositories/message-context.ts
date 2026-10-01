@@ -3,9 +3,9 @@ import type { SQLOutputValue } from 'node:sqlite';
 import { prepareCached } from './util.js';
 import {
   channelVisibilityPredicate,
-  discordMessageLink,
   type RetrievalGrant,
 } from './message-search.js';
+import { messageLink } from '../../platform/links.js';
 
 /**
  * Scope-bound message-context retrieval (Sections 7.3, 22.2).
@@ -70,7 +70,7 @@ function toCompact(row: Record<string, SQLOutputValue>): CompactMessage {
     content: String(row.content),
     createdAtMs: Number(row.created_at_ms),
     replyToMessageId: row.reply_to_message_id === null ? null : String(row.reply_to_message_id),
-    link: discordMessageLink(guildId, channelId, messageId),
+    link: messageLink(guildId, channelId, messageId),
   };
 }
 

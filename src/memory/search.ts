@@ -3,7 +3,6 @@ import type { SQLInputValue, SQLOutputValue } from 'node:sqlite';
 import { prepareCached } from '../db/repositories/util.js';
 import {
   channelVisibilityPredicate,
-  discordMessageLink,
   sanitizeFtsQuery,
   type RetrievalGrant,
 } from '../db/repositories/message-search.js';
@@ -16,6 +15,7 @@ import {
   type VisibilityLookup,
 } from './scope.js';
 import type { MemoryStatus, MemoryType } from './repository.js';
+import { messageLink } from '../platform/links.js';
 
 /**
  * Scope-bound memory retrieval (Sections 7.2, 7.3, 12.5, 22.3, 22.4, 30).
@@ -723,7 +723,7 @@ export function getMemoryEvidencePage(
     authorDisplayName: String(r.author_display_name),
     content: String(r.content),
     createdAtMs: Number(r.created_at_ms),
-    link: discordMessageLink(String(r.workspace_id), String(r.channel_id), String(r.message_id)),
+    link: messageLink(String(r.workspace_id), String(r.channel_id), String(r.message_id)),
   }));
   const last = pageRows[pageRows.length - 1];
   return {
