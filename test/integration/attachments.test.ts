@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { createTestDb, seedIdentity, makeTempDir, type TestDb } from '../helpers/db.js';
 import type { DatabaseSync } from 'node:sqlite';
-import { normalizeMessage } from '../../src/discord/normalize.js';
-import { ingestMessageCreate } from '../../src/discord/ingest.js';
+import { normalizeMessage } from '../../src/platform/discord/normalize.js';
+import { ingestMessageCreate } from '../../src/ingestion/ingest.js';
 import { opts, rawMessage } from '../helpers/messages.js';
 import {
   checkArchiveEligibility,
@@ -17,13 +17,13 @@ import {
   archiveAttachment,
   type AttachmentArchiveConfig,
   type FetchBytes,
-} from '../../src/discord/attachments.js';
+} from '../../src/ingestion/attachments.js';
 import {
   upsertAttachments,
   setAttachmentArchive,
   getAttachment,
 } from '../../src/db/repositories/attachments.js';
-import type { NormalizedAttachment } from '../../src/discord/normalize.js';
+import type { NormalizedAttachment } from '../../src/platform/types.js';
 import { createArchiveAttachmentHandler } from '../../src/jobs/handlers/archive-attachment.js';
 import { JobWorker } from '../../src/jobs/worker.js';
 

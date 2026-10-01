@@ -1,7 +1,7 @@
 import type { DatabaseSync } from '../db/database.js';
 import { getChannel, resolveRetrievableChannelScope } from '../db/repositories/channels.js';
 import type { RetrievalGrant } from '../db/repositories/message-search.js';
-import { isMnemeTestSurface } from '../discord/test-channels.js';
+import { isMnemeTestSurface } from '../ingestion/test-channels.js';
 import { evaluateProvenanceGate, resolveProvenanceScopes } from '../agent/policy.js';
 import type { RetrievalProvenance } from '../agent/run-context.js';
 import { getMemory } from './repository.js';

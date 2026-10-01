@@ -4,7 +4,7 @@ import {
   formatDeepRecapReply,
   handleDeepRecapCommand,
   type DeepRecapCommandInput,
-} from '../../src/discord/commands/deep-recap.js';
+} from '../../src/commands/deep-recap.js';
 import {
   getDeepRecap,
   recordDeepRecapSynthesisCostOnce,

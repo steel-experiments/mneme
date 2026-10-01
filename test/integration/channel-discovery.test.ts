@@ -13,9 +13,9 @@ import {
   decideChannelPolicyReview,
   getActiveChannelPolicyReview,
 } from '../../src/db/repositories/channel-policy-reviews.js';
-import { parseChannelPolicy } from '../../src/discord/channel-policy.js';
-import { basicChannelPolicySourceText } from '../../src/discord/channel-policy-bootstrap.js';
-import { backfillJobKey, runStartupSync } from '../../src/discord/sync.js';
+import { parseChannelPolicy } from '../../src/policy/channel-policy.js';
+import { basicChannelPolicySourceText } from '../../src/policy/channel-policy-bootstrap.js';
+import { backfillJobKey, runStartupSync } from '../../src/ingestion/sync.js';
 import {
   discoverChannels,
   describeAccessWarnings,
@@ -26,7 +26,7 @@ import {
   GUILD_CATEGORY,
   type DiscoveredChannelDescriptor,
   type ChannelAccessCapabilities,
-} from '../../src/discord/discovery.js';
+} from '../../src/ingestion/discovery.js';
 
 /**
  * Channel discovery and access auditing (Sections 6.3, 6.5, 7, 9.2, 48).

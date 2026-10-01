@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 import { ensureHistoricalCampaign } from '../../src/historical/campaign.js';
-import { handleHistoricalCommand } from '../../src/discord/commands/historical.js';
+import { handleHistoricalCommand } from '../../src/commands/historical.js';
 
 const NOW = 1_700_100_000_000;
 let env: TestDb;

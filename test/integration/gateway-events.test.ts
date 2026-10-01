@@ -3,23 +3,18 @@ import { Client, GatewayIntentBits, Events, type Message } from 'discord.js';
 import type { DatabaseSync } from 'node:sqlite';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 import { GUILD, CHANNEL, AUTHOR, NOW, opts, ftsMatches } from '../helpers/messages.js';
-import {
-  handleGatewayEvent,
-  channelInputFromRaw,
-  GATEWAY_EVENT_TYPES,
-  type IngestOptions,
-  type GatewayEventType,
-} from '../../src/discord/ingest.js';
+import { type IngestOptions } from '../../src/ingestion/ingest.js';
+import { handleGatewayEvent, channelInputFromRaw, GATEWAY_EVENT_TYPES, type GatewayEventType } from '../../src/platform/discord/gateway-events.js';
 import {
   registerIngestionHandlers,
   rawMessageFromJs,
   rawMessageUpdateFromJs,
   rawChannelFromJs,
   rawReactionFromJs,
-} from '../../src/discord/client.js';
+} from '../../src/platform/discord/client.js';
 import { getMessage } from '../../src/db/repositories/messages.js';
 import { getChannel } from '../../src/db/repositories/channels.js';
-import { normalizeMessage } from '../../src/discord/normalize.js';
+import { normalizeMessage } from '../../src/platform/discord/normalize.js';
 import { createCounters, createIngestionObserver, COUNTER_NAMES } from '../../src/observability.js';
 
 /**
@@ -219,6 +214,18 @@ describe('handleGatewayEvent dispatcher', () => {
       });
       expect(remove).toEqual({ handled: true });
       expect(userReactionRows(MSG_ID, '👍')).toBe(0);
+    });
+
+    it('MESSAGE_REACTION_ADD with an emoji that has no key is handled and stores no row', () => {
+      seedMessage();
+      const add = handleGatewayEvent(db, opts(), 'MESSAGE_REACTION_ADD', {
+        message_id: MSG_ID,
+        user_id: REACTION_USER,
+        emoji: { id: null, name: null },
+      });
+      expect(add).toEqual({ handled: true });
+      const rows = db.prepare('SELECT COUNT(*) AS n FROM reactions WHERE message_id = ?').get(MSG_ID) as { n: number };
+      expect(rows.n).toBe(0);
     });
 
     it('MESSAGE_REACTION_ADD with missing fields is dropped', () => {

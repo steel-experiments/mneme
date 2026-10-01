@@ -14,7 +14,7 @@ import {
   formatProposalsReply,
   formatApproveReply,
   formatDismissReply,
-} from '../../src/discord/commands/proposals.js';
+} from '../../src/commands/proposals.js';
 import {
   approveProposal,
   dismissProposal,

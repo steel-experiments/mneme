@@ -25,7 +25,7 @@ import {
   renderInlineCitations,
   sanitizeOutboundMessage,
   type SourceLinkContext,
-} from '../../discord/message-safety.js';
+} from '../../outbound/message-safety.js';
 import {
   evaluateProvenanceGate,
   resolveProvenanceScopes,
@@ -61,7 +61,7 @@ import type { JobHandler } from '../worker.js';
 import type { JobRow } from '../types.js';
 import { DeferJobError, TransientJobError } from '../errors.js';
 import { computeRetryDelay } from '../queue.js';
-import { isMnemeTestSurface } from '../../discord/test-channels.js';
+import { isMnemeTestSurface } from '../../ingestion/test-channels.js';
 import { ModelAdmissionTimeoutError } from '../../agent/model-admission.js';
 import { getMemory } from '../../memory/repository.js';
 import { recomputeMemoryScopes } from '../../memory/search.js';

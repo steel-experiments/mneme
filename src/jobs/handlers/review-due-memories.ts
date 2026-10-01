@@ -23,8 +23,8 @@ import {
   validateRevisionEvidence,
 } from '../../memory/attention-repository.js';
 import { insertProposal } from '../../db/repositories/proposals.js';
-import { sanitizeOutboundMessage } from '../../discord/message-safety.js';
-import { isMnemeTestSurface } from '../../discord/test-channels.js';
+import { sanitizeOutboundMessage } from '../../outbound/message-safety.js';
+import { isMnemeTestSurface } from '../../ingestion/test-channels.js';
 import type { PromptCompiler } from '../../agent/prompts.js';
 import {
   executeAgentRun,

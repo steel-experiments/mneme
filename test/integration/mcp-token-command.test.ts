@@ -7,7 +7,7 @@ import {
   formatMcpTokenReply,
   type HandleMcpTokenInput,
   type HandleMcpTokenDeps,
-} from '../../src/discord/commands/mcp-token.js';
+} from '../../src/commands/mcp-token.js';
 import { resolveMcpToken, DEFAULT_MCP_TOKEN_TTL_MS } from '../../src/mcp/auth.js';
 import { getMcpToken, listMcpTokens } from '../../src/db/repositories/mcp-tokens.js';
 

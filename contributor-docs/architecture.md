@@ -39,10 +39,10 @@ code goes through repositories, not raw SQL.
 
 1. **Ingest.** Gateway events are normalized and written synchronously to
    SQLite — there is no queue between the gateway and the database
-   (`src/discord/ingest.ts`, `normalize.ts`). Upserts are idempotent, so a
+   (`src/ingestion/ingest.ts`, `src/platform/discord/normalize.ts`). Upserts are idempotent, so a
    re-delivered event writes nothing. Backfill walks history newest-to-oldest
-   with a durable cursor (`src/discord/backfill.ts`). Reconciliation fills gaps
-   found after a restart (`src/discord/reconcile.ts`), and ingestion recovery
+   with a durable cursor (`src/ingestion/backfill.ts`). Reconciliation fills gaps
+   found after a restart (`src/ingestion/reconcile.ts`), and ingestion recovery
    covers gateway outages (`src/db/repositories/ingestion-recovery.ts`).
 2. **Episodes.** Each channel or thread holds one open episode. Quiet time,
    message count, or elapsed time closes it (`src/episodes/builder.ts`) and
@@ -70,7 +70,7 @@ outbox worker sends them (`src/outbox/`). Crash recovery reconciles the
 
 ## Policy and visibility
 
-`src/discord/channel-policy.ts` resolves every channel to a rule. Resolution
+`src/policy/channel-policy.ts` resolves every channel to a rule. Resolution
 order, most specific first:
 
 1. an explicit channel rule;
@@ -81,7 +81,7 @@ order, most specific first:
 Two sources build the policy. `CHANNEL_POLICY_SOURCE=basic` (the default)
 translates the two selection lists, `ORG_VISIBLE_CHANNEL_IDS` and
 `RESTRICTED_CHANNEL_IDS`, into a policy at startup
-(`src/discord/channel-policy-bootstrap.ts`). `file` loads the full YAML at
+(`src/policy/channel-policy-bootstrap.ts`). `file` loads the full YAML at
 `CHANNEL_POLICY_PATH`, which supports explicit thread overrides in both
 directions. Basic mode needs at least one id in the two lists and fails at
 startup when both are empty; it never consults stored review decisions. In
@@ -143,7 +143,11 @@ not discoverable.
 | `src/cli/` | `migrate`, `backup`, `integrity-check` commands |
 | `src/db/` | database, migrations, FTS, backup, repositories |
 | `src/deep-recap/`, `src/historical/` | durable recap and historical episode work |
-| `src/discord/` | client, policy, ingest, backfill, reconcile, commands, review UI |
+| `src/commands/` | admin command handlers (platform-neutral) |
+| `src/ingestion/` | ingest, discovery, backfill, reconcile, sync, threads, attachments |
+| `src/outbound/` | outbound message safety |
+| `src/platform/` | platform-neutral types; `src/platform/discord/` holds the Discord client, normalization, cards, and command UI |
+| `src/policy/` | channel policy, policy reviews, admin authorization |
 | `src/episodes/` | episode build, prefilter, repository |
 | `src/http/`, `src/mcp/` | HTTP server, health, status, Inspector, MCP, OAuth |
 | `src/jobs/` | durable queue, worker, scheduler, startup repair, handlers |

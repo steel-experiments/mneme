@@ -4,12 +4,12 @@ import {
   listCommandDispatcherRouteNames,
   registerCommandDispatcher,
   type CommandDispatcherDeps,
-} from '../../src/discord/command-dispatcher.js';
+} from '../../src/platform/discord/command-dispatcher.js';
 import {
   MNEME_SUBCOMMANDS,
   MNEME_SUBCOMMAND_GROUPS,
-} from '../../src/discord/commands.js';
-import { handleChannelsCommand, formatChannelsReply } from '../../src/discord/commands/channels.js';
+} from '../../src/platform/discord/commands.js';
+import { handleChannelsCommand, formatChannelsReply } from '../../src/commands/channels.js';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 import type { BootstrapContext } from '../../src/bootstrap.js';
 

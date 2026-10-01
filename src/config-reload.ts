@@ -9,15 +9,15 @@ import {
   type ChannelPolicy,
   type ChannelRule,
   type ReviewChannel,
-} from './discord/channel-policy.js';
+} from './policy/channel-policy.js';
 import {
   assertNoBasicSelectionInFileMode,
   basicChannelPolicySourceText,
-} from './discord/channel-policy-bootstrap.js';
+} from './policy/channel-policy-bootstrap.js';
 import {
   reconcileObservedChannelPolicyReviewInTransaction,
   resolveObservedChannelPolicy,
-} from './discord/channel-policy-review-service.js';
+} from './policy/channel-policy-review-service.js';
 import {
   PromptCompiler,
   loadPromptFiles,
@@ -43,7 +43,7 @@ import {
  * The initial policy comes from one of two sources (CHANNEL_POLICY_SOURCE):
  * 'file' loads channel-policy.yml and supports the live reload described above;
  * 'basic' (the default) translates the environment selection lists through
- * src/discord/channel-policy-bootstrap.ts and never reads the YAML file. A
+ * src/policy/channel-policy-bootstrap.ts and never reads the YAML file. A
  * basic-mode snapshot is marked as such and reload attempts are denied with an
  * operator-facing restart notice — in both modes, changes take effect after a
  * restart.

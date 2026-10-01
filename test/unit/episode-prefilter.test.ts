@@ -7,7 +7,7 @@ import {
   DEFAULT_MIN_INFORMATION_CHARS,
   type PrefilterMessage,
 } from '../../src/episodes/prefilter.js';
-import type { NormalizedMessage } from '../../src/discord/normalize.js';
+import type { NormalizedMessage } from '../../src/platform/types.js';
 
 /**
  * Conservative local episode pre-filter (Sections 11.4, 45).

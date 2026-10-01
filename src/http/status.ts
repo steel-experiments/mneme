@@ -13,7 +13,7 @@ import {
   type ModelStatus,
   type BackupStatus,
   type StatusRuntimeInputs,
-} from '../discord/commands/status.js';
+} from '../commands/status.js';
 
 /**
  * `/status` operational snapshot (Section 32.3).

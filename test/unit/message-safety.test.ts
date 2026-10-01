@@ -7,7 +7,7 @@ import {
   MAX_MESSAGE_CHARS,
   MAX_SOURCE_LINKS,
   type SourceLinkContext,
-} from '../../src/discord/message-safety.js';
+} from '../../src/outbound/message-safety.js';
 import { messageLink } from '../../src/platform/links.js';
 
 /**

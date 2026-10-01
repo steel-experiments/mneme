@@ -71,10 +71,10 @@ import { createForgetUserHandler } from './jobs/handlers/forget-user.js';
 import { createExecuteDeletionHandler } from './jobs/handlers/execute-deletion.js';
 import { createArchiveAttachmentHandler } from './jobs/handlers/archive-attachment.js';
 import { createPurgeAttachmentFileHandler } from './jobs/handlers/purge-attachment-file.js';
-import { createDiscordSender } from './discord/sender.js';
-import { createDiscordMessageFetcher, fetchDiscoveryDescriptors, createDiscordThreadArchiveSource } from './discord/production-adapters.js';
-import { runStartupSync } from './discord/sync.js';
-import { isMnemeTestSurface } from './discord/test-channels.js';
+import { createDiscordSender } from './platform/discord/sender.js';
+import { createDiscordMessageFetcher, fetchDiscoveryDescriptors, createDiscordThreadArchiveSource } from './platform/discord/production-adapters.js';
+import { runStartupSync } from './ingestion/sync.js';
+import { isMnemeTestSurface } from './ingestion/test-channels.js';
 import { PeriodicScheduler, buildSchedules, nodeTimerDriver } from './jobs/scheduler.js';
 import { isPaused } from './runtime-state.js';
 import { defaultModelLookup, resolveAgentModels } from './agent/model.js';
@@ -89,7 +89,7 @@ import {
   setProposalStatus,
   type ProposalRow,
 } from './db/repositories/proposals.js';
-import { renderInlineCitations, sanitizeOutboundMessage, stripScheduledFooter, type MessageLink } from './discord/message-safety.js';
+import { renderInlineCitations, sanitizeOutboundMessage, stripScheduledFooter, type MessageLink } from './outbound/message-safety.js';
 import {
   evaluateForcedReview,
   evaluateProvenanceGate,
@@ -100,14 +100,14 @@ import {
   type ProvenanceGateResult,
   type ProvenanceScopeEntry,
 } from './agent/policy.js';
-import { createDiscordReviewChannel, deliverProposalReview, type ReviewProposalInput } from './discord/review-message.js';
-import { createReviewButtonHandler, createDiscordReviewResolver } from './discord/interactions.js';
+import { createDiscordReviewChannel, deliverProposalReview, type ReviewProposalInput } from './platform/discord/review-message.js';
+import { createReviewButtonHandler, createDiscordReviewResolver } from './platform/discord/interactions.js';
 import {
   createDeliverChannelPolicyReviewHandler,
   createDiscordChannelPolicyReviewPort,
-} from './discord/channel-policy-review-message.js';
-import { createChannelPolicyReviewButtonHandler } from './discord/channel-policy-review-interactions.js';
-import { registerCommandDispatcher } from './discord/command-dispatcher.js';
+} from './platform/discord/channel-policy-review-message.js';
+import { createChannelPolicyReviewButtonHandler } from './platform/discord/channel-policy-review-interactions.js';
+import { registerCommandDispatcher } from './platform/discord/command-dispatcher.js';
 import { Events, type Interaction } from 'discord.js';
 import { recheckApprovalPolicy, type ApprovalPolicyRecheck } from './review/workflow.js';
 import { ModelBudgetGate, OrgDayBudget, classifyModelError } from './agent/budget.js';

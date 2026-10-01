@@ -5,13 +5,13 @@ import type { JobRow } from '../types.js';
 import {
   reconcileChannel,
   type ReconcileResult,
-} from '../../discord/reconcile.js';
+} from '../../ingestion/reconcile.js';
 import {
   channelIngestionIneligibilityReason,
   type ChannelIngestionIneligibilityReason,
-} from '../../discord/ingestion-eligibility.js';
-import type { BackfillMessageFetcher } from '../../discord/backfill.js';
-import type { IngestOptions } from '../../discord/ingest.js';
+} from '../../ingestion/ingestion-eligibility.js';
+import type { BackfillMessageFetcher } from '../../ingestion/backfill.js';
+import type { IngestOptions } from '../../ingestion/ingest.js';
 import { DeferJobError } from '../errors.js';
 
 /**

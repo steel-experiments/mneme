@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
-import type { NormalizedMessage, NormalizedMention } from '../../src/discord/normalize.js';
+import type { NormalizedMessage, NormalizedMention } from '../../src/platform/types.js';
 import {
   findDirectMention,
   mentionsMneme,
   enqueueDirectAnswerForMention,
   directAnswerJobKey,
   DIRECT_ANSWER_PRIORITY,
-} from '../../src/discord/mentions.js';
+} from '../../src/ingestion/mentions.js';
 import {
   DIRECT_ANSWER_DEADLINE_MS,
   getDirectAnswerRequest,

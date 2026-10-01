@@ -14,7 +14,7 @@ import {
   mentionsAssignedBotRole,
   createDirectMessageNoticeHandler,
   DIRECT_MESSAGE_NOTICE,
-} from '../../src/discord/client.js';
+} from '../../src/platform/discord/client.js';
 import { Partials } from 'discord.js';
 
 const log = () => createLogger({ level: 'silent' });

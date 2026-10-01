@@ -10,17 +10,17 @@ import {
   type ConfigCandidateSources,
 } from '../../src/config-reload.js';
 import type { PromptFiles } from '../../src/agent/prompts.js';
-import type { ChannelPolicy } from '../../src/discord/channel-policy.js';
+import type { ChannelPolicy } from '../../src/policy/channel-policy.js';
 import {
   decideChannelPolicyReview,
   getActiveChannelPolicyReview,
 } from '../../src/db/repositories/channel-policy-reviews.js';
-import { reconcileStoredChannelPolicyReview } from '../../src/discord/channel-policy-review-service.js';
-import { basicChannelPolicySourceText } from '../../src/discord/channel-policy-bootstrap.js';
+import { reconcileStoredChannelPolicyReview } from '../../src/policy/channel-policy-review-service.js';
+import { basicChannelPolicySourceText } from '../../src/policy/channel-policy-bootstrap.js';
 import {
   handleReloadPolicyCommand,
   formatReloadPolicyReply,
-} from '../../src/discord/commands/reload-policy.js';
+} from '../../src/commands/reload-policy.js';
 
 /**
  * Atomic policy + prompt reload (Sections 7.2, 8, 15, 27).

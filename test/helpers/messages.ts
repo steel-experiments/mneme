@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import type { IngestOptions } from '../../src/discord/ingest.js';
+import type { IngestOptions } from '../../src/ingestion/ingest.js';
 
 export const GUILD = '100000000000000001';
 export const CHANNEL = '100000000000000002';

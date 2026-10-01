@@ -19,7 +19,7 @@
 import { type DatabaseSync, transactionImmediate } from '../db/database.js';
 import { getProposal, setProposalMessage, setProposalReviewed, setProposalStatus } from '../db/repositories/proposals.js';
 import { recordAdminEvent } from '../db/repositories/admin-events.js';
-import { authorizeAdmin, type AuthorizationOutcome } from '../discord/authorization.js';
+import { authorizeAdmin, type AuthorizationOutcome } from '../policy/authorization.js';
 import { enqueueOutbox } from '../outbox/repository.js';
 import { enqueueProposalDeliverySync } from '../outbox/proposal-delivery.js';
 import type { OutboundEvidenceResult, ProvenanceGateResult } from '../agent/policy.js';

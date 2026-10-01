@@ -10,7 +10,7 @@ import {
   handlePauseCommand,
   handleResumeCommand,
   formatPauseReply,
-} from '../../src/discord/commands/pause.js';
+} from '../../src/commands/pause.js';
 import { countAdminEvents } from '../../src/db/repositories/admin-events.js';
 import { enqueue } from '../../src/jobs/queue.js';
 import { JobWorker } from '../../src/jobs/worker.js';

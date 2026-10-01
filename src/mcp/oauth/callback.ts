@@ -3,14 +3,14 @@
 
 import { randomBytes, createHash } from 'node:crypto';
 import { type DatabaseSync } from '../../db/database.js';
-import { authorizeAdmin, type AuthorizationReason } from '../../discord/authorization.js';
+import { authorizeAdmin, type AuthorizationReason } from '../../policy/authorization.js';
 import {
   consumeLoginSession,
   insertAuthorizationCode,
   type LoginSession,
 } from '../../db/repositories/oauth-flows.js';
 import type { McpScopeType } from '../../db/repositories/mcp-tokens.js';
-import type { DiscordIdentityClient, DiscordIdentityFailure } from './discord.js';
+import type { DiscordIdentityClient, DiscordIdentityFailure } from '../../platform/discord/oauth-identity.js';
 
 /**
  * The identity-provider return leg (Section 32.5.2, amended).

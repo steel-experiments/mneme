@@ -24,7 +24,7 @@ import { fingerprintExposedMemory, fingerprintExposedMessage } from '../../agent
 import type { SQLInputValue } from 'node:sqlite';
 import type { RetrievalGrant } from '../../db/repositories/message-search.js';
 import { channelVisibilityPredicate } from '../../db/repositories/message-search.js';
-import { isMnemeTestChannelName } from '../../discord/test-channels.js';
+import { isMnemeTestChannelName } from '../../ingestion/test-channels.js';
 import {
   listMemoriesPage,
   listMemoryArchivePage,

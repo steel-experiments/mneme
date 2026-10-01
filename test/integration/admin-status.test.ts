@@ -7,12 +7,12 @@ import {
   formatStatusReply,
   STATUS_REPLY_MAX_LENGTH,
   type StatusRuntimeInputs,
-} from '../../src/discord/commands/status.js';
+} from '../../src/commands/status.js';
 import {
   handleChannelsCommand,
   collectChannelsReport,
   formatChannelsReply,
-} from '../../src/discord/commands/channels.js';
+} from '../../src/commands/channels.js';
 import { recordAccessAudit } from '../../src/db/repositories/channel-access.js';
 import { countAdminEvents } from '../../src/db/repositories/admin-events.js';
 import { APP_VERSION } from '../../src/version.js';

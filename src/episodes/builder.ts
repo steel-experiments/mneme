@@ -1,5 +1,5 @@
 import { type DatabaseSync, transaction } from '../db/database.js';
-import type { NormalizedMessage } from '../discord/normalize.js';
+import type { NormalizedMessage } from '../platform/types.js';
 import { enqueue, rescheduleQueuedUniqueJob } from '../jobs/queue.js';
 import {
   openEpisode,

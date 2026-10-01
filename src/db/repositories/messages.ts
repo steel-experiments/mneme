@@ -1,7 +1,7 @@
 import { type DatabaseSync } from '../database.js';
 import type { SQLInputValue } from 'node:sqlite';
 import { prepareCached, toInt } from './util.js';
-import type { NormalizedMessagePatch } from '../../discord/normalize.js';
+import type { NormalizedMessagePatch } from '../../platform/types.js';
 
 /**
  * Idempotent message persistence (Section 9.1, 9.4, 9.8, 29.1).

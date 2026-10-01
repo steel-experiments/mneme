@@ -5,8 +5,8 @@ import {
   normalizeMessage,
   normalizeMessageUpdate,
   snowflakeToMs,
-} from '../../src/discord/normalize.js';
-import { emojiKeyOf } from '../../src/discord/normalize.js';
+} from '../../src/platform/discord/normalize.js';
+import { emojiKeyOf } from '../../src/platform/discord/normalize.js';
 
 const FIXTURE = fileURLToPath(new URL('../fixtures/messages/create.json', import.meta.url));
 
