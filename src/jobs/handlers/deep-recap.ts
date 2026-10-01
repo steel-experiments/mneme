@@ -36,6 +36,7 @@ import {
 } from '../errors.js';
 import type { JobHandler } from '../worker.js';
 import type { Logger } from '../../logger.js';
+import type { PlatformFormat } from '../../platform/types.js';
 import {
   allDeepRecapChunks,
   completeDeepRecapChunk,
@@ -108,6 +109,8 @@ Requested focus: {{{json topic}}}
 </untrusted_partition_summaries>`;
 
 export interface DeepRecapHandlerDeps {
+  /** The active platform's text conventions (Section 24.5). */
+  format: PlatformFormat;
   db: DatabaseSync;
   guildId: string;
   promptCompiler: PromptCompiler | (() => PromptCompiler);
@@ -852,6 +855,7 @@ async function synthesizeReport(
     pinnedChannelId: request.target_channel_id,
     target: currentScope.target,
     guildId: deps.guildId,
+    format: deps.format,
     rateChecks: deps.rateChecks(request.target_channel_id, proposal.message, deps.now?.() ?? Date.now()),
     provenance: result.provenance,
     snapshotCoverage: null,

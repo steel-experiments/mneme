@@ -41,6 +41,7 @@ import {
 import type { BootstrapContext } from '../../src/bootstrap.js';
 import { emptyAgentRunUsage } from '../../src/agent/usage.js';
 import { createDiscordReviewChannel, deliverProposalReview } from '../../src/platform/discord/review-message.js';
+import { discordFormat } from '../../src/platform/discord/format.js';
 
 /**
  * Episode review job (Sections 11, 18, 21.4).
@@ -291,6 +292,7 @@ function seedOrgMemory(sourceChannelId: string, sourceMessageId: string): string
 
 function interventionRuntimeContext(): BootstrapContext {
   return {
+    format: discordFormat,
     db: env.db,
     now: () => NOW,
     config: {

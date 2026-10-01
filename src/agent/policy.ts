@@ -14,6 +14,7 @@ import type { AutonomyMode } from '../config.js';
 import type { CooldownDecision } from './cooldowns.js';
 import type { DuplicateResult } from './duplicate-policy.js';
 import type { AttentionRejectionReason } from '../memory/attention.js';
+import type { PlatformFormat } from '../platform/types.js';
 
 /** The six model-supplied dimensions, each expected in [0, 1]. */
 export interface InterventionDimensions {
@@ -477,6 +478,8 @@ export interface ForcedReviewResult {
 export interface ForcedReviewInput {
   /** Proposed message text. */
   message: string;
+  /** The active platform's text conventions; individual mentions are found through it. */
+  format: PlatformFormat;
   /** Model-supplied reason (optional; also scanned for sensitive-domain terms). */
   reason?: string;
   urgency: ForcedReviewUrgency;
@@ -525,9 +528,6 @@ const NEGATIVE_TERMS: readonly string[] = [
   'at fault', 'mistake', 'bad job', 'underperformed', 'missed', 'broke',
   'caused the', 'dropped the ball',
 ];
-
-/** Mention syntax that names an individual, independent of model claims (Section 7.4 check 8 token form). */
-const INDIVIDUAL_MENTION = /<@!?\d{17,20}>/;
 
 function containsTerm(lowerText: string, term: string): boolean {
   const idx = lowerText.indexOf(term);
@@ -582,7 +582,7 @@ export function evaluateForcedReview(input: ForcedReviewInput): ForcedReviewResu
 
   // Case: a proposed message naming an individual negatively.
   const namesIndividual =
-    INDIVIDUAL_MENTION.test(input.message) ||
+    input.format.hasIndividualMention(input.message) ||
     (input.referencedIndividualNames?.some((n) => n.trim().length > 0 && lowerMessage.includes(n.toLowerCase())) ?? false);
   if (namesIndividual && NEGATIVE_TERMS.some((t) => containsTerm(lowerMessage, t))) {
     rules.push({ rule: 'names_individual_negatively', detail: 'message names an individual in a negative context' });

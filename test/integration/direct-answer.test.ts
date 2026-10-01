@@ -38,6 +38,7 @@ import {
   RECENT_ACTIVITY_SNAPSHOT_MAX_MESSAGES,
 } from '../../src/db/repositories/recent-activity-snapshot.js';
 import { emptyAgentRunUsage } from '../../src/agent/usage.js';
+import { discordFormat } from '../../src/platform/discord/format.js';
 
 /**
  * Direct-answer agent job (Sections 19, 26, 46.3).
@@ -237,6 +238,7 @@ function buildHandler(over: Partial<{
 }> = {}) {
   const noopCompiler = { render: () => '', versionFor: () => 'pv' } as unknown as PromptCompiler;
   return createDirectAnswerHandler({
+    format: discordFormat,
     db: env.db,
     guildId: env.guildId,
     promptCompiler: over.promptCompiler ?? noopCompiler,

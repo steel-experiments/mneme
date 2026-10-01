@@ -17,6 +17,7 @@ import { forgetMessage } from '../../src/memory/deletion.js';
 import type { AgentRunResult } from '../../src/agent/runtime.js';
 import { DEFAULT_ATTENTION_WINDOW_MS } from '../../src/memory/attention.js';
 import { createDiscordReviewChannel, deliverProposalReview } from '../../src/platform/discord/review-message.js';
+import { discordFormat } from '../../src/platform/discord/format.js';
 
 const SELF_ID = '100000000000000099';
 /** The platform members routeEpisodeIntervention uses, with Discord cards sent through `client`. */
@@ -217,6 +218,7 @@ describe('attention cutover — Section 12.7', () => {
     extendEpisode(env.db, episode.id, 'm-legacy', true, NOW);
     closeEpisode(env.db, episode.id, NOW);
     const proposalId = await routeEpisodeIntervention({
+      format: discordFormat,
       db: env.db,
       now: () => NOW,
       config: {

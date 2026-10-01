@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import {
-  parseMentions,
   sanitizeOutboundMessage,
   buildSourceLinks,
   renderInlineCitations,
@@ -9,6 +8,7 @@ import {
   type SourceLinkContext,
 } from '../../src/outbound/message-safety.js';
 import { messageLink } from '../../src/platform/links.js';
+import { discordFormat, parseMentions } from '../../src/platform/discord/format.js';
 
 /**
  * Mention and message-content sanitization (Sections 7.4 check 8, 24.5, 30.3,
@@ -67,7 +67,7 @@ describe('parseMentions — independent syntax parsing', () => {
 
 describe('sanitizeOutboundMessage — happy path', () => {
   it('allows clean prose and returns safe send options', () => {
-    const res = sanitizeOutboundMessage({ content: 'Heads up: the API changed.', guildId: GUILD });
+    const res = sanitizeOutboundMessage({ format: discordFormat, content: 'Heads up: the API changed.', guildId: GUILD });
     expect(res.outcome).toBe('allow');
     if (res.outcome !== 'allow') return;
     expect(res.content).toBe('Heads up: the API changed.');
@@ -77,13 +77,13 @@ describe('sanitizeOutboundMessage — happy path', () => {
   });
 
   it('allows a message at exactly the 1800-character limit', () => {
-    const res = sanitizeOutboundMessage({ content: 'x'.repeat(MAX_MESSAGE_CHARS), guildId: GUILD });
+    const res = sanitizeOutboundMessage({ format: discordFormat, content: 'x'.repeat(MAX_MESSAGE_CHARS), guildId: GUILD });
     expect(res.outcome).toBe('allow');
   });
 
   it('builds up to three trusted masked source links from cited ids', () => {
     const res = sanitizeOutboundMessage(
-      { content: 'see the thread', guildId: GUILD, sourceLinkMessageIds: ['m1', 'm2', 'm3'] },
+      { format: discordFormat, content: 'see the thread', guildId: GUILD, sourceLinkMessageIds: ['m1', 'm2', 'm3'] },
       ctx({ m1: 'c1', m2: 'c2', m3: 'c3' }),
     );
     expect(res.outcome).toBe('allow');
@@ -99,32 +99,32 @@ describe('sanitizeOutboundMessage — happy path', () => {
 
 describe('sanitizeOutboundMessage — mention injection', () => {
   it('rejects a user mention injection', () => {
-    const res = sanitizeOutboundMessage({ content: 'hey <@123456789012345678>!', guildId: GUILD });
+    const res = sanitizeOutboundMessage({ format: discordFormat, content: 'hey <@123456789012345678>!', guildId: GUILD });
     expect(res.outcome).toBe('reject');
     if (res.outcome !== 'reject') return;
     expect(res.reasons.some((r) => r.includes('user'))).toBe(true);
   });
 
   it('rejects a role mention injection', () => {
-    const res = sanitizeOutboundMessage({ content: '<@&223456789012345678> assemble', guildId: GUILD });
+    const res = sanitizeOutboundMessage({ format: discordFormat, content: '<@&223456789012345678> assemble', guildId: GUILD });
     expect(res.outcome).toBe('reject');
     if (res.outcome !== 'reject') return;
     expect(res.reasons.some((r) => r.includes('role'))).toBe(true);
   });
 
   it('rejects an @everyone injection', () => {
-    const res = sanitizeOutboundMessage({ content: '@everyone read this', guildId: GUILD });
+    const res = sanitizeOutboundMessage({ format: discordFormat, content: '@everyone read this', guildId: GUILD });
     expect(res.outcome).toBe('reject');
     expect((res as { reasons: string[] }).reasons.some((r) => r.includes('everyone'))).toBe(true);
   });
 
   it('rejects an @here injection', () => {
-    const res = sanitizeOutboundMessage({ content: 'ping @here', guildId: GUILD });
+    const res = sanitizeOutboundMessage({ format: discordFormat, content: 'ping @here', guildId: GUILD });
     expect(res.outcome).toBe('reject');
   });
 
   it('never returns send options for an injected message (no ping path)', () => {
-    const res = sanitizeOutboundMessage({ content: '<@123456789012345678>', guildId: GUILD });
+    const res = sanitizeOutboundMessage({ format: discordFormat, content: '<@123456789012345678>', guildId: GUILD });
     expect(res.outcome).toBe('reject');
     expect((res as { sendOptions?: unknown }).sendOptions).toBeUndefined();
   });
@@ -132,7 +132,7 @@ describe('sanitizeOutboundMessage — mention injection', () => {
 
 describe('sanitizeOutboundMessage — size and citation limits', () => {
   it('rejects a message over the 1800-character limit', () => {
-    const res = sanitizeOutboundMessage({ content: 'x'.repeat(MAX_MESSAGE_CHARS + 1), guildId: GUILD });
+    const res = sanitizeOutboundMessage({ format: discordFormat, content: 'x'.repeat(MAX_MESSAGE_CHARS + 1), guildId: GUILD });
     expect(res.outcome).toBe('reject');
     if (res.outcome !== 'reject') return;
     expect(res.reasons.some((r) => r.includes('1800'))).toBe(true);
@@ -140,7 +140,7 @@ describe('sanitizeOutboundMessage — size and citation limits', () => {
 
   it('rejects over-cited content (more than three source links)', () => {
     const res = sanitizeOutboundMessage(
-      { content: 'ok', guildId: GUILD, sourceLinkMessageIds: ['a', 'b', 'c', 'd'] },
+      { format: discordFormat, content: 'ok', guildId: GUILD, sourceLinkMessageIds: ['a', 'b', 'c', 'd'] },
       ctx({ a: 'ca', b: 'cb', c: 'cc', d: 'cd' }),
     );
     expect(res.outcome).toBe('reject');
@@ -159,7 +159,7 @@ describe('sanitizeOutboundMessage — size and citation limits', () => {
       'viewer@discord.com',
       'viewer:secret@canary.discord.com:443',
     ]) {
-      const res = sanitizeOutboundMessage({
+      const res = sanitizeOutboundMessage({ format: discordFormat, 
         content: `See https://${host}/channels/1/2/3 for the source.`,
         guildId: GUILD,
         sourceLinkMessageIds: ['3'],
@@ -183,7 +183,7 @@ describe('sanitizeOutboundMessage — size and citation limits', () => {
       'https://discord.com/%5Cchannels/1/2/3',
       'https://discord.com/%252e%252e/channels/1/2/3',
     ]) {
-      const res = sanitizeOutboundMessage({
+      const res = sanitizeOutboundMessage({ format: discordFormat, 
         content: `[source](${candidate})`,
         guildId: GUILD,
       });
@@ -203,7 +203,7 @@ describe('sanitizeOutboundMessage — size and citation limits', () => {
       '[source](//&dscr;&iscr;&sscr;&cscr;&oscr;&rscr;&dscr;.com/channels/1/2/3)',
       '[source](//discord.com/&cscr;hannels/1/2/3)',
     ]) {
-      const res = sanitizeOutboundMessage({ content, guildId: GUILD });
+      const res = sanitizeOutboundMessage({ format: discordFormat, content, guildId: GUILD });
       expect(res.outcome, content).toBe('reject');
       if (res.outcome !== 'reject') continue;
       expect(res.reasons, content).toContain(
@@ -222,7 +222,7 @@ describe('sanitizeOutboundMessage — size and citation limits', () => {
       '[source]:\n/channels/1/2/3\n\n[source]',
       '[source]:/channels\n\n[source]',
     ]) {
-      const res = sanitizeOutboundMessage({ content, guildId: GUILD });
+      const res = sanitizeOutboundMessage({ format: discordFormat, content, guildId: GUILD });
       expect(res.outcome, content).toBe('reject');
       if (res.outcome !== 'reject') continue;
       expect(res.reasons, content).toContain(
@@ -243,7 +243,7 @@ describe('sanitizeOutboundMessage — size and citation limits', () => {
       '[source](discord://-//channels/1/2/3)',
       '[source](discord:////-/channels/1/2/3)',
     ]) {
-      const res = sanitizeOutboundMessage({ content, guildId: GUILD });
+      const res = sanitizeOutboundMessage({ format: discordFormat, content, guildId: GUILD });
       expect(res.outcome, content).toBe('reject');
       if (res.outcome !== 'reject') continue;
       expect(res.reasons, content).toContain(
@@ -257,7 +257,7 @@ describe('sanitizeOutboundMessage — size and citation limits', () => {
       '[safe](https://example.com)[source](https://discord.com/channels/1/2/3)',
       'https://example.com,https://discord.com/channels/1/2/3',
     ]) {
-      const res = sanitizeOutboundMessage({ content, guildId: GUILD });
+      const res = sanitizeOutboundMessage({ format: discordFormat, content, guildId: GUILD });
       expect(res.outcome, content).toBe('reject');
       if (res.outcome !== 'reject') continue;
       expect(res.reasons, content).toContain(
@@ -282,7 +282,7 @@ describe('sanitizeOutboundMessage — size and citation limits', () => {
       '[source](https://&dscr;&iscr;&sscr;&cscr;&oscr;&rscr;&dscr;.com/channels/1/2/3)',
       '[source](https://discord.com/&cscr;hannels/1/2/3)',
     ]) {
-      const res = sanitizeOutboundMessage({ content, guildId: GUILD });
+      const res = sanitizeOutboundMessage({ format: discordFormat, content, guildId: GUILD });
       expect(res.outcome, content).toBe('reject');
       if (res.outcome !== 'reject') continue;
       expect(res.reasons, content).toContain(
@@ -297,7 +297,7 @@ describe('sanitizeOutboundMessage — size and citation limits', () => {
       'See //discord.com.evil.example/channels/1/2/3 for unrelated material.',
       'See discord://example.com/channels/1/2/3 for unrelated material.',
     ]) {
-      const res = sanitizeOutboundMessage({ content, guildId: GUILD });
+      const res = sanitizeOutboundMessage({ format: discordFormat, content, guildId: GUILD });
       expect(res.outcome, content).toBe('allow');
     }
   });
@@ -309,7 +309,7 @@ describe('sanitizeOutboundMessage — size and citation limits', () => {
       '[parent](../docs/channels/overview)',
       '[query](?next=/channels/1/2/3)',
     ]) {
-      const res = sanitizeOutboundMessage({ content, guildId: GUILD });
+      const res = sanitizeOutboundMessage({ format: discordFormat, content, guildId: GUILD });
       expect(res.outcome, content).toBe('allow');
     }
   });
@@ -326,7 +326,7 @@ describe('sanitizeOutboundMessage — size and citation limits', () => {
       '[source](a/%2e%2e/%2e%2e/%2e%2e/channels/1/2/3)',
       '[source](&period;&period;&sol;&period;&period;&sol;channels&sol;1&sol;2&sol;3)',
     ]) {
-      const res = sanitizeOutboundMessage({ content, guildId: GUILD });
+      const res = sanitizeOutboundMessage({ format: discordFormat, content, guildId: GUILD });
       expect(res.outcome, content).toBe('reject');
     }
   });
@@ -348,13 +348,13 @@ describe('sanitizeOutboundMessage — size and citation limits', () => {
       'The update is complete (channels are synchronized).',
       'Use the docs section (docs/channels/overview) for details.',
     ]) {
-      const res = sanitizeOutboundMessage({ content, guildId: GUILD });
+      const res = sanitizeOutboundMessage({ format: discordFormat, content, guildId: GUILD });
       expect(res.outcome, content).toBe('allow');
     }
   });
 
   it('collects multiple violations into one reject', () => {
-    const res = sanitizeOutboundMessage({
+    const res = sanitizeOutboundMessage({ format: discordFormat, 
       content: `<@111111111111111111> ${'x'.repeat(MAX_MESSAGE_CHARS + 1)}`,
       guildId: GUILD,
       sourceLinkMessageIds: ['a', 'b', 'c', 'd'],
@@ -368,7 +368,7 @@ describe('sanitizeOutboundMessage — size and citation limits', () => {
 describe('sanitizeOutboundMessage — source link construction', () => {
   it('uses safe descriptive labels and replaces inline citation markers', () => {
     const res = sanitizeOutboundMessage(
-      { content: 'The deploy is green. [[cite:m1]]', guildId: GUILD, sourceLinkMessageIds: ['m1'] },
+      { format: discordFormat, content: 'The deploy is green. [[cite:m1]]', guildId: GUILD, sourceLinkMessageIds: ['m1'] },
       {
         ...ctx({ m1: 'c1' }),
         resolveLabel: () => '#general · 2026-08-24',
@@ -386,7 +386,7 @@ describe('sanitizeOutboundMessage — source link construction', () => {
 
   it('drops a cited id that cannot be resolved to a channel (no link, still allowed)', () => {
     const res = sanitizeOutboundMessage(
-      { content: 'ok', guildId: GUILD, sourceLinkMessageIds: ['known', 'ghost'] },
+      { format: discordFormat, content: 'ok', guildId: GUILD, sourceLinkMessageIds: ['known', 'ghost'] },
       ctx({ known: 'ck' }),
     );
     expect(res.outcome).toBe('allow');
@@ -396,7 +396,7 @@ describe('sanitizeOutboundMessage — source link construction', () => {
 
   it('builds no guild-scoped links when the run has no guild (DM context)', () => {
     const res = sanitizeOutboundMessage(
-      { content: 'ok', guildId: null, sourceLinkMessageIds: ['m1'] },
+      { format: discordFormat, content: 'ok', guildId: null, sourceLinkMessageIds: ['m1'] },
       ctx({ m1: 'c1' }),
     );
     expect(res.outcome).toBe('allow');
@@ -424,7 +424,7 @@ describe('sanitizeOutboundMessage — source link construction', () => {
 describe('sanitizeOutboundMessage — redaction', () => {
   it('never echoes message content in rejection reasons', () => {
     const secret = 'SUPERSECRET-CONTENT';
-    const res = sanitizeOutboundMessage({ content: `<@123456789012345678> ${secret}`, guildId: GUILD });
+    const res = sanitizeOutboundMessage({ format: discordFormat, content: `<@123456789012345678> ${secret}`, guildId: GUILD });
     if (res.outcome !== 'reject') throw new Error('expected reject');
     for (const r of res.reasons) {
       expect(r).not.toContain(secret);

@@ -34,6 +34,7 @@ import { createSendOutboxHandler } from '../../src/outbox/worker.js';
 import { enqueueOutbox, claimOutboxForSending, getOutboxByDedupeKey } from '../../src/outbox/repository.js';
 import type { OutboxSender } from '../../src/platform/types.js';
 import { createDiscordReviewChannel, deliverProposalReview } from '../../src/platform/discord/review-message.js';
+import { discordFormat } from '../../src/platform/discord/format.js';
 
 const SELF_ID = '100000000000000099';
 /** The platform members routeEpisodeIntervention uses, with Discord cards sent through `client`. */
@@ -96,6 +97,7 @@ function seedProposalRow(proposalId: string): void {
 
 function attentionContext(): BootstrapContext {
   return {
+    format: discordFormat,
     db: env.db,
     now: () => NOW,
     config: {
@@ -593,6 +595,7 @@ describe('scheduled dispatcher and cohort attention gating', () => {
       versionFor: () => 'scheduled-review@v1',
     } as unknown as PromptCompiler;
     const handler = createReviewDueMemoriesHandler({
+      format: discordFormat,
       db: env.db,
       guildId: GUILD,
       promptCompiler: fakeCompiler,
@@ -643,6 +646,7 @@ describe('scheduled dispatcher and cohort attention gating', () => {
       versionFor: () => 'scheduled-review@v1',
     } as unknown as PromptCompiler;
     const buildHandler = (echoRevisionId: string | undefined) => createReviewDueMemoriesHandler({
+      format: discordFormat,
       db: env.db,
       guildId: GUILD,
       promptCompiler: fakeCompiler,
@@ -929,6 +933,7 @@ describe('cohort handler end-to-end through the production payload', () => {
       reviewChannelId: REVIEW_CHANNEL,
       reviewAcceptedScopes: ['org', 'restricted'],
       base: {
+        format: discordFormat,
         promptCompiler: fakeCompiler(),
         systemPrompt: 'system',
         mode: 'review',

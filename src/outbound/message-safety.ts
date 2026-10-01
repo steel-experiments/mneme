@@ -24,7 +24,7 @@
  */
 
 import { messageLink } from '../platform/links.js';
-import type { ParsedMention } from '../platform/types.js';
+import type { PlatformFormat } from '../platform/types.js';
 
 // Section 24.5 / 23: hard content and citation limits.
 export const MAX_MESSAGE_CHARS = 1800;
@@ -82,16 +82,6 @@ function safeSourceLabel(value: string | undefined): string {
   return normalized.length > 0 ? normalized : 'source';
 }
 
-/** Discord mention syntax the host parsed out of the proposed text. */
-
-// Discord snowflake mention tokens. `<@id>` and `<@!id>` are user mentions (the
-// `!` is the legacy nickname-ping prefix); `<@&id>` is a role mention. Channel
-// (`<#id>`), emoji, and slash-command tokens are not pings and are ignored.
-const USER_MENTION = /<@!?(\d{17,20})>/g;
-const ROLE_MENTION = /<@&(\d{17,20})>/g;
-// `@everyone` / `@here`, but not when embedded in an email-style or doubled
-// token (`@@everyone`, `x@everyone`) — those are not Discord pings.
-const MASS_MENTION = /(?<![@\w])@(everyone|here)\b/g;
 // Extract broadly, then let the WHATWG parser perform the same special-URL
 // normalization a browser does. The lookahead deliberately finds every scheme
 // start, even when a preceding URL and Markdown punctuation form one greedy raw
@@ -405,25 +395,6 @@ function containsDiscordJumpUrl(content: string): boolean {
   return false;
 }
 
-/**
- * Parse Discord mention syntax directly from the text, with no reliance on
- * model-supplied metadata. Returns every user / role / mass mention found, in
- * order. Channel, emoji, and slash-command tokens are intentionally not parsed
- * (they are not pings).
- */
-export function parseMentions(content: string): ParsedMention[] {
-  const out: ParsedMention[] = [];
-  for (const m of content.matchAll(USER_MENTION)) {
-    out.push({ raw: m[0], kind: 'user', id: m[1] });
-  }
-  for (const m of content.matchAll(ROLE_MENTION)) {
-    out.push({ raw: m[0], kind: 'role', id: m[1] });
-  }
-  for (const m of content.matchAll(MASS_MENTION)) {
-    out.push({ raw: m[0], kind: m[1] === 'everyone' ? 'everyone' : 'here' });
-  }
-  return out;
-}
 
 /**
  * Construct at most {@link MAX_SOURCE_LINKS} trusted masked source links from
@@ -519,6 +490,8 @@ export interface OutboundMessageInput {
   sourceLinkMessageIds?: readonly string[];
   /** The run's guild id (host-pinned); null in a DM context disables link building. */
   guildId: string | null;
+  /** The active platform's text conventions; mention syntax is parsed through it. */
+  format: PlatformFormat;
 }
 
 export interface SanitizedOutbound {
@@ -555,7 +528,7 @@ export function sanitizeOutboundMessage(
 ): SanitizeResult {
   const reasons: string[] = [];
 
-  const mentions = parseMentions(input.content);
+  const mentions = input.format.parseMentions(input.content);
   if (mentions.length > 0) {
     const kinds = [...new Set(mentions.map((m) => m.kind))].sort();
     reasons.push(`message contains unauthorized ${kinds.join('/')} mention(s)`);

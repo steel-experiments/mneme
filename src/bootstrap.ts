@@ -12,7 +12,7 @@ import { RuntimeState, getRuntimeModeOverride } from './runtime-state.js';
 import { ShutdownCoordinator, createShutdownDeps, type ShutdownResult } from './shutdown.js';
 import { setShutdownCoordinator } from './shutdown.js';
 import type { Logger } from 'pino';
-import type { ChatPlatform, PlatformHealthTracker } from './platform/types.js';
+import type { ChatPlatform, PlatformFormat, PlatformHealthTracker } from './platform/types.js';
 import {
   normalizeBuildInfo,
   resolveBuildInfo,
@@ -112,6 +112,8 @@ export interface BootstrapContext {
   /** Process-lifetime, content-free operational counters. */
   counters: Counters;
   now: () => number;
+  /** Text conventions of the active chat platform (equal to `platform.format`). */
+  format: PlatformFormat;
 }
 
 /** Injectable startup seams. Each has a real default; tests override them. */
@@ -267,6 +269,7 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
     logger,
     counters: createCounters(),
     now,
+    format: (await import('./platform/select.js')).platformFormat(config.platform),
   };
   let platformInstance: ChatPlatform | undefined;
   const getPlatform = async (): Promise<ChatPlatform> => {
