@@ -18,11 +18,23 @@ import {
 import { enqueue, claimNextJob } from '../../src/jobs/queue.js';
 import { getDeadlineDecision } from '../../src/memory/deadline-decisions.js';
 
+/** Seed guild, channel, and user rows in a schema older than migration 041. */
+function seedLegacyIdentity(db: ReturnType<typeof openDatabase>): { guildId: string; channelId: string; userId: string } {
+  const guildId = '100000000000000001';
+  const channelId = '100000000000000002';
+  const userId = '100000000000000003';
+  db.prepare("INSERT INTO guilds (id,name,discovered_at_ms,updated_at_ms) VALUES (?,'Guild',1,1)").run(guildId);
+  db.prepare(`INSERT INTO channels (id,guild_id,type,name,visibility_class,discovered_at_ms,updated_at_ms)
+    VALUES (?,?,0,'general','restricted',1,1)`).run(channelId, guildId);
+  db.prepare("INSERT INTO users (id,username,global_name,is_bot,first_seen_at_ms,last_seen_at_ms) VALUES (?,'alice','Alice',0,1,1)").run(userId);
+  return { guildId, channelId, userId };
+}
+
 describe('migrations runner', () => {
   it('applies all migrations on first run', () => {
     const t = createTestDb();
     const applied = listAppliedMigrations(t.db);
-    expect(applied.map((m) => m.version)).toEqual(Array.from({ length: 40 }, (_, i) => i + 1));
+    expect(applied.map((m) => m.version)).toEqual(Array.from({ length: 41 }, (_, i) => i + 1));
     t.cleanup();
   });
 
@@ -30,7 +42,7 @@ describe('migrations runner', () => {
     const t = createTestDb();
     const result = applyMigrations(t.db, copyMigrationsToTemp());
     expect(result.applied).toHaveLength(0);
-    expect(listAppliedMigrations(t.db).map((m) => m.version)).toEqual(Array.from({ length: 40 }, (_, i) => i + 1));
+    expect(listAppliedMigrations(t.db).map((m) => m.version)).toEqual(Array.from({ length: 41 }, (_, i) => i + 1));
     t.cleanup();
   });
 
@@ -72,6 +84,7 @@ describe('migrations runner', () => {
       '038_proactive_attention.sql',
       '039_deadline_decisions.sql',
       '040_deletion_requests.sql',
+      '041_platform_neutral_names.sql',
     ]) rmSync(`${oldDir}/${name}`);
     const dbPath = `${oldDir}/upgrade.sqlite`;
     const db = openDatabase(dbPath);
@@ -83,7 +96,7 @@ describe('migrations runner', () => {
     db.prepare("INSERT INTO proposals (id,run_id,target_channel_id,status,computed_score,reason,evidence_message_ids_json,created_at_ms,updated_at_ms) VALUES ('proposal-upgrade','run-upgrade','c-upgrade','observed',0,'legacy','[]',1,1)").run();
 
     applyMigrations(db, copyMigrationsToTemp());
-    expect(listAppliedMigrations(db).map((m) => m.version)).toEqual(Array.from({ length: 40 }, (_, i) => i + 1));
+    expect(listAppliedMigrations(db).map((m) => m.version)).toEqual(Array.from({ length: 41 }, (_, i) => i + 1));
     expect(db.prepare("SELECT name FROM sqlite_master WHERE name='message_tombstones'").get()).toBeDefined();
     expect(db.prepare("SELECT name FROM sqlite_master WHERE name='attachment_file_purges'").get()).toBeDefined();
     const syncColumns = db.prepare('PRAGMA table_info(sync_cursors)').all() as Array<{ name: string }>;
@@ -106,7 +119,7 @@ describe('migrations runner', () => {
       .toEqual({ shadow_of_run_id: null, shadow_comparison_json: null });
     expect((db.prepare("SELECT execution_started_at_ms FROM agent_runs WHERE id='run-upgrade'").get() as { execution_started_at_ms: number | null }).execution_started_at_ms)
       .toBeNull();
-    expect(() => db.prepare("INSERT INTO agent_runs (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms,model_turns_json) VALUES ('bad-run','missing','episode','p','p','m','running',1,'{}')").run()).toThrow();
+    expect(() => db.prepare("INSERT INTO agent_runs (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms,model_turns_json) VALUES ('bad-run','missing','episode','p','p','m','running',1,'{}')").run()).toThrow();
     expect(db.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'scheduled_proposal_subjects'",
     ).get()).toBeDefined();
@@ -124,9 +137,9 @@ describe('migrations runner', () => {
 
   it('enforces migration 034 usage constraints', () => {
     const t = createTestDb();
-    t.db.prepare("INSERT INTO guilds (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-usage','G',1,1)").run();
+    t.db.prepare("INSERT INTO workspaces (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-usage','G',1,1)").run();
     t.db.prepare(`INSERT INTO agent_runs
-      (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+      (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
       VALUES ('run-usage','g-usage','episode','p','faux','faux','completed',1)`).run();
 
     for (const column of [
@@ -156,9 +169,9 @@ describe('migrations runner', () => {
 
   it('enforces migration 035 shadow linkage and comparison constraints', () => {
     const t = createTestDb();
-    t.db.prepare("INSERT INTO guilds (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-shadow','G',1,1)").run();
+    t.db.prepare("INSERT INTO workspaces (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-shadow','G',1,1)").run();
     const insert = t.db.prepare(`INSERT INTO agent_runs
-      (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms,shadow_of_run_id)
+      (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms,shadow_of_run_id)
       VALUES (?,?,?,?,?,?,?, ?,?)`);
     insert.run('authoritative', 'g-shadow', 'episode', 'p', 'faux', 'faux', 'completed', 1, null);
     insert.run('shadow', 'g-shadow', 'episode', 'p', 'faux', 'faux', 'completed', 2, 'authoritative');
@@ -177,9 +190,9 @@ describe('migrations runner', () => {
 
   it('keeps migration 036 execution timing nullable for legacy runs and non-negative', () => {
     const t = createTestDb();
-    t.db.prepare("INSERT INTO guilds (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-time','G',1,1)").run();
+    t.db.prepare("INSERT INTO workspaces (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-time','G',1,1)").run();
     t.db.prepare(`INSERT INTO agent_runs
-      (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+      (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
       VALUES ('legacy-time','g-time','episode','p','faux','faux','completed',1)`).run();
     expect(t.db.prepare('SELECT execution_started_at_ms FROM agent_runs WHERE id=?')
       .get('legacy-time')).toEqual({ execution_started_at_ms: null });
@@ -193,13 +206,13 @@ describe('migrations runner', () => {
 
   it('enforces migration 038 proactive-attention constraints', () => {
     const t = createTestDb();
-    const g = "INSERT INTO guilds (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-att','G',1,1)";
+    const g = "INSERT INTO workspaces (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-att','G',1,1)";
     t.db.prepare(g).run();
     t.db.prepare(`INSERT INTO channels
-      (id,guild_id,type,visibility_class,discovered_at_ms,updated_at_ms)
+      (id,workspace_id,type,visibility_class,discovered_at_ms,updated_at_ms)
       VALUES ('c-att','g-att',0,'org',1,1)`).run();
     t.db.prepare(`INSERT INTO agent_runs
-      (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+      (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
       VALUES ('run-att','g-att','episode','p','faux','faux','completed',1)`).run();
     t.db.prepare(`INSERT INTO proposals
       (id,run_id,target_channel_id,status,computed_score,reason,evidence_message_ids_json,created_at_ms,updated_at_ms)
@@ -207,21 +220,21 @@ describe('migrations runner', () => {
     t.db.prepare(`INSERT INTO users (id,is_bot,first_seen_at_ms,last_seen_at_ms)
       VALUES ('u-att',0,1,1)`).run();
     t.db.prepare(`INSERT INTO messages
-      (id,guild_id,channel_id,author_id,author_display_name,content,created_at_ms,ingested_at_ms,updated_at_ms)
+      (id,workspace_id,channel_id,author_id,author_display_name,content,created_at_ms,ingested_at_ms,updated_at_ms)
       VALUES ('m-att','g-att','c-att','u-att','A','body',1,1,1)`).run();
     t.db.prepare(`INSERT INTO memories
-      (id,guild_id,scope_type,type,statement,confidence,importance,
+      (id,workspace_id,scope_type,type,statement,confidence,importance,
        first_seen_at_ms,last_confirmed_at_ms,created_at_ms,updated_at_ms)
       VALUES ('mem-att','g-att','org','decision','We ship weekly.',0.9,0.8,1,1,1,1)`).run();
 
-    t.db.prepare(`INSERT INTO attention_subjects (id,guild_id,registration_state,created_at_ms)
+    t.db.prepare(`INSERT INTO attention_subjects (id,workspace_id,registration_state,created_at_ms)
       VALUES ('s-att','g-att','pending',1)`).run();
-    expect(() => t.db.prepare(`INSERT INTO attention_subjects (id,guild_id,registration_state,created_at_ms)
+    expect(() => t.db.prepare(`INSERT INTO attention_subjects (id,workspace_id,registration_state,created_at_ms)
       VALUES ('s-bad','g-att','unknown',1)`).run()).toThrow();
     t.db.prepare(`INSERT INTO attention_subject_members (memory_id,subject_id,created_at_ms)
       VALUES ('mem-att','s-att',1)`).run();
     // One memory belongs to at most one subject: the member PK blocks a second.
-    t.db.prepare(`INSERT INTO attention_subjects (id,guild_id,registration_state,created_at_ms)
+    t.db.prepare(`INSERT INTO attention_subjects (id,workspace_id,registration_state,created_at_ms)
       VALUES ('s-two','g-att','pending',1)`).run();
     expect(() => t.db.prepare(`INSERT INTO attention_subject_members (memory_id,subject_id,created_at_ms)
       VALUES ('mem-att','s-two',1)`).run()).toThrow();
@@ -271,10 +284,11 @@ describe('migrations runner', () => {
     const newDir = copyMigrationsToTemp();
     rmSync(`${oldDir}/039_deadline_decisions.sql`);
     rmSync(`${oldDir}/040_deletion_requests.sql`);
+    rmSync(`${oldDir}/041_platform_neutral_names.sql`);
     const db = openDatabase(`${oldDir}/deadline-upgrade.sqlite`);
     try {
       applyMigrations(db, oldDir);
-      const { guildId, channelId, userId } = seedIdentity(db);
+      const { guildId, channelId, userId } = seedLegacyIdentity(db);
       for (const id of ['set-subject', 'clear-subject', 'ordinary-subject']) {
         db.prepare(`INSERT INTO attention_subjects (id,guild_id,registration_state,created_at_ms)
           VALUES (?,?,'complete',1)`).run(id, guildId);
@@ -307,7 +321,7 @@ describe('migrations runner', () => {
         (revision_id,proposal_id,consumed_at_ms,eligible_from_ms,eligible_until_ms)
         VALUES ('cleared',NULL,31,30,40)`).run();
 
-      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([39, 40]);
+      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([39, 40, 41]);
       expect(getDeadlineDecision(db, 'set-subject')).toEqual({
         subjectId: 'set-subject', sourceMessageId: 'new', sourceCreatedAtMs: 20,
         sourceContentDigest: 'source-digest', quoteStart: 0, quoteEnd: 25,
@@ -362,6 +376,7 @@ describe('migrations runner', () => {
     rmSync(`${v18Dir}/038_proactive_attention.sql`);
     rmSync(`${v18Dir}/039_deadline_decisions.sql`);
     rmSync(`${v18Dir}/040_deletion_requests.sql`);
+    rmSync(`${v18Dir}/041_platform_neutral_names.sql`);
     const db = openDatabase(`${v18Dir}/lineage-upgrade.sqlite`);
     applyMigrations(db, v18Dir);
     db.prepare("INSERT INTO guilds (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-lineage','G',1,1)").run();
@@ -385,14 +400,14 @@ describe('migrations runner', () => {
     expect(() => db.prepare(`UPDATE deep_recap_requests
       SET retry_root_request_id='missing' WHERE id='recap-lineage'`).run()).toThrow();
     db.prepare(`INSERT INTO deep_recap_requests
-      (id,guild_id,target_channel_id,requested_by_user_id,retry_of_request_id,
+      (id,workspace_id,target_channel_id,requested_by_user_id,retry_of_request_id,
        retry_root_request_id,after_at_ms,before_at_ms,budget_usd,status,
        planned_chunks,completed_chunks,last_error_category,created_at_ms,updated_at_ms,
        completed_at_ms)
       VALUES ('retry-one','g-lineage','c-lineage','u','recap-lineage',
               'recap-lineage',1,2,5,'failed',1,1,'processing_error',2,2,2)`).run();
     expect(() => db.prepare(`INSERT INTO deep_recap_requests
-      (id,guild_id,target_channel_id,requested_by_user_id,retry_of_request_id,
+      (id,workspace_id,target_channel_id,requested_by_user_id,retry_of_request_id,
        retry_root_request_id,after_at_ms,before_at_ms,budget_usd,status,
        planned_chunks,completed_chunks,last_error_category,created_at_ms,updated_at_ms,
        completed_at_ms)
@@ -429,6 +444,7 @@ describe('migrations runner', () => {
     rmSync(`${v19Dir}/038_proactive_attention.sql`);
     rmSync(`${v19Dir}/039_deadline_decisions.sql`);
     rmSync(`${v19Dir}/040_deletion_requests.sql`);
+    rmSync(`${v19Dir}/041_platform_neutral_names.sql`);
     const db = openDatabase(`${v19Dir}/cost-upgrade.sqlite`);
     applyMigrations(db, v19Dir);
     db.prepare("INSERT INTO guilds (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-cost','G',1,1)").run();
@@ -472,16 +488,17 @@ describe('migrations runner', () => {
     const oldDir = copyMigrationsToTemp();
     const newDir = copyMigrationsToTemp();
     rmSync(`${oldDir}/040_deletion_requests.sql`);
+    rmSync(`${oldDir}/041_platform_neutral_names.sql`);
     const db = openDatabase(`${oldDir}/deletion-upgrade.sqlite`);
     try {
       applyMigrations(db, oldDir);
-      const { guildId, channelId, userId } = seedIdentity(db);
+      const { guildId, channelId, userId } = seedLegacyIdentity(db);
       db.prepare(`INSERT INTO messages (id,guild_id,channel_id,author_id,author_display_name,content,created_at_ms,ingested_at_ms,updated_at_ms)
         VALUES ('m',?,?,?,'name','retained',1,1,1)`).run(guildId, channelId, userId);
       enqueue(db, { type: 'forget_user', payload: { userId }, now: 1 });
       claimNextJob(db, { type: 'forget_user', now: 1, owner: 'old-worker', leaseMs: 100 });
       enqueue(db, { type: 'forget_user', payload: { userId }, now: 1 });
-      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([40]);
+      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([40, 41]);
       expect(db.prepare("SELECT count(*) n FROM jobs WHERE type='forget_user' AND status='cancelled'").get()?.n).toBe(2);
       expect(db.prepare("SELECT content FROM messages WHERE id='m'").get()?.content).toBe('retained');
       expect(db.prepare("SELECT count(*) n FROM admin_events WHERE action='deletion_legacy_job_cancelled'").get()?.n).toBe(2);
@@ -493,12 +510,87 @@ describe('migrations runner', () => {
     }
   });
 
+  it('renames guild tables, columns, and indexes to workspace names in migration 041', () => {
+    const oldDir = copyMigrationsToTemp();
+    const newDir = copyMigrationsToTemp();
+    rmSync(`${oldDir}/041_platform_neutral_names.sql`);
+    const db = openDatabase(`${oldDir}/workspace-rename.sqlite`);
+    try {
+      applyMigrations(db, oldDir);
+      const { guildId: g, channelId: c, userId: u } = seedLegacyIdentity(db);
+      const seed = [
+        "INSERT INTO guild_members (guild_id,user_id,updated_at_ms) VALUES (?,?,1)",
+        "INSERT INTO messages (id,guild_id,channel_id,author_id,author_display_name,content,created_at_ms,ingested_at_ms,updated_at_ms) VALUES ('m1',?,?,?,'Alice','renamed workspace text',1,1,1)",
+        "INSERT INTO episodes (id,guild_id,conversation_channel_id,status,started_at_ms,last_activity_at_ms,created_at_ms,updated_at_ms) VALUES ('e1',?,?,'open',1,1,1,1)",
+        "INSERT INTO memories (id,guild_id,scope_type,type,statement,confidence,importance,first_seen_at_ms,last_confirmed_at_ms,created_at_ms,updated_at_ms) VALUES ('mem1',?,'org','decision','s',0.5,0.5,1,1,1,1)",
+        "INSERT INTO agent_runs (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms) VALUES ('r1',?,'episode','p','p','m','completed',1)",
+        "INSERT INTO admin_events (id,guild_id,actor_user_id,action,created_at_ms) VALUES ('a1',?,?,'test',1)",
+        "INSERT INTO message_tombstones (message_id,guild_id,deleted_at_ms,created_at_ms) VALUES ('gone',?,1,1)",
+        "INSERT INTO attention_subjects (id,guild_id,registration_state,created_at_ms) VALUES ('s1',?,'complete',1)",
+        "INSERT INTO historical_memory_campaigns (id,guild_id,from_at_ms,to_at_ms,provider,model,thinking_level,channel_ids_json,daily_budget_usd,total_budget_usd,created_at_ms,updated_at_ms) VALUES ('hc1',?,1,2,'p','m','low','[]',0,1,1,1)",
+        "INSERT INTO direct_answer_requests (source_message_id,guild_id,target_channel_id,question_created_at_ms,deadline_at_ms,response_intent_key,created_at_ms,updated_at_ms) VALUES ('d1',?,?,1,2,'k',1,1)",
+        "INSERT INTO deep_recap_requests (id,guild_id,target_channel_id,requested_by_user_id,retry_root_request_id,after_at_ms,before_at_ms,budget_usd,created_at_ms,updated_at_ms) VALUES ('dr1',?,?,?,'dr1',1,2,1,1,1)",
+        "INSERT INTO channel_policy_reviews (id,guild_id,channel_id,created_at_ms,updated_at_ms) VALUES ('cp1',?,?,1,1)",
+        "INSERT INTO ingestion_recovery_requests (id,guild_id,channel_id,message_id,reason,status,first_observed_at_ms,last_observed_at_ms) VALUES ('ir1',?,?,'m2','missing_message','pending',1,1)",
+        "INSERT INTO deletion_requests (id,guild_id,target_kind,target_id,requester_user_id,status,created_at_ms) VALUES ('del1',?,'message','m1',?,'pending',1)",
+        "INSERT INTO outbox (id,channel_id,content,dedupe_key,next_attempt_at_ms,created_at_ms,updated_at_ms,discord_message_id) VALUES ('o1',?,'x','k1',1,1,1,'sent-1')",
+      ];
+      for (const sql of seed) {
+        const params = sql.includes("guild_members") ? [g, u]
+          : sql.includes("INTO messages") ? [g, c, u]
+          : sql.includes("INTO episodes") || sql.includes("direct_answer") || sql.includes("channel_policy") || sql.includes("ingestion_recovery") ? [g, c]
+          : sql.includes("admin_events") || sql.includes("deletion_requests") ? [g, u]
+          : sql.includes("deep_recap") ? [g, c, u]
+          : sql.includes("INTO outbox") ? [c]
+          : [g];
+        db.prepare(sql).run(...params);
+      }
+
+      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([41]);
+
+      const renamed = ['channels', 'workspace_members', 'messages', 'episodes', 'memories', 'agent_runs',
+        'admin_events', 'message_tombstones', 'historical_memory_campaigns', 'direct_answer_requests',
+        'deep_recap_requests', 'channel_policy_reviews', 'ingestion_recovery_requests', 'attention_subjects',
+        'deletion_requests'];
+      for (const table of renamed) {
+        const columns = (db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).map((col) => col.name);
+        expect(columns, table).toContain('workspace_id');
+        expect(columns, table).not.toContain('guild_id');
+        expect(db.prepare(`SELECT count(*) n FROM ${table} WHERE workspace_id = ?`).get(g)?.n, table).toBe(1);
+      }
+      const outboxColumns = (db.prepare('PRAGMA table_info(outbox)').all() as Array<{ name: string }>).map((col) => col.name);
+      expect(outboxColumns).toContain('platform_message_id');
+      expect(outboxColumns).not.toContain('discord_message_id');
+      expect(db.prepare("SELECT platform_message_id FROM outbox WHERE id='o1'").get()).toEqual({ platform_message_id: 'sent-1' });
+      expect(db.prepare("SELECT id FROM workspaces").all()).toEqual([{ id: g }]);
+      expect(db.prepare("SELECT name FROM sqlite_master WHERE name IN ('guilds','guild_members')").all()).toEqual([]);
+
+      expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
+      const channelKeys = db.prepare('PRAGMA foreign_key_list(channels)').all() as Array<{ table: string; from: string }>;
+      expect(channelKeys).toContainEqual(expect.objectContaining({ table: 'workspaces', from: 'workspace_id' }));
+
+      db.prepare(`INSERT INTO messages (id,workspace_id,channel_id,author_id,author_display_name,content,created_at_ms,ingested_at_ms,updated_at_ms)
+        VALUES ('m3',?,?,?,'Alice','zebracrossing',2,2,2)`).run(g, c, u);
+      expect(db.prepare("SELECT count(*) n FROM messages_fts WHERE messages_fts MATCH 'zebracrossing'").get()?.n).toBe(1);
+
+      const indexNames = (db.prepare("SELECT name FROM sqlite_master WHERE type='index'").all() as Array<{ name: string }>).map((row) => row.name);
+      for (const name of ['channels_workspace_idx', 'channel_policy_reviews_workspace_status_idx',
+        'attention_subjects_workspace_idx', 'outbox_platform_message_idx']) expect(indexNames).toContain(name);
+      for (const name of ['channels_guild_idx', 'channel_policy_reviews_guild_status_idx',
+        'attention_subjects_guild_idx', 'outbox_discord_message_idx']) expect(indexNames).not.toContain(name);
+    } finally {
+      db.close();
+      rmSync(oldDir, { recursive: true, force: true });
+      rmSync(newDir, { recursive: true, force: true });
+    }
+  });
+
   it('rolls back a failed migration while keeping prior ones', () => {
     const dir = copyMigrationsToTemp();
-    writeMigration(dir, '041_bad.sql', 'CREATE TABLE definitely valid syntax NOT;');
+    writeMigration(dir, '042_bad.sql', 'CREATE TABLE definitely valid syntax NOT;');
     const db = openDatabase(`${dir}/db.sqlite`);
     expect(() => applyMigrations(db, dir)).toThrow();
-    expect(listAppliedMigrations(db).map((m) => m.version)).toEqual(Array.from({ length: 40 }, (_, i) => i + 1));
+    expect(listAppliedMigrations(db).map((m) => m.version)).toEqual(Array.from({ length: 41 }, (_, i) => i + 1));
     db.close();
   });
 
@@ -558,7 +650,7 @@ describe('core storage migration integrity', () => {
     expect(() =>
       t.db
         .prepare(
-          `INSERT INTO channels (id, guild_id, type, visibility_class, discovered_at_ms, updated_at_ms)
+          `INSERT INTO channels (id, workspace_id, type, visibility_class, discovered_at_ms, updated_at_ms)
            VALUES ('c1','100000000000000001',0,'public',1,1)`,
         )
         .run(),
@@ -571,7 +663,7 @@ describe('core storage migration integrity', () => {
     expect(() =>
       t.db
         .prepare(
-          `INSERT INTO channels (id, guild_id, type, is_thread, visibility_class, discovered_at_ms, updated_at_ms)
+          `INSERT INTO channels (id, workspace_id, type, is_thread, visibility_class, discovered_at_ms, updated_at_ms)
            VALUES ('c1','100000000000000001',0,2,'restricted',1,1)`,
         )
         .run(),
@@ -662,22 +754,22 @@ describe('memory migration integrity', () => {
     const t = createTestDb();
     t.db
       .prepare(
-        "INSERT INTO guilds (id,name,discovered_at_ms,updated_at_ms) VALUES ('g1','G',1,1)",
+        "INSERT INTO workspaces (id,name,discovered_at_ms,updated_at_ms) VALUES ('g1','G',1,1)",
       )
       .run();
     t.db
       .prepare(
-        "INSERT INTO channels (id,guild_id,type,visibility_class,discovered_at_ms,updated_at_ms) VALUES ('ch','g1',0,'org',1,1)",
+        "INSERT INTO channels (id,workspace_id,type,visibility_class,discovered_at_ms,updated_at_ms) VALUES ('ch','g1',0,'org',1,1)",
       )
       .run();
     t.db
       .prepare(
-        "INSERT INTO messages (id,guild_id,channel_id,author_display_name,content,created_at_ms,ingested_at_ms,updated_at_ms) VALUES ('m','g1','ch','a','',1,1,1)",
+        "INSERT INTO messages (id,workspace_id,channel_id,author_display_name,content,created_at_ms,ingested_at_ms,updated_at_ms) VALUES ('m','g1','ch','a','',1,1,1)",
       )
       .run();
     t.db
       .prepare(
-        "INSERT INTO episodes (id,guild_id,conversation_channel_id,status,started_at_ms,last_activity_at_ms,created_at_ms,updated_at_ms) VALUES ('e1','g1','ch','open',1,1,1,1)",
+        "INSERT INTO episodes (id,workspace_id,conversation_channel_id,status,started_at_ms,last_activity_at_ms,created_at_ms,updated_at_ms) VALUES ('e1','g1','ch','open',1,1,1,1)",
       )
       .run();
     t.db
@@ -698,21 +790,21 @@ describe('memory migration integrity', () => {
   it('cascades memory evidence deletion when a memory is removed', () => {
     const t = createTestDb();
     t.db
-      .prepare("INSERT INTO guilds (id,name,discovered_at_ms,updated_at_ms) VALUES ('g1','G',1,1)")
+      .prepare("INSERT INTO workspaces (id,name,discovered_at_ms,updated_at_ms) VALUES ('g1','G',1,1)")
       .run();
     t.db
       .prepare(
-        "INSERT INTO channels (id,guild_id,type,visibility_class,discovered_at_ms,updated_at_ms) VALUES ('ch','g1',0,'org',1,1)",
+        "INSERT INTO channels (id,workspace_id,type,visibility_class,discovered_at_ms,updated_at_ms) VALUES ('ch','g1',0,'org',1,1)",
       )
       .run();
     t.db
       .prepare(
-        "INSERT INTO messages (id,guild_id,channel_id,author_display_name,content,created_at_ms,ingested_at_ms,updated_at_ms) VALUES ('m','g1','ch','a','x',1,1,1)",
+        "INSERT INTO messages (id,workspace_id,channel_id,author_display_name,content,created_at_ms,ingested_at_ms,updated_at_ms) VALUES ('m','g1','ch','a','x',1,1,1)",
       )
       .run();
     t.db
       .prepare(
-        `INSERT INTO memories (id,guild_id,scope_type,type,statement,confidence,importance,first_seen_at_ms,last_confirmed_at_ms,created_at_ms,updated_at_ms)
+        `INSERT INTO memories (id,workspace_id,scope_type,type,statement,confidence,importance,first_seen_at_ms,last_confirmed_at_ms,created_at_ms,updated_at_ms)
          VALUES ('mem1','g1','org','decision','decide',0.8,0.5,1,1,1,1)`,
       )
       .run();
@@ -732,15 +824,15 @@ describe('operations migration integrity', () => {
   it('enforces direct-request identity and terminal outcome invariants', () => {
     const t = createTestDb();
     t.db.prepare(
-      "INSERT INTO guilds (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-direct','G',1,1)",
+      "INSERT INTO workspaces (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-direct','G',1,1)",
     ).run();
     t.db.prepare(`INSERT INTO direct_answer_requests (
-      source_message_id, guild_id, target_channel_id, question_created_at_ms,
+      source_message_id, workspace_id, target_channel_id, question_created_at_ms,
       deadline_at_ms, response_intent_key, created_at_ms, updated_at_ms
     ) VALUES ('m-direct-1','g-direct','c-direct',1,121000,'intent-direct-1',1,1)`).run();
 
     expect(() => t.db.prepare(`INSERT INTO direct_answer_requests (
-      source_message_id, guild_id, target_channel_id, question_created_at_ms,
+      source_message_id, workspace_id, target_channel_id, question_created_at_ms,
       deadline_at_ms, response_intent_key, created_at_ms, updated_at_ms
     ) VALUES ('m-direct-2','g-direct','c-direct',2,121001,'intent-direct-1',2,2)`).run())
       .toThrow();
@@ -753,16 +845,16 @@ describe('operations migration integrity', () => {
       WHERE source_message_id='m-direct-1'`).run()).toThrow();
 
     t.db.prepare(`INSERT INTO channels (
-      id, guild_id, type, visibility_class, discovered_at_ms, updated_at_ms
+      id, workspace_id, type, visibility_class, discovered_at_ms, updated_at_ms
     ) VALUES ('c-direct','g-direct',0,'org',1,1)`).run();
     t.db.prepare(`INSERT INTO agent_runs (
-      id, guild_id, run_type, prompt_version, provider, model, status, started_at_ms
+      id, workspace_id, run_type, prompt_version, provider, model, status, started_at_ms
     ) VALUES ('run-direct','g-direct','direct_answer','pv','faux','faux','completed',1)`).run();
     t.db.prepare(`INSERT INTO outbox (
       id, channel_id, content, dedupe_key, next_attempt_at_ms, created_at_ms, updated_at_ms
     ) VALUES ('out-direct','c-direct','reply','direct-intent',1,1,1)`).run();
     t.db.prepare(`INSERT INTO direct_answer_requests (
-      source_message_id, run_id, outbox_id, guild_id, target_channel_id,
+      source_message_id, run_id, outbox_id, workspace_id, target_channel_id,
       question_created_at_ms, deadline_at_ms, response_intent_key, outcome_kind,
       reason_category, created_at_ms, completed_at_ms, updated_at_ms
     ) VALUES (
@@ -776,12 +868,12 @@ describe('operations migration integrity', () => {
 
   it('enforces deep-recap bounds, terminal state, and one active request per target', () => {
     const t = createTestDb();
-    t.db.prepare("INSERT INTO guilds (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-recap','G',1,1)").run();
+    t.db.prepare("INSERT INTO workspaces (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-recap','G',1,1)").run();
     t.db.prepare(`INSERT INTO channels
-      (id,guild_id,type,visibility_class,discovered_at_ms,updated_at_ms)
+      (id,workspace_id,type,visibility_class,discovered_at_ms,updated_at_ms)
       VALUES ('c-recap','g-recap',0,'org',1,1)`).run();
     const insert = t.db.prepare(`INSERT INTO deep_recap_requests
-      (id,guild_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
+      (id,workspace_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
        budget_usd,created_at_ms,updated_at_ms)
       VALUES (?,'g-recap','c-recap','u',1,2,1,1,1)`);
     insert.run('recap-1');
@@ -810,12 +902,12 @@ describe('operations migration integrity', () => {
     const t = createTestDb();
     t.db
       .prepare(
-        "INSERT INTO guilds (id,name,discovered_at_ms,updated_at_ms) VALUES ('g1','G',1,1)",
+        "INSERT INTO workspaces (id,name,discovered_at_ms,updated_at_ms) VALUES ('g1','G',1,1)",
       )
       .run();
     t.db
       .prepare(
-        "INSERT INTO channels (id,guild_id,type,visibility_class,discovered_at_ms,updated_at_ms) VALUES ('ch','g1',0,'org',1,1)",
+        "INSERT INTO channels (id,workspace_id,type,visibility_class,discovered_at_ms,updated_at_ms) VALUES ('ch','g1',0,'org',1,1)",
       )
       .run();
     const insert = t.db.prepare(
