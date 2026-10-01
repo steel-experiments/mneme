@@ -356,8 +356,11 @@ The service intentionally accepts a short restart window during deployment.
 
 ### 5.3 Platform adapters
 
-(Amendment (plan 003): specified, not implemented. Plan 005 implements this
-rule. Until then, Mneme runs only on Discord.) Plan 006 implements the Slack adapter.
+(Amendment (plan 005): the Discord adapter implements this seam in
+`src/platform/`. Message links, the id validator, and attachment download are
+still core helpers, and Discord resolves admin actors inside its own command and
+button handlers. Plan 006 moves these behind the adapter and adds the Slack
+adapter. Until then, Mneme runs only on Discord.)
 
 One platform adapter is active in a process. `MNEME_PLATFORM` selects it. A
 missing or unknown value stops startup. One database holds data from one
