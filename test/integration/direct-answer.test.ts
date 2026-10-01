@@ -168,7 +168,7 @@ function fakeExecutor(opts: FakeRunOpts = {}): (deps: ExecuteAgentRunDeps) => Pr
     const runId = opts.runId ?? 'run-da-1';
     deps.db
       .prepare(
-        `INSERT INTO agent_runs (id, guild_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
+        `INSERT INTO agent_runs (id, workspace_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
          VALUES (?,?,NULL,'direct_answer','pv','faux','faux-1','completed',?)`,
       )
       .run(runId, deps.guildId, NOW);
@@ -1940,7 +1940,7 @@ describe('referenced proposal resolution in the secure review channel — Sectio
     seedChannel(REVIEW, 'review', { visibilityClass: 'restricted', allowInterventions: false });
     env.db
       .prepare(
-        `INSERT INTO agent_runs (id, guild_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
+        `INSERT INTO agent_runs (id, workspace_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
          VALUES (?,?,NULL,'scheduled_review','scheduled-review@v1','faux','faux-1','completed',?)`,
       )
       .run('card-run-1', env.guildId, NOW);

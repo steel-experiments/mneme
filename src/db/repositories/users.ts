@@ -99,26 +99,26 @@ export interface MemberUpsertInput {
 }
 
 const MEMBER_UPSERT_SQL = `
-  INSERT INTO guild_members (guild_id, user_id, display_name, role_ids_json, updated_at_ms)
-  VALUES (@guild_id, @user_id, @display_name, @role_ids_json, @updated_at_ms)
-  ON CONFLICT(guild_id, user_id) DO UPDATE SET
+  INSERT INTO workspace_members (workspace_id, user_id, display_name, role_ids_json, updated_at_ms)
+  VALUES (@workspace_id, @user_id, @display_name, @role_ids_json, @updated_at_ms)
+  ON CONFLICT(workspace_id, user_id) DO UPDATE SET
     display_name = excluded.display_name,
     role_ids_json = excluded.role_ids_json,
     updated_at_ms = CASE
-      WHEN excluded.display_name IS NOT guild_members.display_name
-        OR excluded.role_ids_json IS NOT guild_members.role_ids_json
+      WHEN excluded.display_name IS NOT workspace_members.display_name
+        OR excluded.role_ids_json IS NOT workspace_members.role_ids_json
       THEN excluded.updated_at_ms
-      ELSE guild_members.updated_at_ms
+      ELSE workspace_members.updated_at_ms
     END
-  WHERE excluded.display_name IS NOT guild_members.display_name
-     OR excluded.role_ids_json IS NOT guild_members.role_ids_json
+  WHERE excluded.display_name IS NOT workspace_members.display_name
+     OR excluded.role_ids_json IS NOT workspace_members.role_ids_json
 `;
 
 /** Upsert a guild member. Returns rows changed (0 for a no-op). */
 export function upsertGuildMember(db: DatabaseSync, input: MemberUpsertInput): number {
   const stmt = prepareCached(db, 'members.upsert', MEMBER_UPSERT_SQL);
   const result = stmt.run({
-    guild_id: input.guildId,
+    workspace_id: input.guildId,
     user_id: input.userId,
     display_name: input.displayName,
     role_ids_json: input.roleIdsJson,
@@ -143,9 +143,9 @@ export function ensureObservedGuildMember(
   input: ObservedGuildMemberInput,
 ): number {
   const result = prepareCached(db, 'members.ensure_observed', `
-    INSERT INTO guild_members (guild_id, user_id, updated_at_ms)
+    INSERT INTO workspace_members (workspace_id, user_id, updated_at_ms)
     VALUES (@guildId, @userId, @observedAtMs)
-    ON CONFLICT(guild_id, user_id) DO NOTHING
+    ON CONFLICT(workspace_id, user_id) DO NOTHING
   `).run({
     guildId: input.guildId,
     userId: input.userId,

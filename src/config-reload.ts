@@ -284,7 +284,7 @@ function reconcileStoredChannels(
   const rows = db.prepare(
     `SELECT id, parent_id, is_thread, type
        FROM channels
-      WHERE guild_id = ? AND deleted_at_ms IS NULL`,
+      WHERE workspace_id = ? AND deleted_at_ms IS NULL`,
   ).all(guildId) as unknown as StoredPolicyChannel[];
   const byId = new Map(rows.map((row) => [row.id, row]));
   const update = db.prepare(

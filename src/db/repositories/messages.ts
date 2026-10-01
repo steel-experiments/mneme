@@ -20,7 +20,7 @@ import type { NormalizedMessagePatch } from '../../discord/normalize.js';
 
 export interface MessageRow {
   id: string;
-  guild_id: string;
+  workspace_id: string;
   channel_id: string;
   author_id: string | null;
   author_display_name: string;
@@ -65,18 +65,18 @@ export interface MessageCreateInput {
   updatedAtMs: number;
 }
 
-// created_at_ms / guild_id / channel_id / ingested_at_ms are set on insert and
+// created_at_ms / workspace_id / channel_id / ingested_at_ms are set on insert and
 // preserved on conflict (a later re-delivery never rewrites origin fields).
 // deleted_at_ms is cleared on conflict: a fresh CREATE means the message exists
 // on Discord's side, so any stale tombstone is invalid (Section 9.8).
 const CREATE_UPSERT_SQL = `
   INSERT INTO messages (
-    id, guild_id, channel_id, author_id, author_display_name, content,
+    id, workspace_id, channel_id, author_id, author_display_name, content,
     created_at_ms, edited_at_ms, deleted_at_ms, reply_to_message_id, message_type,
     flags, pinned, mention_everyone, mentions_json, embeds_json, components_json,
     poll_json, raw_json, ingested_at_ms, updated_at_ms
   ) VALUES (
-    @id, @guild_id, @channel_id, @author_id, @author_display_name, @content,
+    @id, @workspace_id, @channel_id, @author_id, @author_display_name, @content,
     @created_at_ms, @edited_at_ms, NULL, @reply_to_message_id, @message_type,
     @flags, @pinned, @mention_everyone, @mentions_json, @embeds_json, @components_json,
     @poll_json, @raw_json, @ingested_at_ms, @updated_at_ms
@@ -124,7 +124,7 @@ export function upsertMessageCreate(db: DatabaseSync, input: MessageCreateInput)
   const stmt = prepareCached(db, 'messages.create', CREATE_UPSERT_SQL);
   const result = stmt.run({
     id: input.id,
-    guild_id: input.guildId,
+    workspace_id: input.guildId,
     channel_id: input.channelId,
     author_id: input.authorId,
     author_display_name: input.authorDisplayName,
@@ -313,11 +313,11 @@ export function recordMessageTombstone(
   prepareCached(
     db,
     'messages.record_tombstone',
-    `INSERT INTO message_tombstones (message_id, channel_id, guild_id, deleted_at_ms, created_at_ms)
+    `INSERT INTO message_tombstones (message_id, channel_id, workspace_id, deleted_at_ms, created_at_ms)
      VALUES (@messageId, @channelId, @guildId, @deletedAtMs, @deletedAtMs)
      ON CONFLICT(message_id) DO UPDATE SET
        channel_id = COALESCE(message_tombstones.channel_id, excluded.channel_id),
-       guild_id = COALESCE(message_tombstones.guild_id, excluded.guild_id),
+       workspace_id = COALESCE(message_tombstones.workspace_id, excluded.workspace_id),
        deleted_at_ms = min(message_tombstones.deleted_at_ms, excluded.deleted_at_ms)`,
   ).run({
     messageId: input.messageId,

@@ -26,7 +26,7 @@ export type EpisodeStatus =
 
 export interface EpisodeRow {
   id: string;
-  guild_id: string;
+  workspace_id: string;
   conversation_channel_id: string;
   status: EpisodeStatus;
   started_at_ms: number;
@@ -89,14 +89,14 @@ export function openEpisode(db: DatabaseSync, input: OpenEpisodeInput): OpenEpis
     prepareCached(
       db,
       'episodes.open',
-      `INSERT INTO episodes (id, guild_id, conversation_channel_id, status, started_at_ms,
+      `INSERT INTO episodes (id, workspace_id, conversation_channel_id, status, started_at_ms,
           last_activity_at_ms, human_message_count, total_message_count, trigger_reason,
           created_at_ms, updated_at_ms)
-       VALUES (@id, @guild_id, @conversation_channel_id, 'open', @now, @now, 0, 0,
+       VALUES (@id, @workspace_id, @conversation_channel_id, 'open', @now, @now, 0, 0,
           @trigger_reason, @now, @now)`,
     ).run({
       id,
-      guild_id: input.guildId,
+      workspace_id: input.guildId,
       conversation_channel_id: input.conversationChannelId,
       now: input.now,
       trigger_reason: input.triggerReason ?? null,

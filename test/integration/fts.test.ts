@@ -4,7 +4,7 @@ import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 function insertMessage(db: TestDb['db'], id: string, content: string, author = 'Alice'): void {
   const { guildId, channelId } = seedIdentity(db);
   db.prepare(
-    `INSERT INTO messages (id, guild_id, channel_id, author_display_name, content, created_at_ms, ingested_at_ms, updated_at_ms)
+    `INSERT INTO messages (id, workspace_id, channel_id, author_display_name, content, created_at_ms, ingested_at_ms, updated_at_ms)
      VALUES (?,?,?,?,?,1,1,1)`,
   ).run(id, guildId, channelId, author, content);
 }
@@ -79,7 +79,7 @@ describe('memory FTS index and triggers', () => {
   function insertMemory(db: TestDb['db'], id: string, statement: string): void {
     const { guildId } = seedIdentity(db);
     db.prepare(
-      `INSERT INTO memories (id, guild_id, scope_type, type, statement, confidence, importance, first_seen_at_ms, last_confirmed_at_ms, created_at_ms, updated_at_ms)
+      `INSERT INTO memories (id, workspace_id, scope_type, type, statement, confidence, importance, first_seen_at_ms, last_confirmed_at_ms, created_at_ms, updated_at_ms)
        VALUES (?,?,?,?,?,0.8,0.5,1,1,1,1)`,
     ).run(id, guildId, 'org', 'decision', statement);
   }

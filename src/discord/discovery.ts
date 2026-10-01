@@ -264,7 +264,7 @@ export function discoverChannels(
         if (existing) {
           upsertChannel(db, {
             id: existing.id,
-            guildId: existing.guild_id,
+            guildId: existing.workspace_id,
             parentId: existing.parent_id,
             type: existing.type,
             name: existing.name,
@@ -411,7 +411,7 @@ export function discoverChannels(
     // the in-flight first phase, close for a complete combined snapshot, or the
     // fail-closed default quarantine for incomplete/failed coverage.
     const missing = db.prepare(`SELECT * FROM channels
-      WHERE guild_id = ? AND deleted_at_ms IS NULL`).all(options.guildId) as unknown as Array<{
+      WHERE workspace_id = ? AND deleted_at_ms IS NULL`).all(options.guildId) as unknown as Array<{
         id: string; name: string | null; type: number; is_thread: number;
         visibility_class: VisibilityClass;
       }>;
@@ -442,7 +442,7 @@ export function discoverChannels(
           options.policy,
           {
             id: missingRow.id,
-            guildId: missingRow.guild_id,
+            guildId: missingRow.workspace_id,
             parentId: missingRow.parent_id,
             isThread: missingRow.is_thread === 1,
             type: missingRow.type,

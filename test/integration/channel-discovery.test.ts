@@ -107,7 +107,7 @@ describe('channel-access repository', () => {
   it('records and reads back the latest audit, including the warning text', () => {
     // Need a channel row for the FK.
     db.prepare(
-      `INSERT INTO channels (id, guild_id, parent_id, type, name, is_thread, is_archived, is_locked,
+      `INSERT INTO channels (id, workspace_id, parent_id, type, name, is_thread, is_archived, is_locked,
          ingest_enabled, visibility_class, allow_interventions, discovered_at_ms, updated_at_ms)
        VALUES (?, ?, NULL, 0, 'c', 0, 0, 0, 1, 'restricted', 0, ?, ?)`,
     ).run(TEXT, GUILD, NOW, NOW);
@@ -366,7 +366,7 @@ describe('discoverChannels', () => {
   it('reflects an existing sync cursor in the summary sync state', () => {
     // Pre-seed a cursor for the text channel.
     db.prepare(
-      `INSERT INTO channels (id, guild_id, parent_id, type, name, is_thread, is_archived, is_locked,
+      `INSERT INTO channels (id, workspace_id, parent_id, type, name, is_thread, is_archived, is_locked,
          ingest_enabled, visibility_class, allow_interventions, discovered_at_ms, updated_at_ms)
        VALUES (?, ?, NULL, 0, 'pre', 0, 0, 0, 1, 'restricted', 0, ?, ?)`,
     ).run(TEXT, GUILD, NOW - 1000, NOW - 1000);

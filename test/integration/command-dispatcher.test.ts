@@ -147,7 +147,7 @@ describe('command dispatcher routing', () => {
     deps.ctx.config.reviewChannelId = CHANNEL;
     deps.ctx.snapshot!.channelPolicy.review_channel = { id: CHANNEL, secure: true, accepts_scopes: ['org', 'restricted', 'review_only'] };
     const userId = '100000000000000003';
-    db.prepare(`INSERT INTO messages (id,guild_id,channel_id,author_id,author_display_name,content,created_at_ms,ingested_at_ms,updated_at_ms)
+    db.prepare(`INSERT INTO messages (id,workspace_id,channel_id,author_id,author_display_name,content,created_at_ms,ingested_at_ms,updated_at_ms)
       VALUES ('800000000000000001',?,?,?,'Alice','keep me',?,?,?)`).run(GUILD, CHANNEL, userId, NOW, NOW, NOW);
     const interaction = fakeInteraction({ subcommand: 'forget-user', group: null, users: { user: userId } });
     await handler(interaction);

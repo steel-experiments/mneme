@@ -26,7 +26,7 @@ import {
 
 /** A Mneme message recently present in a target channel (for matching). */
 export interface RecentSentMessage {
-  discordMessageId: string;
+  platformMessageId: string;
   content: string;
   /** When Discord says the message was created (epoch ms), if known. */
   sentAtMs?: number;
@@ -121,7 +121,7 @@ export async function reconcileOutboxSending(
         markOutboxSent(
           db,
           row.id,
-          match.discordMessageId,
+          match.platformMessageId,
           opts.now,
           match.sentAtMs ?? opts.now,
         );
@@ -136,11 +136,11 @@ export async function reconcileOutboxSending(
           status: 'sent',
           proposalId: row.proposalId,
           outboxId: row.id,
-          discordMessageId: match.discordMessageId,
+          platformMessageId: match.platformMessageId,
         });
       }
       opts.logger?.info(
-        { outboxId: row.id, discordMessageId: match.discordMessageId },
+        { outboxId: row.id, platformMessageId: match.platformMessageId },
         'outbox recovery: confirmed already sent',
       );
     } else {
@@ -209,7 +209,7 @@ export function createDiscordRecentSentLookup(
             continue;
           }
           if (m.author?.id !== mnemeId) continue;
-          out.push({ discordMessageId: m.id, content: m.content, sentAtMs: m.createdTimestamp,
+          out.push({ platformMessageId: m.id, content: m.content, sentAtMs: m.createdTimestamp,
             dedupeMarker: m.nonce == null ? null : String(m.nonce) });
         }
         if (reachedBoundary || fetched.size < 100) {

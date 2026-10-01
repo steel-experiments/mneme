@@ -48,7 +48,7 @@ review_channel:
 
 function insertChannel(t: TestDb, id: string, name: string, parentId: string | null = null) {
   t.db.prepare(`INSERT INTO channels
-    (id,guild_id,parent_id,type,name,is_thread,is_archived,is_locked,ingest_enabled,
+    (id,workspace_id,parent_id,type,name,is_thread,is_archived,is_locked,ingest_enabled,
      visibility_class,allow_interventions,discovered_at_ms,updated_at_ms)
     VALUES (?,?,?,0,?,0,0,0,1,'restricted',0,?,?)`).run(id, GUILD, parentId, name, NOW, NOW);
 }
@@ -108,7 +108,7 @@ describe('durable new-channel policy review', () => {
 
     const thread = '100000000000000007';
     t!.db.prepare(`INSERT INTO channels
-      (id,guild_id,parent_id,type,name,is_thread,is_archived,is_locked,ingest_enabled,
+      (id,workspace_id,parent_id,type,name,is_thread,is_archived,is_locked,ingest_enabled,
        visibility_class,allow_interventions,discovered_at_ms,updated_at_ms)
       VALUES (?,?,?,11,'thread',1,0,0,1,'restricted',0,?,?)`)
       .run(thread, GUILD, CHANNEL, NOW, NOW);
@@ -119,7 +119,7 @@ describe('durable new-channel policy review', () => {
     const db = setup().db;
     const voice = '100000000000000009';
     t!.db.prepare(`INSERT INTO channels
-      (id,guild_id,parent_id,type,name,is_thread,is_archived,is_locked,ingest_enabled,
+      (id,workspace_id,parent_id,type,name,is_thread,is_archived,is_locked,ingest_enabled,
        visibility_class,allow_interventions,discovered_at_ms,updated_at_ms)
       VALUES (?,?,?,2,'voice',0,0,0,1,'restricted',0,?,?)`)
       .run(voice, GUILD, null, NOW, NOW);
@@ -255,10 +255,10 @@ review_channel:
       memberRoleIds: [ADMIN_ROLE], adminRoleIds: [ADMIN_ROLE], now: NOW + 1,
     });
     const otherGuild = '100000000000000099';
-    db.prepare(`INSERT INTO guilds
+    db.prepare(`INSERT INTO workspaces
       (id,name,owner_id,joined_at_ms,discovered_at_ms,updated_at_ms,raw_json)
       VALUES (?,'other',NULL,?,?,?,NULL)`).run(otherGuild, NOW, NOW, NOW);
-    db.prepare('UPDATE channel_policy_reviews SET guild_id=? WHERE id=?').run(otherGuild, reviewId);
+    db.prepare('UPDATE channel_policy_reviews SET workspace_id=? WHERE id=?').run(otherGuild, reviewId);
     expect(resolveObservedChannelPolicy(db, policy(), {
       id: CHANNEL, guildId: GUILD, parentId: null, isThread: false, type: 0,
     })).toMatchObject({ source: 'default', needsReview: true, rule: { visibility: 'restricted' } });

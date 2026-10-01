@@ -74,7 +74,7 @@ export function collectChannelsReport(db: DatabaseSync, options: CollectChannels
     prepareCached(
       db,
       'channels.count',
-      'SELECT COUNT(*) AS n FROM channels WHERE guild_id = ? AND deleted_at_ms IS NULL',
+      'SELECT COUNT(*) AS n FROM channels WHERE workspace_id = ? AND deleted_at_ms IS NULL',
     ).get(options.guildId) as { n: number } | undefined
   )?.n ?? 0;
 
@@ -87,7 +87,7 @@ export function collectChannelsReport(db: DatabaseSync, options: CollectChannels
        FROM channels c
        LEFT JOIN sync_cursors sc ON sc.channel_id = c.id
        LEFT JOIN channel_policy_reviews cpr ON cpr.channel_id=c.id AND cpr.status<>'superseded'
-      WHERE c.guild_id = ? AND c.deleted_at_ms IS NULL
+      WHERE c.workspace_id = ? AND c.deleted_at_ms IS NULL
       ORDER BY COALESCE(c.name, c.id), c.id
       LIMIT ? OFFSET ?`,
   ).all(options.guildId, pageSize, offset) as Array<{

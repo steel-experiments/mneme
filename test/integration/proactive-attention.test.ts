@@ -73,7 +73,7 @@ function makeMemory(statement: string, evidence: MemoryEvidenceInput[]): string 
 
 function seedProposalRow(proposalId: string): void {
   env.db.prepare(
-    `INSERT INTO agent_runs (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+    `INSERT INTO agent_runs (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
      VALUES (?, ?, 'episode', 'p', 'faux', 'faux', 'completed', ?)`,
   ).run(`run-${proposalId}`, GUILD, NOW);
   env.db.prepare(
@@ -130,7 +130,7 @@ function runResultFor(provenanceMessageIds: string[], memoryIds: string[]): Agen
 
 function runResultWithId(runId: string, provenanceMessageIds: string[], memoryIds: string[]): AgentRunResult {
   env.db.prepare(
-    `INSERT INTO agent_runs (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms,retrieval_provenance_json)
+    `INSERT INTO agent_runs (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms,retrieval_provenance_json)
      VALUES (?, ?, 'episode', 'p', 'faux', 'faux', 'completed', ?, ?)
      ON CONFLICT(id) DO NOTHING`,
   ).run(runId, GUILD, NOW, JSON.stringify({
@@ -160,7 +160,7 @@ function runResultWithId(runId: string, provenanceMessageIds: string[], memoryId
 /** Fake scheduled-review run: persists the agent_runs row the proposal FK needs. */
 function scheduledRunResult(runId: string, memoryId: string, notification: Record<string, unknown>, messageIds: string[] = ['m-new']): AgentRunResult {
   env.db.prepare(
-    `INSERT INTO agent_runs (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+    `INSERT INTO agent_runs (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
      VALUES (?, ?, 'scheduled_review', 'p', 'faux', 'faux', 'completed', ?)
      ON CONFLICT(id) DO NOTHING`,
   ).run(runId, GUILD, NOW);
@@ -204,7 +204,7 @@ beforeEach(() => {
   seedIdentity(env.db);
   env.db.prepare("UPDATE channels SET visibility_class = 'org', allow_interventions = 1 WHERE id = ?").run(CHANNEL);
   env.db.prepare(
-    `INSERT INTO channels (id,guild_id,type,name,visibility_class,ingest_enabled,allow_interventions,discovered_at_ms,updated_at_ms)
+    `INSERT INTO channels (id,workspace_id,type,name,visibility_class,ingest_enabled,allow_interventions,discovered_at_ms,updated_at_ms)
      VALUES (?, ?, 0, 'review', 'org', 1, 0, ?, ?)`,
   ).run(REVIEW_CHANNEL, GUILD, NOW, NOW);
 });
@@ -786,7 +786,7 @@ describe('approval and outbox attention enforcement', () => {
     let sends = 0;
     const handler = createSendOutboxHandler({
       db: env.db, now: () => NOW + 1,
-      sender: { send: async () => { sends += 1; return { discordMessageId: 'must-not-send' }; } },
+      sender: { send: async () => { sends += 1; return { platformMessageId: 'must-not-send' }; } },
       validateProposalSend: (id, now) => recheckApprovalPolicy(buildApprovalRecheck(attentionContext(), id, now)),
     });
     await handler({ outboxId: approval.outboxId! }, { max_attempts: 5 } as never);
@@ -833,7 +833,7 @@ describe('approval and outbox attention enforcement', () => {
     });
 
     const sends: SendRecording[] = [];
-    const sender: OutboxSender = { send: async (input) => { sends.push(input); return { discordMessageId: 'sent-1' }; } };
+    const sender: OutboxSender = { send: async (input) => { sends.push(input); return { platformMessageId: 'sent-1' }; } };
     const late = NOW + WINDOW + 1;
     const handler = createSendOutboxHandler({
       db: env.db, sender, now: () => late, retryDelayMs: () => 1_000,
@@ -866,7 +866,7 @@ describe('approval and outbox attention enforcement', () => {
     const { reconcileOutboxSending } = await import('../../src/outbox/recovery.js');
     const sent = await reconcileOutboxSending(env.db, {
       fetch: async () => [{
-        discordMessageId: 'discord-1',
+        platformMessageId: 'discord-1',
         content: 'Please reconcile the reversal.',
         dedupeMarker: claimed!.dedupeMarker,
         sentAtMs: NOW,

@@ -743,7 +743,7 @@ describe('applyMemoryProposals — memory quality hardening', () => {
 describe('applyMemoryProposals — proactive attention registration — Section 12.7', () => {
   function seedProposalRow(proposalId: string): void {
     env.db.prepare(
-      `INSERT INTO agent_runs (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+      `INSERT INTO agent_runs (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
        VALUES (?, ?, 'episode', 'p', 'faux', 'faux', 'completed', ?)`,
     ).run(`run-${proposalId}`, GUILD, NOW);
     env.db.prepare(
@@ -938,7 +938,7 @@ describe('applyMemoryProposals — deadline authority hardening — Section 12.7
     ]);
     const revisionId = first.applied[0]!.attention!.revisionId!;
     env.db.prepare(
-      `INSERT INTO agent_runs (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+      `INSERT INTO agent_runs (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
        VALUES ('run-consumed-1', ?, 'episode', 'p', 'faux', 'faux', 'completed', ?)`,
     ).run(GUILD, NOW);
     env.db.prepare(

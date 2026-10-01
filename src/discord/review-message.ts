@@ -189,7 +189,7 @@ export function buildReviewMessage(
 
 /** Port for posting a review message to the secure review channel. */
 export interface ReviewChannel {
-  send(channelId: string, payload: ReviewMessagePayload): Promise<{ discordMessageId: string }>;
+  send(channelId: string, payload: ReviewMessagePayload): Promise<{ platformMessageId: string }>;
 }
 
 /** discord.js-backed review channel sender. */
@@ -204,7 +204,7 @@ export function createDiscordReviewChannel(client: Client): ReviewChannel {
         embeds: payload.embeds,
         components: payload.components,
       });
-      return { discordMessageId: message.id };
+      return { platformMessageId: message.id };
     },
   };
 }
@@ -227,9 +227,9 @@ export interface DeliverProposalReviewDeps {
 export async function deliverProposalReview(
   input: ReviewProposalInput,
   deps: DeliverProposalReviewDeps,
-): Promise<{ discordMessageId: string }> {
+): Promise<{ platformMessageId: string }> {
   const payload = buildReviewMessage(input, deps.secret);
-  const { discordMessageId } = await deps.channel.send(deps.reviewChannelId, payload);
-  setProposalReviewMessage(deps.db, input.proposalId, discordMessageId, deps.now);
-  return { discordMessageId };
+  const { platformMessageId } = await deps.channel.send(deps.reviewChannelId, payload);
+  setProposalReviewMessage(deps.db, input.proposalId, platformMessageId, deps.now);
+  return { platformMessageId };
 }

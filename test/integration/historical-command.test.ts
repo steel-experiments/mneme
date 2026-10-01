@@ -44,12 +44,12 @@ describe('bounded historical campaign commands', () => {
   it('will not resume when the hard total budget has been reached', () => {
     db.prepare("UPDATE historical_memory_campaigns SET status='budget_exhausted' WHERE id='trial'").run();
     db.prepare(`INSERT INTO episodes
-      (id,guild_id,conversation_channel_id,status,started_at_ms,ended_at_ms,last_activity_at_ms,
+      (id,workspace_id,conversation_channel_id,status,started_at_ms,ended_at_ms,last_activity_at_ms,
        human_message_count,total_message_count,created_at_ms,updated_at_ms,origin,historical_campaign_id)
-      SELECT 'ep',guild_id,id,'reviewed',?,?,?,1,1,?,?,'historical','trial' FROM channels LIMIT 1`)
+      SELECT 'ep',workspace_id,id,'reviewed',?,?,?,1,1,?,?,'historical','trial' FROM channels LIMIT 1`)
       .run(NOW - 1, NOW - 1, NOW - 1, NOW, NOW);
     db.prepare(`INSERT INTO agent_runs
-      (id,guild_id,episode_id,run_type,prompt_version,provider,model,status,started_at_ms,cost_usd)
+      (id,workspace_id,episode_id,run_type,prompt_version,provider,model,status,started_at_ms,cost_usd)
       VALUES ('run',?,'ep','episode','v','openai','gpt-5.6-luna','completed',?,2)`)
       .run(guildId, NOW);
     const result = handleHistoricalCommand({ ...input, guildId, subcommand: 'resume' }, deps());

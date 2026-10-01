@@ -41,7 +41,7 @@ describe('message ingest — idempotent persistence', () => {
     expect(row.ingested_at_ms).toBe(NOW);
 
     const member = db
-      .prepare('SELECT * FROM guild_members WHERE guild_id = ? AND user_id = ?')
+      .prepare('SELECT * FROM workspace_members WHERE workspace_id = ? AND user_id = ?')
       .get(GUILD, AUTHOR);
     expect(member).toBeDefined();
   });
@@ -57,7 +57,7 @@ describe('message ingest — idempotent persistence', () => {
 
     ingestMessageCreate(db, normalizeMessage(rawMessage()), opts());
 
-    expect(db.prepare('SELECT display_name, role_ids_json, updated_at_ms FROM guild_members WHERE guild_id = ? AND user_id = ?')
+    expect(db.prepare('SELECT display_name, role_ids_json, updated_at_ms FROM workspace_members WHERE workspace_id = ? AND user_id = ?')
       .get(GUILD, AUTHOR)).toEqual({
       display_name: 'Stored Alice', role_ids_json: '["admin"]', updated_at_ms: NOW - 1,
     });

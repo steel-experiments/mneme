@@ -702,7 +702,7 @@ export function getMemoryEvidencePage(
   const rows = prepareCached(
     db,
     `memory.evidence_page:${pred.sql}:${options.cursor ? 1 : 0}`,
-    `SELECT me.stance, me.weight, me.note, m.id AS message_id, m.guild_id, m.channel_id,
+    `SELECT me.stance, me.weight, me.note, m.id AS message_id, m.workspace_id, m.channel_id,
             m.author_id, m.author_display_name, m.content, m.created_at_ms,
             me.created_at_ms AS evidence_created_at_ms
        FROM memory_evidence me INDEXED BY memory_evidence_inspector_archive_idx
@@ -723,7 +723,7 @@ export function getMemoryEvidencePage(
     authorDisplayName: String(r.author_display_name),
     content: String(r.content),
     createdAtMs: Number(r.created_at_ms),
-    discordLink: discordMessageLink(String(r.guild_id), String(r.channel_id), String(r.message_id)),
+    discordLink: discordMessageLink(String(r.workspace_id), String(r.channel_id), String(r.message_id)),
   }));
   const last = pageRows[pageRows.length - 1];
   return {

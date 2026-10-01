@@ -9,7 +9,7 @@ export type DeepRecapStatus =
 
 export interface DeepRecapRequestRow {
   id: string;
-  guild_id: string;
+  workspace_id: string;
   target_channel_id: string;
   requested_by_user_id: string;
   retry_of_request_id: string | null;
@@ -129,7 +129,7 @@ export function createDeepRecap(
   const id = randomUUID();
   prepareCached(db, 'deep_recap.create', `
     INSERT INTO deep_recap_requests (
-      id,guild_id,target_channel_id,requested_by_user_id,retry_root_request_id,
+      id,workspace_id,target_channel_id,requested_by_user_id,retry_root_request_id,
       topic,channel_ids_json,
       after_at_ms,before_at_ms,budget_usd,created_at_ms,updated_at_ms
     ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
@@ -161,7 +161,7 @@ export function latestDeepRecaps(
   limit = 5,
 ): DeepRecapRequestRow[] {
   return prepareCached(db, 'deep_recap.latest', `
-    SELECT * FROM deep_recap_requests WHERE guild_id=?
+    SELECT * FROM deep_recap_requests WHERE workspace_id=?
     ORDER BY created_at_ms DESC LIMIT ?
   `).all(guildId, Math.max(1, Math.min(10, limit))) as unknown as DeepRecapRequestRow[];
 }
@@ -262,7 +262,7 @@ export function resolveDeepRecapRef(
 ): DeepRecapRequestRow | undefined {
   const rows = prepareCached(db, 'deep_recap.resolve_ref', `
     SELECT * FROM deep_recap_requests
-     WHERE guild_id=? AND (id=? OR id LIKE ?)
+     WHERE workspace_id=? AND (id=? OR id LIKE ?)
      ORDER BY created_at_ms DESC LIMIT 2
   `).all(guildId, ref, `${ref}%`) as unknown as DeepRecapRequestRow[];
   return rows.length === 1 ? rows[0] : undefined;
@@ -288,7 +288,7 @@ export function deepRecapRetryLineageBudget(
 ): DeepRecapRetryLineageBudget | undefined {
   const rootRequestId = request.retry_root_request_id ?? request.id;
   const root = getDeepRecap(db, rootRequestId);
-  if (!root || root.guild_id !== request.guild_id) return undefined;
+  if (!root || root.workspace_id !== request.workspace_id) return undefined;
   const row = prepareCached(db, 'deep_recap.retry_lineage_state', `
     SELECT
       COALESCE((
@@ -539,14 +539,14 @@ export function retryDeepRecapSynthesis(
     const id = randomUUID();
     const inserted = Number(prepareCached(db, 'deep_recap.retry_synthesis', `
       INSERT INTO deep_recap_requests (
-        id,guild_id,target_channel_id,requested_by_user_id,retry_of_request_id,
+        id,workspace_id,target_channel_id,requested_by_user_id,retry_of_request_id,
         retry_root_request_id,topic,channel_ids_json,after_at_ms,before_at_ms,
         budget_usd,spent_usd,synthesis_cost_usd,status,
         total_matching_messages,included_messages,planned_chunks,completed_chunks,
         coverage_complete,outbox_id,last_error_category,created_at_ms,updated_at_ms,
         completed_at_ms
       )
-      SELECT ?,guild_id,target_channel_id,?,?,?,topic,channel_ids_json,
+      SELECT ?,workspace_id,target_channel_id,?,?,?,topic,channel_ids_json,
              after_at_ms,before_at_ms,?,?,0,'synthesizing',
              total_matching_messages,included_messages,planned_chunks,completed_chunks,
              coverage_complete,NULL,NULL,?,?,NULL

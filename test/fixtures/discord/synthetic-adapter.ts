@@ -171,7 +171,7 @@ export function createSyntheticDiscord(opts: SyntheticDiscordOptions = {}): Synt
       if (scripted) throw new SyntheticDiscordError(scripted);
       sentMessages.push(input);
       discordIdCounter += 1;
-      return { discordMessageId: String(discordIdCounter) };
+      return { platformMessageId: String(discordIdCounter) };
     },
   };
 

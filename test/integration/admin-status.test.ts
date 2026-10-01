@@ -40,7 +40,7 @@ beforeEach(() => {
   seedIdentity(db);
   // One agent run backing proposal FKs.
   db.prepare(
-    `INSERT INTO agent_runs (id, guild_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
+    `INSERT INTO agent_runs (id, workspace_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
      VALUES (?,?,NULL,'episode','pv','faux','faux-1','completed',?)`,
   ).run('run-1', GUILD, NOW);
 });
@@ -69,7 +69,7 @@ const RUNTIME: StatusRuntimeInputs = {
 
 function seedChannel(id: string, cls: string, name: string, allowInterventions = 0): void {
   db.prepare(
-    `INSERT INTO channels (id, guild_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
+    `INSERT INTO channels (id, workspace_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
        ingest_enabled, visibility_class, allow_interventions, permission_fingerprint, last_message_id,
        discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json)
      VALUES (?, ?, NULL, 0, ?, NULL, NULL, 0, 0, 0, 1, ?, ?, NULL, NULL, ?, ?, NULL, NULL)`,
@@ -113,7 +113,7 @@ function seedDirectAnswer(
   const questionAtMs = options.questionAtMs ?? NOW - 10_000;
   const completedAtMs = options.completedAtMs ?? NOW - 5_000;
   db.prepare(`INSERT INTO direct_answer_requests (
-    source_message_id, run_id, outbox_id, guild_id, target_channel_id,
+    source_message_id, run_id, outbox_id, workspace_id, target_channel_id,
     question_created_at_ms, deadline_at_ms, response_intent_key, outcome_kind,
     reason_category, coverage_complete, created_at_ms, started_at_ms, completed_at_ms, updated_at_ms
   ) VALUES (?, 'run-1', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
@@ -152,7 +152,7 @@ describe('collectStatusReport', () => {
     seedOutbox('o1', 'queued');
     seedOutbox('o2', 'sent');
     db.prepare(`INSERT INTO channel_policy_reviews
-      (id,guild_id,channel_id,status,delivery_state,created_at_ms,updated_at_ms)
+      (id,workspace_id,channel_id,status,delivery_state,created_at_ms,updated_at_ms)
       VALUES ('channel-review',?,?,'pending','failed',?,?)`).run(GUILD, CHANNEL, NOW, NOW);
 
     const report = collectStatusReport(db, RUNTIME);
@@ -224,7 +224,7 @@ describe('collectStatusReport', () => {
       completedAtMs: NOW - 25 * 60 * 60_000,
     });
     db.prepare(`INSERT INTO direct_answer_requests (
-      source_message_id, guild_id, target_channel_id, question_created_at_ms,
+      source_message_id, workspace_id, target_channel_id, question_created_at_ms,
       deadline_at_ms, response_intent_key, created_at_ms, updated_at_ms
     ) VALUES
       ('direct-pending-current', ?, ?, ?, ?, 'intent-pending-current', ?, ?),
@@ -310,7 +310,7 @@ describe('collectStatusReport', () => {
   it('counts only durably owned recap work as active and exposes recovery-needed requests', () => {
     seedChannel('recap-orphan-channel', 'org', 'recap-orphan');
     const insertRequest = db.prepare(`INSERT INTO deep_recap_requests
-      (id,guild_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
+      (id,workspace_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
        budget_usd,status,created_at_ms,updated_at_ms,completed_at_ms,last_error_category)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`);
     insertRequest.run(
@@ -334,7 +334,7 @@ describe('collectStatusReport', () => {
         JSON.stringify({ recapId: 'recap-orphan' }), NOW, NOW - 2_000, NOW - 2_000,
       );
     db.prepare(`INSERT INTO agent_runs
-      (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms,
+      (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms,
        ended_at_ms,cost_usd)
       VALUES ('recap-crash-run',?,'direct_answer','deep','faux','faux','failed',?,?,.27)`)
       .run(GUILD, NOW - 2_500, NOW - 2_400);
@@ -414,7 +414,7 @@ describe('collectStatusReport', () => {
 
   it('reports bounded campaign progress, spend, model runs, and memory yield', () => {
     db.prepare(`INSERT INTO historical_memory_campaigns
-      (id,guild_id,status,direction,from_at_ms,to_at_ms,provider,model,thinking_level,
+      (id,workspace_id,status,direction,from_at_ms,to_at_ms,provider,model,thinking_level,
        channel_ids_json,daily_budget_usd,total_budget_usd,created_at_ms,updated_at_ms)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
       'campaign-1', GUILD, 'running', 'newest_first', NOW - 10_000, NOW,
@@ -424,20 +424,20 @@ describe('collectStatusReport', () => {
       (campaign_id,channel_id,upper_created_at_ms,upper_message_id,state,messages_scanned,episodes_created,updated_at_ms)
       VALUES (?,?,?,?,?,?,?,?)`).run('campaign-1', CHANNEL, NOW - 5_000, null, 'pending', 23, 2, NOW);
     db.prepare(`INSERT INTO episodes
-      (id,guild_id,conversation_channel_id,status,started_at_ms,last_activity_at_ms,
+      (id,workspace_id,conversation_channel_id,status,started_at_ms,last_activity_at_ms,
        human_message_count,total_message_count,trigger_reason,created_at_ms,updated_at_ms,origin,historical_campaign_id)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
       'historical-ep', GUILD, CHANNEL, 'reviewed', NOW - 5_000, NOW - 4_000,
       2, 2, 'historical_backfill', NOW, NOW, 'historical', 'campaign-1',
     );
     db.prepare(`INSERT INTO agent_runs
-      (id,guild_id,episode_id,run_type,prompt_version,provider,model,status,input_tokens,output_tokens,cost_usd,started_at_ms,ended_at_ms)
+      (id,workspace_id,episode_id,run_type,prompt_version,provider,model,status,input_tokens,output_tokens,cost_usd,started_at_ms,ended_at_ms)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
       'campaign-run', GUILD, 'historical-ep', 'episode', 'pv', 'openai', 'gpt-5.6-luna',
       'completed', 1000, 100, 0.25, NOW - 2_000, NOW - 1_000,
     );
     db.prepare(`INSERT INTO memories
-      (id,guild_id,scope_type,scope_key,type,statement,status,confidence,importance,
+      (id,workspace_id,scope_type,scope_key,type,statement,status,confidence,importance,
        first_seen_at_ms,last_confirmed_at_ms,created_by_run_id,created_at_ms,updated_at_ms)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
       'campaign-memory', GUILD, 'org', null, 'decision', 'A decision', 'active', 0.9, 0.8,
@@ -662,7 +662,7 @@ describe('collectChannelsReport', () => {
 
   it('labels pending and decided runtime channel classifications', () => {
     db.prepare(`INSERT INTO channel_policy_reviews
-      (id,guild_id,channel_id,status,delivery_state,created_at_ms,updated_at_ms)
+      (id,workspace_id,channel_id,status,delivery_state,created_at_ms,updated_at_ms)
       VALUES ('pending-review',?,?,'pending','queued',?,?)`).run(GUILD, CHANNEL, NOW, NOW);
     const report = collectChannelsReport(db, { guildId: GUILD, now: NOW });
     expect(report.channels.find((channel) => channel.id === CHANNEL)?.policyReview).toBe('pending');

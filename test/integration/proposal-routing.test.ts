@@ -271,7 +271,7 @@ afterEach(() => env.cleanup());
 function seedRun(id = 'run-1'): string {
   env.db
     .prepare(
-      `INSERT INTO agent_runs (id, guild_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
+      `INSERT INTO agent_runs (id, workspace_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
        VALUES (?,?,NULL,'episode','pv','faux','faux-1','completed',?)`,
     )
     .run(id, GUILD, NOW);

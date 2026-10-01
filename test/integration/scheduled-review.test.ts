@@ -89,7 +89,7 @@ beforeEach(() => {
   seedIdentity(env.db);
   env.db
     .prepare(
-      `INSERT INTO channels (id, guild_id, parent_id, type, name, topic, position, is_thread,
+      `INSERT INTO channels (id, workspace_id, parent_id, type, name, topic, position, is_thread,
          is_archived, is_locked, ingest_enabled, visibility_class, allow_interventions,
          permission_fingerprint, last_message_id, discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json)
        VALUES (?, ?, NULL, 0, ?, NULL, NULL, 0, 0, 0, 1, 'org', 0, NULL, NULL, ?, ?, NULL, NULL)`,
@@ -100,7 +100,7 @@ beforeEach(() => {
   for (const runId of ['run-1', 'run-2']) {
     env.db
       .prepare(
-        `INSERT INTO agent_runs (id, guild_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
+        `INSERT INTO agent_runs (id, workspace_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
          VALUES (?,?,NULL,'scheduled_review','scheduled-review@v1','faux','faux-1','completed',?)`,
       )
       .run(runId, GUILD, NOW);
@@ -789,7 +789,7 @@ describe('scheduled-review approval regression', () => {
     });
     env.db.prepare(
       `UPDATE outbox
-          SET status = 'sent', discord_message_id = 'sent-topic-message',
+          SET status = 'sent', platform_message_id = 'sent-topic-message',
               sent_at_ms = ?, updated_at_ms = ?
         WHERE id = ?`,
     ).run(sentAt, sentAt, priorOutbox.outboxId);

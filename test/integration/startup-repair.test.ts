@@ -22,14 +22,14 @@ describe('durable startup repair', () => {
 
   it('repairs stranded episode, backfill, proposal, and file work idempotently', () => {
     env.db.prepare(`INSERT INTO episodes
-      (id,guild_id,conversation_channel_id,status,started_at_ms,last_activity_at_ms,created_at_ms,updated_at_ms)
+      (id,workspace_id,conversation_channel_id,status,started_at_ms,last_activity_at_ms,created_at_ms,updated_at_ms)
       VALUES ('reviewing',?,?,'reviewing',?,?,?,?),('open',?,?,'open',?,?,?,?)`)
       .run(ids.guildId, ids.channelId, NOW, NOW, NOW, NOW,
         ids.guildId, ids.channelId, NOW, NOW, NOW, NOW);
     env.db.prepare(`INSERT INTO sync_cursors (channel_id,state,history_complete,retry_count,updated_at_ms)
       VALUES (?,'backfilling',0,0,?)`).run(ids.channelId, NOW);
     env.db.prepare(`INSERT INTO agent_runs
-      (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+      (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
       VALUES ('run-repair',?,'episode','p','x','x','completed',?)`).run(ids.guildId, NOW);
     env.db.prepare(`INSERT INTO proposals
       (id,run_id,target_channel_id,status,computed_score,reason,message,evidence_message_ids_json,created_at_ms,updated_at_ms)
@@ -60,7 +60,7 @@ describe('durable startup repair', () => {
 
   it('restores channel-policy card delivery while preserving sending recovery state', () => {
     env.db.prepare(`INSERT INTO channel_policy_reviews
-      (id,guild_id,channel_id,status,delivery_state,created_at_ms,updated_at_ms)
+      (id,workspace_id,channel_id,status,delivery_state,created_at_ms,updated_at_ms)
       VALUES ('channel-review',?,?,'pending','sending',?,?)`)
       .run(ids.guildId, ids.channelId, NOW, NOW);
     env.db.prepare(`INSERT INTO jobs
@@ -81,7 +81,7 @@ describe('durable startup repair', () => {
 
   it('restores one durable status-sync job for a terminal proposal card', () => {
     env.db.prepare(`INSERT INTO agent_runs
-      (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+      (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
       VALUES ('run-card-sync',?,'scheduled_review','p','x','x','completed',?)`)
       .run(ids.guildId, NOW);
     env.db.prepare(`INSERT INTO proposals
@@ -91,7 +91,7 @@ describe('durable startup repair', () => {
               'review-card-message',?,?)`)
       .run(ids.channelId, NOW, NOW);
     env.db.prepare(`INSERT INTO outbox
-      (id,proposal_id,channel_id,content,dedupe_key,status,discord_message_id,
+      (id,proposal_id,channel_id,content,dedupe_key,status,platform_message_id,
        attempts,next_attempt_at_ms,created_at_ms,sent_at_ms,updated_at_ms)
       VALUES ('outbox-card-sync','proposal-card-sync',?,'sent text','proposal:proposal-card-sync',
               'sent','delivered-message',1,?,?,?,?)`)
@@ -112,7 +112,7 @@ describe('durable startup repair', () => {
 
   it('fails a stranded scheduled-review proposal with no delivered card', () => {
     env.db.prepare(`INSERT INTO agent_runs
-      (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+      (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
       VALUES ('run-scheduled-orphan',?,'scheduled_review','p','x','x','completed',?),
              ('run-episode-orphan',?,'episode','p','x','x','completed',?)`)
       .run(ids.guildId, NOW, ids.guildId, NOW);
@@ -142,7 +142,7 @@ describe('durable startup repair', () => {
       updatedAtMs: NOW, rawJson: null,
     });
     env.db.prepare(`INSERT INTO agent_runs
-      (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+      (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
       VALUES ('legacy-scheduled-run',?,'scheduled_review','p','x','x','completed',?)`)
       .run(ids.guildId, NOW);
     env.db.prepare(`INSERT INTO proposals
@@ -174,7 +174,7 @@ describe('durable startup repair', () => {
 
   it('converges past proposal deadlines before startup and remains restart-idempotent', () => {
     env.db.prepare(`INSERT INTO agent_runs
-      (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+      (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
       VALUES ('run-expiry',?,'episode','p','x','x','completed',?)`)
       .run(ids.guildId, NOW);
     const insert = env.db.prepare(`INSERT INTO proposals
@@ -222,7 +222,7 @@ describe('durable startup repair', () => {
       NOW,
     );
     env.db.prepare(`INSERT INTO direct_answer_requests (
-      source_message_id, job_id, guild_id, target_channel_id, question_created_at_ms,
+      source_message_id, job_id, workspace_id, target_channel_id, question_created_at_ms,
       deadline_at_ms, response_intent_key, created_at_ms, started_at_ms, updated_at_ms
     ) VALUES ('pending-message','failed-direct',?,?,?,?,'pending-intent',?,?,?)`)
       .run(ids.guildId, ids.channelId, NOW, NOW + 120_000, NOW, NOW, NOW);
@@ -249,7 +249,7 @@ describe('durable startup repair', () => {
 
   it('resets a stranded deep-recap chunk and restores one active owner idempotently', () => {
     env.db.prepare(`INSERT INTO deep_recap_requests
-      (id,guild_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
+      (id,workspace_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
        budget_usd,status,planned_chunks,created_at_ms,updated_at_ms)
       VALUES ('recap-repair',?,?,?, ?,?,5,'running',1,?,?)`)
       .run(ids.guildId, ids.channelId, ids.userId, NOW - 1_000, NOW, NOW, NOW);
@@ -272,7 +272,7 @@ describe('durable startup repair', () => {
     const dayMs = 86_400_000;
     const afterAtMs = NOW - 7 * dayMs;
     env.db.prepare(`INSERT INTO deep_recap_requests
-      (id,guild_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
+      (id,workspace_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
        budget_usd,spent_usd,status,total_matching_messages,included_messages,
        planned_chunks,completed_chunks,coverage_complete,created_at_ms,updated_at_ms)
       VALUES (?,?,?,?,?,?,1,0.1981875,'synthesizing',646,540,7,7,0,?,?)`)
@@ -336,7 +336,7 @@ describe('durable startup repair', () => {
     (jobStatus) => {
       const recapId = `recap-active-${jobStatus}`;
       env.db.prepare(`INSERT INTO deep_recap_requests
-        (id,guild_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
+        (id,workspace_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
          budget_usd,status,planned_chunks,created_at_ms,updated_at_ms)
         VALUES (?,?,?,?,?,?,5,'running',1,?,?)`)
         .run(recapId, ids.guildId, ids.channelId, ids.userId, NOW - 1_000, NOW, NOW, NOW);
@@ -380,7 +380,7 @@ describe('durable startup repair', () => {
   it('collapses duplicate deep-recap owners to one without resetting its running chunk', () => {
     const recapId = 'recap-duplicate-owners';
     env.db.prepare(`INSERT INTO deep_recap_requests
-      (id,guild_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
+      (id,workspace_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
        budget_usd,status,planned_chunks,created_at_ms,updated_at_ms)
       VALUES (?,?,?,?,?,?,5,'running',1,?,?)`)
       .run(recapId, ids.guildId, ids.channelId, ids.userId, NOW - 1_000, NOW, NOW, NOW);
@@ -439,7 +439,7 @@ describe('durable startup repair', () => {
   it('periodically recovers a NULL-lease running owner and resets only its stranded chunk', () => {
     const recapId = 'recap-null-lease-owner';
     env.db.prepare(`INSERT INTO deep_recap_requests
-      (id,guild_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
+      (id,workspace_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
        budget_usd,status,planned_chunks,created_at_ms,updated_at_ms)
       VALUES (?,?,?,?,?,?,5,'running',1,?,?)`)
       .run(recapId, ids.guildId, ids.channelId, ids.userId, NOW - 1_000, NOW, NOW, NOW);
@@ -475,7 +475,7 @@ describe('durable startup repair', () => {
   it('startup requeues the prior process owner after a chunk-commit crash without duplicating work', () => {
     const recapId = 'recap-crash-after-chunk';
     env.db.prepare(`INSERT INTO deep_recap_requests
-      (id,guild_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
+      (id,workspace_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
        budget_usd,status,planned_chunks,completed_chunks,created_at_ms,updated_at_ms)
       VALUES (?,?,?,?,?,?,5,'running',1,1,?,?)`)
       .run(recapId, ids.guildId, ids.channelId, ids.userId, NOW - 1_000, NOW, NOW, NOW);
@@ -532,7 +532,7 @@ describe('durable startup repair', () => {
   it('fails closed instead of cancelling one of multiple plausibly running owners', () => {
     const recapId = 'recap-multiple-running';
     env.db.prepare(`INSERT INTO deep_recap_requests
-      (id,guild_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
+      (id,workspace_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
        budget_usd,status,created_at_ms,updated_at_ms)
       VALUES (?,?,?,?,?,?,5,'synthesizing',?,?)`)
       .run(recapId, ids.guildId, ids.channelId, ids.userId, NOW - 1_000, NOW, NOW, NOW);
@@ -580,7 +580,7 @@ describe('durable startup repair', () => {
     upsertChannel(env.db, channel(parentId, 'mneme-repair-tests', null, false));
     upsertChannel(env.db, channel(threadId, 'release-planning', parentId, true));
     env.db.prepare(`INSERT INTO episodes
-      (id,guild_id,conversation_channel_id,status,started_at_ms,last_activity_at_ms,created_at_ms,updated_at_ms)
+      (id,workspace_id,conversation_channel_id,status,started_at_ms,last_activity_at_ms,created_at_ms,updated_at_ms)
       VALUES ('test-reviewing',?,?,'reviewing',?,?,?,?),
              ('test-queued',?,?,'queued',?,?,?,?),
              ('test-open',?,?,'open',?,?,?,?)`)

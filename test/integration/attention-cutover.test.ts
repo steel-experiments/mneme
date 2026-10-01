@@ -59,7 +59,7 @@ function seedRunAndProposal(
   evidenceIds: string[],
 ): void {
   env.db.prepare(
-    `INSERT INTO agent_runs (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+    `INSERT INTO agent_runs (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
      VALUES (?, ?, ?, 'p', 'faux', 'faux', 'completed', ?)`,
   ).run(`run-${proposalId}`, GUILD, runType, NOW);
   env.db.prepare(
@@ -134,7 +134,7 @@ describe('attention cutover — Section 12.7', () => {
       revisionId, proposalId: 'modern-proposal', consumedAtMs: NOW,
       eligibleFromMs: NOW, eligibleUntilMs: NOW + WINDOW,
     })).toBe(true);
-    env.db.prepare(`INSERT INTO admin_events (id,guild_id,actor_user_id,action,details_json,created_at_ms)
+    env.db.prepare(`INSERT INTO admin_events (id,workspace_id,actor_user_id,action,details_json,created_at_ms)
       VALUES ('attention_cutover_v1', ?, 'bot', 'attention_cutover_complete', '{}', ?)`)
       .run(GUILD, NOW - 1000);
     addMessage('missed-legacy', 'A previously surfaced legacy event.');
@@ -196,7 +196,7 @@ describe('attention cutover — Section 12.7', () => {
     // The consumed evidence cannot authorize a new card even under a new subject.
     expect(selectEligibleRevisions(env.db, { now: NOW, windowMs: WINDOW, limit: 10 })).toEqual([]);
     env.db.prepare(
-      `INSERT INTO agent_runs (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+      `INSERT INTO agent_runs (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
        VALUES (?, ?, 'episode', 'p', 'faux', 'faux', 'completed', ?)`,
     ).run(`run-replay-${NOW}`, GUILD, NOW);
     const { routeEpisodeIntervention } = await import('../../src/production-runtime.js');
@@ -363,7 +363,7 @@ describe('forgetting purges attention state', () => {
     if (!records.ok) throw new Error('expected valid trigger evidence');
     const { revisionId } = registerRevision(env.db, { subjectId, triggers: records.records, now: NOW });
     env.db.prepare(
-      `INSERT INTO agent_runs (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+      `INSERT INTO agent_runs (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
        VALUES ('run-claim', ?, 'episode', 'p', 'faux', 'faux', 'completed', ?)`,
     ).run(GUILD, NOW);
     env.db.prepare(

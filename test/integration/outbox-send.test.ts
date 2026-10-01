@@ -42,7 +42,7 @@ afterEach(() => env.cleanup());
 function seedRun(id = 'run-1'): string {
   env.db
     .prepare(
-      `INSERT INTO agent_runs (id, guild_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
+      `INSERT INTO agent_runs (id, workspace_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
        VALUES (?,?,NULL,'episode','pv','faux','faux-1','completed',?)`,
     )
     .run(id, GUILD, NOW);
@@ -95,7 +95,7 @@ function fakeSender(opts: { id?: string; error?: () => never } = {}): {
     async send(input) {
       calls.push(input);
       if (opts.error) opts.error();
-      return { discordMessageId: opts.id ?? 'discord-1' };
+      return { platformMessageId: opts.id ?? 'discord-1' };
     },
   };
   return { sender, calls };
@@ -135,7 +135,7 @@ describe('send_outbox — success path', () => {
 
     const row = getOutbox(env.db, outboxId)!;
     expect(row.status).toBe('sent');
-    expect(row.discordMessageId).toBe('discord-999');
+    expect(row.platformMessageId).toBe('discord-999');
     expect(row.sentAtMs).toBe(NOW);
     expect(row.attempts).toBe(1);
     expect(getProposal(env.db, proposalId)!.status).toBe('sent');
@@ -166,7 +166,7 @@ describe('send_outbox — success path', () => {
       status: 'sent',
       proposalId,
       outboxId,
-      discordMessageId: 'discord-reported',
+      platformMessageId: 'discord-reported',
     }]);
   });
 
@@ -213,7 +213,7 @@ describe('proposal review-card status convergence', () => {
       status: 'sent',
       proposalId,
       outboxId,
-      discordMessageId: 'discord-terminal',
+      platformMessageId: 'discord-terminal',
     }]);
   });
 
@@ -300,7 +300,7 @@ describe('send_outbox — transient failure retries safely', () => {
 
     const row = getOutbox(env.db, outboxId)!;
     expect(row.status).toBe('sent');
-    expect(row.discordMessageId).toBe('discord-ok');
+    expect(row.platformMessageId).toBe('discord-ok');
     expect(row.attempts).toBe(2); // claimed twice
   });
 });
@@ -377,7 +377,7 @@ describe('createDiscordSender — disables mentions and replies', () => {
       content: 'hi',
       replyToMessageId: 'msg-1',
     });
-    expect(res.discordMessageId).toBe('discord-777');
+    expect(res.platformMessageId).toBe('discord-777');
     expect(captured.allowedMentions).toEqual({ parse: [] });
     expect(captured.content).toBe('hi');
     expect((captured.reply as { messageReference: string }).messageReference).toBe('msg-1');

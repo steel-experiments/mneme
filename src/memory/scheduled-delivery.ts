@@ -53,7 +53,7 @@ export function scheduledSourceLinkContext(db: DatabaseSync, guildId: string): S
       const message = getMessage(db, messageId);
       if (
         !message
-        || message.guild_id !== guildId
+        || message.workspace_id !== guildId
         || message.deleted_at_ms !== null
         || isMnemeTestSurface(db, message.channel_id)
       ) return undefined;

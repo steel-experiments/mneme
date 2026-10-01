@@ -580,7 +580,7 @@ function storedMessageBelongsToGuild(
   return prepareCached(
     db,
     'gateway.message_guild',
-    'SELECT 1 FROM messages WHERE id = ? AND guild_id = ?',
+    'SELECT 1 FROM messages WHERE id = ? AND workspace_id = ?',
   ).get(messageId, guildId) !== undefined;
 }
 

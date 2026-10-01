@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { upsertGuild, getGuild } from '../../src/db/repositories/guilds.js';
+import { upsertGuild, getGuild } from '../../src/db/repositories/workspaces.js';
 import { upsertChannel, getChannel, tombstoneChannel } from '../../src/db/repositories/channels.js';
 import {
   ensureObservedGuildMember,
@@ -251,7 +251,7 @@ describe('user and member repository', () => {
     expect(getUser(t.db, USER)).toMatchObject({
       username: 'alice', global_name: 'Alice', is_bot: 0, first_seen_at_ms: 1000, last_seen_at_ms: 1000,
     });
-    expect(t.db.prepare('SELECT display_name, role_ids_json, updated_at_ms FROM guild_members WHERE guild_id = ? AND user_id = ?')
+    expect(t.db.prepare('SELECT display_name, role_ids_json, updated_at_ms FROM workspace_members WHERE workspace_id = ? AND user_id = ?')
       .get(GUILD, USER)).toEqual({ display_name: 'Alice Member', role_ids_json: '["r1"]', updated_at_ms: 1000 });
 
     ensureObservedUser(t.db, { id: '100000000000000004', observedAtMs: 2000 });

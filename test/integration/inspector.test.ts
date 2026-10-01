@@ -116,7 +116,7 @@ function insertMessage(id: string, channelId: string, content: string, authorNam
   const at = NOW + Number(id.slice(-3));
   env.db
     .prepare(
-      `INSERT INTO messages (id, guild_id, channel_id, author_id, author_display_name, content,
+      `INSERT INTO messages (id, workspace_id, channel_id, author_id, author_display_name, content,
          created_at_ms, mentions_json, embeds_json, components_json, ingested_at_ms, updated_at_ms)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
     )
@@ -127,7 +127,7 @@ function insertEpisode(id: string, channelId: string, status: string, summary: s
   const at = NOW + Number(id.slice(-3));
   env.db
     .prepare(
-      `INSERT INTO episodes (id, guild_id, conversation_channel_id, status, started_at_ms, ended_at_ms,
+      `INSERT INTO episodes (id, workspace_id, conversation_channel_id, status, started_at_ms, ended_at_ms,
          last_activity_at_ms, human_message_count, total_message_count, trigger_reason, summary,
          consequential, intervention_score, created_at_ms, reviewed_at_ms, updated_at_ms)
        VALUES (?,?,?,?,?,?,?,1,1,NULL,?,0,0.5,?,NULL,?)`,
@@ -139,7 +139,7 @@ function insertRun(id: string, episodeId: string | null, status: string, toolCal
   const at = NOW + Number(id.slice(-3));
   env.db
     .prepare(
-      `INSERT INTO agent_runs (id, guild_id, episode_id, run_type, prompt_version, provider, model, status,
+      `INSERT INTO agent_runs (id, workspace_id, episode_id, run_type, prompt_version, provider, model, status,
          started_at_ms, ended_at_ms, input_tokens, output_tokens, cost_usd, tool_calls_json,
          retrieval_provenance_json, final_proposal_json, error)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL)`,
@@ -316,7 +316,7 @@ describe('inspector pages — Section 32.6 pages table', () => {
       .run();
     env.db
       .prepare(
-        `INSERT INTO memories (id, guild_id, scope_type, scope_key, type, statement, status, confidence,
+        `INSERT INTO memories (id, workspace_id, scope_type, scope_key, type, statement, status, confidence,
            importance, first_seen_at_ms, last_confirmed_at_ms, created_at_ms, updated_at_ms)
          VALUES ('mem-0001', ?, 'org', NULL, 'decision', 'Ship the inspector in the first cut.', 'active', 0.9, 0.8, ?, ?, ?, ?)`,
       )
@@ -382,7 +382,7 @@ describe('inspector pages — Section 32.6 pages table', () => {
       .run(NOW, NOW, NOW);
     env.db
       .prepare(
-        `INSERT INTO admin_events (id, guild_id, actor_user_id, action, target, details_json, created_at_ms)
+        `INSERT INTO admin_events (id, workspace_id, actor_user_id, action, target, details_json, created_at_ms)
          VALUES ('aud-0001', ?, '100000000000000003', 'inspector_token_create', 'admin-browser', '{}', ?)`,
       )
       .run(GUILD, NOW);
@@ -493,7 +493,7 @@ describe('inspector pages — Section 32.6 pages table', () => {
 
   it('sorts the memory archive by most recent confirmation when selected', async () => {
     const insert = env.db.prepare(
-      `INSERT INTO memories (id, guild_id, scope_type, scope_key, type, statement, status, confidence,
+      `INSERT INTO memories (id, workspace_id, scope_type, scope_key, type, statement, status, confidence,
          importance, first_seen_at_ms, last_confirmed_at_ms, created_at_ms, updated_at_ms)
        VALUES (?, ?, 'org', NULL, 'fact', ?, 'active', 0.7, ?, ?, ?, ?, ?)`,
     );
@@ -524,7 +524,7 @@ describe('inspector pages — Section 32.6 pages table', () => {
 
   it('cursor-paginates the filtered memory archive without dropping equal sort keys', async () => {
     const insert = env.db.prepare(
-      `INSERT INTO memories (id, guild_id, scope_type, scope_key, type, statement, status, confidence,
+      `INSERT INTO memories (id, workspace_id, scope_type, scope_key, type, statement, status, confidence,
          importance, first_seen_at_ms, last_confirmed_at_ms, created_at_ms, updated_at_ms)
        VALUES (?, ?, 'org', NULL, 'fact', ?, ?, 0.7, 0.5, ?, ?, ?, ?)`,
     );
@@ -592,7 +592,7 @@ describe('inspector pages — Section 32.6 pages table', () => {
   it('renders lineage link labels single-escaped', async () => {
     env.db
       .prepare(
-        `INSERT INTO memories (id, guild_id, scope_type, scope_key, type, statement, status, confidence,
+        `INSERT INTO memories (id, workspace_id, scope_type, scope_key, type, statement, status, confidence,
            importance, first_seen_at_ms, last_confirmed_at_ms, created_at_ms, updated_at_ms)
          VALUES ('mem-0002', ?, 'org', NULL, 'fact', 'Tom & Jerry <b>', 'active', 0.7, 0.7, ?, ?, ?, ?)`,
       )
@@ -730,7 +730,7 @@ describe('inspector pages — Section 32.6 pages table', () => {
 
   it('labels shadow runs and renders only the content-minimized comparison', async () => {
     env.db.prepare(`INSERT INTO agent_runs
-      (id,guild_id,episode_id,run_type,prompt_version,provider,model,status,started_at_ms,
+      (id,workspace_id,episode_id,run_type,prompt_version,provider,model,status,started_at_ms,
        execution_started_at_ms,ended_at_ms,input_tokens,output_tokens,reasoning_tokens,cost_usd,
        thinking_level,shadow_of_run_id,shadow_comparison_json,final_proposal_json)
       VALUES ('run-shadow','${GUILD}','ep-0001','episode','p','openai','gpt-5.6-luna',
@@ -937,7 +937,7 @@ describe('inspector pages — Section 32.6 pages table', () => {
        VALUES (?, 'archive_test', NULL, '{}', 'queued', 50, ?, ?, ?)`,
     );
     const audit = env.db.prepare(
-      `INSERT INTO admin_events (id, guild_id, actor_user_id, action, target, details_json, created_at_ms)
+      `INSERT INTO admin_events (id, workspace_id, actor_user_id, action, target, details_json, created_at_ms)
        VALUES (?, ?, '100000000000000003', 'archive_test', ?, '{}', ?)`,
     );
     for (let i = 0; i < 21; i++) {

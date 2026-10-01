@@ -28,7 +28,7 @@ describe('database', () => {
     expect(() =>
       t.db
         .prepare(
-          `INSERT INTO messages (id, guild_id, channel_id, author_display_name, content, created_at_ms, ingested_at_ms, updated_at_ms)
+          `INSERT INTO messages (id, workspace_id, channel_id, author_display_name, content, created_at_ms, ingested_at_ms, updated_at_ms)
            VALUES ('m1','999999999999999999','999999999999999998','x','',1,1,1)`,
         )
         .run(),
@@ -40,7 +40,7 @@ describe('database', () => {
     dbs.push(t);
     const { guildId } = { guildId: '100000000000000001' };
     const insert = t.db.prepare(
-      "INSERT INTO guilds (id, name, discovered_at_ms, updated_at_ms) VALUES (?,?,1,1)",
+      "INSERT INTO workspaces (id, name, discovered_at_ms, updated_at_ms) VALUES (?,?,1,1)",
     );
 
     expect(() =>
@@ -49,12 +49,12 @@ describe('database', () => {
         throw new Error('boom');
       }),
     ).toThrow('boom');
-    expect(t.db.prepare('SELECT id FROM guilds WHERE id = ?').get(guildId)).toBeUndefined();
+    expect(t.db.prepare('SELECT id FROM workspaces WHERE id = ?').get(guildId)).toBeUndefined();
 
     transaction(t.db, () => {
       insert.run(guildId, 'Committed');
     });
-    const row = t.db.prepare('SELECT name FROM guilds WHERE id = ?').get(guildId) as
+    const row = t.db.prepare('SELECT name FROM workspaces WHERE id = ?').get(guildId) as
       | { name: string }
       | undefined;
     expect(row?.name).toBe('Committed');
@@ -71,6 +71,6 @@ describe('database', () => {
     dbs.push(t);
     const ro = openDatabase(t.path, { readOnly: true });
     dbs.push({ db: ro, path: t.path, dir: t.dir, cleanup: () => ro.close() });
-    expect(() => ro.prepare("INSERT INTO guilds (id,name,discovered_at_ms,updated_at_ms) VALUES ('z','z',1,1)").run()).toThrow();
+    expect(() => ro.prepare("INSERT INTO workspaces (id,name,discovered_at_ms,updated_at_ms) VALUES ('z','z',1,1)").run()).toThrow();
   });
 });

@@ -53,7 +53,7 @@ function fallback(
   const review = getChannel(db, options.reviewChannelId);
   if (
     !review
-    || review.guild_id !== options.guildId
+    || review.workspace_id !== options.guildId
     || review.deleted_at_ms !== null
     || review.ingest_enabled !== 1
     || review.visibility_class === 'excluded'
@@ -74,7 +74,7 @@ function directOrigins(db: DatabaseSync, memoryId: string): Array<{
   deleted_at_ms: number | null;
 }> {
   return db.prepare(
-    `SELECT me.message_id, msg.channel_id, msg.guild_id AS message_guild_id, msg.deleted_at_ms
+    `SELECT me.message_id, msg.channel_id, msg.workspace_id AS message_guild_id, msg.deleted_at_ms
        FROM memory_evidence me
        LEFT JOIN messages msg ON msg.id = me.message_id
       WHERE me.memory_id = ? AND me.stance = 'origin'
@@ -114,7 +114,7 @@ export function resolveScheduledMemoryRoute(
 ): ScheduledMemoryRoute {
   const memory = getMemory(db, memoryId);
   if (!memory) return { kind: 'suppress', targetChannelId: null, reason: 'memory_unavailable' };
-  if (memory.guild_id !== options.guildId) {
+  if (memory.workspace_id !== options.guildId) {
     return { kind: 'suppress', targetChannelId: null, reason: 'wrong_guild' };
   }
   const effective = recomputeMemoryScopes(db, [memoryId]).get(memoryId)
@@ -145,7 +145,7 @@ export function resolveScheduledMemoryRoute(
 
   const target = getChannel(db, targetChannelId);
   const current = resolveRetrievableChannelScope(db, targetChannelId);
-  if (!target || !current || target.guild_id !== options.guildId) {
+  if (!target || !current || target.workspace_id !== options.guildId) {
     return fallback(db, effective.scopeType, 'unsafe_target', options);
   }
   if (target.is_thread === 1) {

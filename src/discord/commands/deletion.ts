@@ -64,7 +64,7 @@ export function requestDeletion(
   }
   return transactionImmediate(deps.db, () => {
     const existing = deps.db.prepare(`SELECT * FROM deletion_requests
-      WHERE guild_id = ? AND target_kind = ? AND target_id = ?
+      WHERE workspace_id = ? AND target_kind = ? AND target_id = ?
         AND status IN ('pending', 'scheduled', 'executing')`).get(input.guildId, input.targetKind, input.targetId) as DeletionRequest | undefined;
     if (existing) {
       audit(input, deps, 'request', existing.id, 'already_active');
@@ -72,13 +72,13 @@ export function requestDeletion(
     }
     const id = randomUUID();
     deps.db.prepare(`INSERT INTO deletion_requests
-      (id, guild_id, target_kind, target_id, requester_user_id, status, created_at_ms)
+      (id, workspace_id, target_kind, target_id, requester_user_id, status, created_at_ms)
       VALUES (?, ?, ?, ?, ?, 'pending', ?)`).run(id, input.guildId, input.targetKind, input.targetId, input.actorUserId, deps.nowMs);
     // Pin actual row identities, not a future author/time predicate: late backfill
     // and messages arriving during approval/grace must not expand the request.
     const field = input.targetKind === 'user' ? 'author_id' : 'id';
     deps.db.prepare(`INSERT INTO deletion_request_messages (request_id, message_id)
-      SELECT ?, id FROM messages WHERE guild_id = ? AND ${field} = ? AND deleted_at_ms IS NULL`)
+      SELECT ?, id FROM messages WHERE workspace_id = ? AND ${field} = ? AND deleted_at_ms IS NULL`)
       .run(id, input.guildId, input.targetId);
     const count = Number(deps.db.prepare('SELECT count(*) AS n FROM deletion_request_messages WHERE request_id = ?').get(id)?.n ?? 0);
     if (count === 0) {
@@ -106,7 +106,7 @@ export function handleDeletionCommand(
     if (input.subcommand === 'status') {
       const rows = input.requestId
         ? [getDeletionRequest(deps.db, input.requestId, input.guildId)].filter((r): r is DeletionRequest => !!r)
-        : deps.db.prepare(`SELECT * FROM deletion_requests WHERE guild_id = ? ORDER BY created_at_ms DESC, id LIMIT 4`)
+        : deps.db.prepare(`SELECT * FROM deletion_requests WHERE workspace_id = ? ORDER BY created_at_ms DESC, id LIMIT 4`)
           .all(input.guildId) as unknown as DeletionRequest[];
       return rows.length ? rows.map((r) => describe(deps.db, r)).join('\n') : 'No deletion requests found.';
     }

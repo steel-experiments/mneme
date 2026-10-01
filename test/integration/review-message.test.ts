@@ -206,7 +206,7 @@ describe('createDiscordReviewChannel — delivery', () => {
     };
     const payload = buildReviewMessage(basicInput(), SECRET);
     const res = await createDiscordReviewChannel(fakeClient(channel)).send(REVIEW_CHANNEL, payload);
-    expect(res.discordMessageId).toBe('review-msg-9');
+    expect(res.platformMessageId).toBe('review-msg-9');
     expect(captured!.embeds).toHaveLength(1);
     expect(captured!.components).toHaveLength(1);
   });
@@ -264,7 +264,7 @@ describe('deliverProposalReview — records the review message', () => {
     seedIdentity(env.db);
     env.db
       .prepare(
-        `INSERT INTO agent_runs (id, guild_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
+        `INSERT INTO agent_runs (id, workspace_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
          VALUES (?,?,NULL,'episode','pv','faux','faux-1','completed',?)`,
       )
       .run('run-1', GUILD, NOW);
@@ -294,7 +294,7 @@ describe('deliverProposalReview — records the review message', () => {
       async send(channelId, payload) {
         sentTo.push(channelId);
         captured.push(payload);
-        return { discordMessageId: discordId };
+        return { platformMessageId: discordId };
       },
     };
     return { channel, captured, sentTo };
@@ -309,7 +309,7 @@ describe('deliverProposalReview — records the review message', () => {
       { db: env.db, reviewChannelId: REVIEW_CHANNEL, channel, secret: SECRET, now: NOW },
     );
 
-    expect(res.discordMessageId).toBe('review-msg-7');
+    expect(res.platformMessageId).toBe('review-msg-7');
     expect(sentTo).toEqual([REVIEW_CHANNEL]);
     const proposal = getProposal(env.db, proposalId)!;
     expect(proposal.reviewMessageId).toBe('review-msg-7');

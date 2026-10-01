@@ -15,10 +15,10 @@ function seed() {
     (id,username,global_name,is_bot,first_seen_at_ms,last_seen_at_ms)
     VALUES (?,?,?,1,?,?)`).run(BOT, 'mneme', 'Mneme', NOW, NOW);
   env.db.prepare(`INSERT INTO messages
-    (id,guild_id,channel_id,author_id,author_display_name,content,created_at_ms,ingested_at_ms,updated_at_ms)
+    (id,workspace_id,channel_id,author_id,author_display_name,content,created_at_ms,ingested_at_ms,updated_at_ms)
     VALUES ('origin',?,?,?,?,?,?,?,?)`).run(GUILD, CHANNEL, HUMAN, 'Human', 'Original decision', NOW - 10, NOW, NOW);
   env.db.prepare(`INSERT INTO memories
-    (id,guild_id,scope_type,type,statement,status,confidence,importance,review_after_ms,
+    (id,workspace_id,scope_type,type,statement,status,confidence,importance,review_after_ms,
      first_seen_at_ms,last_confirmed_at_ms,created_at_ms,updated_at_ms)
     VALUES ('memory',?,'org','decision','Original decision','active',.9,.9,?,?,?,?,?)`)
     .run(GUILD, NOW - 1, NOW - 10, NOW - 10, NOW - 10, NOW - 10);
@@ -31,7 +31,7 @@ function seed() {
     memoryIds: ['memory'],
   });
   env.db.prepare(`INSERT INTO agent_runs
-    (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms,retrieval_provenance_json)
+    (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms,retrieval_provenance_json)
     VALUES ('run',?,'scheduled_review','v','test','test','completed',?,?)`).run(GUILD, NOW, provenance);
   env.db.prepare(`INSERT INTO proposals
     (id,run_id,target_channel_id,status,computed_score,reason,message,evidence_message_ids_json,
@@ -41,7 +41,7 @@ function seed() {
   env.db.prepare(`INSERT INTO scheduled_proposal_subjects
     (proposal_id,memory_id,memory_fingerprint,created_at_ms) VALUES ('proposal','memory','snapshot',?)`).run(NOW);
   env.db.prepare(`INSERT INTO outbox
-    (id,proposal_id,channel_id,content,dedupe_key,status,discord_message_id,attempts,
+    (id,proposal_id,channel_id,content,dedupe_key,status,platform_message_id,attempts,
      next_attempt_at_ms,created_at_ms,sent_at_ms,updated_at_ms)
     VALUES ('outbox','proposal',?,'Please confirm status.','proposal:proposal','sent','notification',1,?,?,?,?)`)
     .run(CHANNEL, NOW, NOW, NOW, NOW);
@@ -49,7 +49,7 @@ function seed() {
 
 function reply(id = 'reply', channelId = CHANNEL, parent = 'notification') {
   env.db.prepare(`INSERT INTO messages
-    (id,guild_id,channel_id,author_id,author_display_name,content,created_at_ms,
+    (id,workspace_id,channel_id,author_id,author_display_name,content,created_at_ms,
      reply_to_message_id,ingested_at_ms,updated_at_ms)
     VALUES (?,?,?,?,?,'Moved to 28 August.',?,?,?,?)`)
     .run(id, GUILD, channelId, HUMAN, 'Human', NOW + 1, parent, NOW + 1, NOW + 1);
@@ -81,7 +81,7 @@ describe('scheduled notification feedback', () => {
 
   it('fails closed when the Discord message id is ambiguous', () => {
     env.db.prepare(`INSERT INTO outbox
-      (id,proposal_id,channel_id,content,dedupe_key,status,discord_message_id,attempts,
+      (id,proposal_id,channel_id,content,dedupe_key,status,platform_message_id,attempts,
        next_attempt_at_ms,created_at_ms,sent_at_ms,updated_at_ms)
       VALUES ('outbox-2','proposal',?,'Please confirm status.','ambiguous','sent','notification',1,?,?,?,?)`)
       .run(CHANNEL, NOW, NOW, NOW, NOW);

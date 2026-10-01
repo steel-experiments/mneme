@@ -46,7 +46,7 @@ export function resolveEffectiveChannelPolicy(
   const review = input.activeReview;
   if (
     review
-    && review.guild_id === input.guildId
+    && review.workspace_id === input.guildId
     && review.channel_id === input.channelId
     && review.observed_parent_id === input.parentId
     && (review.status === 'org' || review.status === 'restricted' || review.status === 'excluded')

@@ -29,7 +29,7 @@ export interface GuildRow {
 }
 
 const UPSERT_SQL = `
-  INSERT INTO guilds (id, name, owner_id, joined_at_ms, discovered_at_ms, updated_at_ms, raw_json)
+  INSERT INTO workspaces (id, name, owner_id, joined_at_ms, discovered_at_ms, updated_at_ms, raw_json)
   VALUES (@id, @name, @owner_id, @joined_at_ms, @discovered_at_ms, @updated_at_ms, @raw_json)
   ON CONFLICT(id) DO UPDATE SET
     name = excluded.name,
@@ -37,24 +37,24 @@ const UPSERT_SQL = `
     joined_at_ms = excluded.joined_at_ms,
     raw_json = excluded.raw_json,
     updated_at_ms = CASE
-      WHEN excluded.name IS NOT guilds.name
-        OR excluded.owner_id IS NOT guilds.owner_id
-        OR excluded.joined_at_ms IS NOT guilds.joined_at_ms
-        OR excluded.raw_json IS NOT guilds.raw_json
+      WHEN excluded.name IS NOT workspaces.name
+        OR excluded.owner_id IS NOT workspaces.owner_id
+        OR excluded.joined_at_ms IS NOT workspaces.joined_at_ms
+        OR excluded.raw_json IS NOT workspaces.raw_json
       THEN excluded.updated_at_ms
-      ELSE guilds.updated_at_ms
+      ELSE workspaces.updated_at_ms
     END
-  WHERE excluded.name IS NOT guilds.name
-     OR excluded.owner_id IS NOT guilds.owner_id
-     OR excluded.joined_at_ms IS NOT guilds.joined_at_ms
-     OR excluded.raw_json IS NOT guilds.raw_json
+  WHERE excluded.name IS NOT workspaces.name
+     OR excluded.owner_id IS NOT workspaces.owner_id
+     OR excluded.joined_at_ms IS NOT workspaces.joined_at_ms
+     OR excluded.raw_json IS NOT workspaces.raw_json
 `;
 
 /**
  * Upsert a guild. Returns the number of rows actually changed (0 for a no-op).
  */
 export function upsertGuild(db: DatabaseSync, input: GuildUpsertInput): number {
-  const stmt = prepareCached(db, 'guilds.upsert', UPSERT_SQL);
+  const stmt = prepareCached(db, 'workspaces.upsert', UPSERT_SQL);
   const result = stmt.run({
     id: input.id,
     name: input.name,
@@ -68,7 +68,7 @@ export function upsertGuild(db: DatabaseSync, input: GuildUpsertInput): number {
 }
 
 export function getGuild(db: DatabaseSync, id: string): GuildRow | undefined {
-  return prepareCached(db, 'guilds.get', 'SELECT * FROM guilds WHERE id = ?').get(id) as
+  return prepareCached(db, 'workspaces.get', 'SELECT * FROM workspaces WHERE id = ?').get(id) as
     | GuildRow
     | undefined;
 }

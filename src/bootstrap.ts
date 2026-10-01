@@ -568,7 +568,7 @@ async function defaultConnectDiscord(ctx: BootstrapContext): Promise<DiscordWiri
   await defaultBeginIngestion(ctx, wiring);
   // Seed the configured guild identity before login so an event arriving in the
   // narrow ready/fetch window cannot violate message foreign keys.
-  const { upsertGuild } = await import('./db/repositories/guilds.js');
+  const { upsertGuild } = await import('./db/repositories/workspaces.js');
   const seededAt = ctx.now();
   upsertGuild(ctx.db, {
     id: ctx.config.discord.guildId,

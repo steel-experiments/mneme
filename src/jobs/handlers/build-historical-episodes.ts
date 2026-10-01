@@ -229,7 +229,7 @@ function insertEpisode(
   const ended = rows[rows.length - 1]!.created_at_ms;
   db.prepare(`
     INSERT INTO episodes
-      (id, guild_id, conversation_channel_id, status, started_at_ms, ended_at_ms,
+      (id, workspace_id, conversation_channel_id, status, started_at_ms, ended_at_ms,
        last_activity_at_ms, human_message_count, total_message_count, trigger_reason,
        created_at_ms, updated_at_ms, origin, historical_campaign_id)
     VALUES (?, ?, ?, 'queued', ?, ?, ?, ?, ?, 'historical_backfill', ?, ?, 'historical', ?)

@@ -142,7 +142,7 @@ describe('live reactions', () => {
     ).toBe(true);
     expect(
       (db
-        .prepare('SELECT 1 FROM guild_members WHERE guild_id = ? AND user_id = ?')
+        .prepare('SELECT 1 FROM workspace_members WHERE workspace_id = ? AND user_id = ?')
         .get(opts().guildId, u) as { 1?: number } | undefined) !== undefined,
     ).toBe(true);
   });
@@ -181,7 +181,7 @@ describe('live reactions', () => {
       .get(botId)).toEqual({
       username: 'known-bot', global_name: 'Known Bot', is_bot: 1, last_seen_at_ms: NOW + 10,
     });
-    expect(db.prepare('SELECT display_name, role_ids_json, updated_at_ms FROM guild_members WHERE guild_id = ? AND user_id = ?')
+    expect(db.prepare('SELECT display_name, role_ids_json, updated_at_ms FROM workspace_members WHERE workspace_id = ? AND user_id = ?')
       .get(opts().guildId, botId)).toEqual({
       display_name: 'Bot Display', role_ids_json: '["bot-role"]', updated_at_ms: NOW,
     });

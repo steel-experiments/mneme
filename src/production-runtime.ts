@@ -473,7 +473,7 @@ function resolveCurrentReviewProvenance(
   const memoryScopes: AgentRunResult['provenance']['memoryScopes'] = [];
   for (const memoryId of memoryIds) {
     const memory = getMemory(db, memoryId);
-    if (!memory || memory.guild_id !== guildId) {
+    if (!memory || memory.workspace_id !== guildId) {
       return {
         outcome: 'reject',
         gate: {
@@ -539,17 +539,17 @@ export function buildApprovalRecheck(
   let runType: string | undefined;
   let runGuildId: string | undefined;
   try {
-    const run = ctx.db.prepare('SELECT run_type, guild_id, retrieval_provenance_json FROM agent_runs WHERE id = ?').get(proposal.runId) as
-      | { run_type: string; guild_id: string; retrieval_provenance_json: string }
+    const run = ctx.db.prepare('SELECT run_type, workspace_id, retrieval_provenance_json FROM agent_runs WHERE id = ?').get(proposal.runId) as
+      | { run_type: string; workspace_id: string; retrieval_provenance_json: string }
       | undefined;
     if (!run) throw new Error('originating run not found');
     runType = run.run_type;
-    runGuildId = run.guild_id;
+    runGuildId = run.workspace_id;
     const parsed = JSON.parse(run.retrieval_provenance_json) as AgentRunResult['provenance'];
     if (!parsed || !Array.isArray(parsed.channels) || !Array.isArray(parsed.memoryScopes)) {
       throw new Error('originating run provenance is malformed');
     }
-    const currentResolution = resolveCurrentReviewProvenance(ctx.db, parsed, run.guild_id);
+    const currentResolution = resolveCurrentReviewProvenance(ctx.db, parsed, run.workspace_id);
     const currentProvenance = currentResolution.outcome === 'reject'
       ? currentResolution.gate
       : evaluateProvenanceGate({
@@ -588,7 +588,7 @@ export function buildApprovalRecheck(
     requireInterventionsEnabled: true,
   }, {
     resolveMessage: (id) => { const m = getMessage(ctx.db, id); if (!m) return undefined;
-      if ((runGuildId !== undefined && m.guild_id !== runGuildId) || isMnemeTestSurface(ctx.db, m.channel_id)) {
+      if ((runGuildId !== undefined && m.workspace_id !== runGuildId) || isMnemeTestSurface(ctx.db, m.channel_id)) {
         return undefined;
       }
       const scope = resolveRetrievableChannelScope(ctx.db, m.channel_id);
@@ -725,7 +725,7 @@ function computeEpisodeAttentionAdmission(
     const memory = getMemory(ctx.db, subject.memoryId);
     if (
       !memory
-      || memory.guild_id !== ctx.config.discord.guildId
+      || memory.workspace_id !== ctx.config.discord.guildId
       || (!input.exposedMemoryIds.has(subject.memoryId)
         && !input.memoryOutcome.applied.some((o) => o.memoryId === subject.memoryId))
     ) {
@@ -920,7 +920,7 @@ export async function routeEpisodeIntervention(
     const stored = getMessage(ctx.db, id);
     if (
       !stored
-      || stored.guild_id !== ctx.config.discord.guildId
+      || stored.workspace_id !== ctx.config.discord.guildId
       || isMnemeTestSurface(ctx.db, stored.channel_id)
     ) return undefined;
     const scope = resolveRetrievableChannelScope(ctx.db, stored.channel_id);
@@ -1615,7 +1615,7 @@ export async function createProductionJobRuntime(
           ? `✅ Sent — [open notification](${sourceLinkUrl(
               ctx.config.discord.guildId,
               proposal.targetChannelId,
-              report.discordMessageId,
+              report.platformMessageId,
             )})`
           : report.status === 'cancelled'
             ? '⏰ Expired — delivery cancelled before send'

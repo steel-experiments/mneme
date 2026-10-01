@@ -53,7 +53,7 @@ function jobRow(maxAttempts = 10): JobRow {
 
 function seedRun(id = 'run-1'): void {
   db.prepare(
-    `INSERT INTO agent_runs (id, guild_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
+    `INSERT INTO agent_runs (id, workspace_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
      VALUES(?, ?, NULL, 'episode', 'pv', 'faux', 'faux-1', 'completed', ?)`,
   ).run(id, GUILD, NOW);
 }

@@ -76,7 +76,7 @@ export function recordAdminEvent(db: DatabaseSync, record: AdminEventRecord): st
   prepareCached(
     db,
     'admin-events.insert',
-    `INSERT INTO admin_events (id, guild_id, actor_user_id, action, target, details_json, created_at_ms)
+    `INSERT INTO admin_events (id, workspace_id, actor_user_id, action, target, details_json, created_at_ms)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
   ).run(id, record.guildId, record.actorUserId, record.action, record.target ?? null, detailsJson, record.createdAtMs);
   return id;
@@ -88,7 +88,7 @@ export function getAdminEvent(db: DatabaseSync, id: string): AdminEventRow | nul
     db,
     'admin-events.get',
     `SELECT id,
-            guild_id AS guildId,
+            workspace_id AS guildId,
             actor_user_id AS actorUserId,
             action,
             target,
@@ -105,7 +105,7 @@ export function countAdminEvents(
   guildId: string,
   window?: { fromMs?: number; toMs?: number },
 ): number {
-  const conditions = ['guild_id = ?'];
+  const conditions = ['workspace_id = ?'];
   const params: Array<string | number> = [guildId];
   if (window?.fromMs !== undefined) {
     conditions.push('created_at_ms >= ?');

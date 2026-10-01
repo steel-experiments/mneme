@@ -266,7 +266,7 @@ export function searchMessages(
   ].join(':');
 
   const sql = `
-    SELECT m.id AS message_id, m.guild_id, m.channel_id, m.author_id,
+    SELECT m.id AS message_id, m.workspace_id, m.channel_id, m.author_id,
            m.author_display_name, m.created_at_ms, m.content,
            snippet(messages_fts, 0, '«', '»', ' … ', 24) AS snippet,
            (SELECT COALESCE(SUM(count), 0) FROM reaction_counts rc
@@ -288,7 +288,7 @@ export function searchMessages(
 
   return ranked.map(({ row, rank }) => {
     const messageId = String(row.message_id);
-    const guildId = String(row.guild_id);
+    const guildId = String(row.workspace_id);
     const channelId = String(row.channel_id);
     return {
       messageId,
@@ -372,7 +372,7 @@ export function listRecentMessages(
   ].join(':');
 
   const rows = prepareCached(db, cacheKey, `
-    SELECT m.id AS message_id, m.guild_id, m.channel_id, c.name AS channel_name,
+    SELECT m.id AS message_id, m.workspace_id, m.channel_id, c.name AS channel_name,
            m.author_id, m.author_display_name, m.created_at_ms, m.content,
            (SELECT COALESCE(SUM(count), 0) FROM reaction_counts rc
              WHERE rc.message_id = m.id) AS reaction_total
@@ -385,7 +385,7 @@ export function listRecentMessages(
 
   return rows.map((row) => {
     const messageId = String(row.message_id);
-    const guildId = String(row.guild_id);
+    const guildId = String(row.workspace_id);
     const channelId = String(row.channel_id);
     return {
       messageId,

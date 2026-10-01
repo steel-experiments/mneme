@@ -90,8 +90,8 @@ export function applyChannelPolicyReviewDecision(input: {
       categoryId: channel.is_thread === 1 ? parent?.parent_id ?? undefined : channel.parent_id ?? undefined,
     }) : undefined;
     const valid = review.status === 'pending'
-      && review.guild_id === input.guildId
-      && channel?.guild_id === input.guildId
+      && review.workspace_id === input.guildId
+      && channel?.workspace_id === input.guildId
       && channel.deleted_at_ms === null
       && channel.is_thread === 0
       && channel.parent_id === review.observed_parent_id

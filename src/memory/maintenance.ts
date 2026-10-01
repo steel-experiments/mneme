@@ -128,7 +128,7 @@ export function expireStaleMemories(
       const eventStmt = prepareCached(
         db,
         'stale.event',
-        `INSERT INTO admin_events (id, guild_id, actor_user_id, action, target, details_json, created_at_ms)
+        `INSERT INTO admin_events (id, workspace_id, actor_user_id, action, target, details_json, created_at_ms)
          VALUES (?, ?, ?, 'memory_staleness_expire', ?, ?, ?)`,
       );
 
@@ -215,7 +215,7 @@ export function rescopeMemories(db: DatabaseSync, options: RescopeOptions): Resc
     const eventStmt = prepareCached(
       db,
       'rescope.event',
-      `INSERT INTO admin_events (id, guild_id, actor_user_id, action, target, details_json, created_at_ms)
+      `INSERT INTO admin_events (id, workspace_id, actor_user_id, action, target, details_json, created_at_ms)
        VALUES (?, ?, ?, 'memory_rescope', ?, ?, ?)`,
     );
 

@@ -252,7 +252,7 @@ function seedEpisodeRun(
 ): void {
   env.db.prepare(
     `INSERT INTO agent_runs
-       (id, guild_id, episode_id, run_type, prompt_version, provider, model, status,
+       (id, workspace_id, episode_id, run_type, prompt_version, provider, model, status,
         retrieval_provenance_json, started_at_ms, ended_at_ms)
      VALUES (?, ?, ?, 'episode', 'episode@citation-test', 'faux', 'faux-1', 'completed', ?, ?, ?)`,
   ).run(
@@ -1329,7 +1329,7 @@ describe('episode intervention citation exposure', () => {
     const foreignChannelId = '100000000000000032';
     seedChannel(testChannelId, { name: 'mneme-playground' });
     env.db.prepare(
-      `INSERT INTO guilds
+      `INSERT INTO workspaces
          (id, name, owner_id, joined_at_ms, discovered_at_ms, updated_at_ms, raw_json)
        VALUES (?, 'Other Guild', NULL, ?, ?, ?, NULL)`,
     ).run(foreignGuildId, NOW, NOW, NOW);
@@ -1595,10 +1595,10 @@ describe('review_episode — end-to-end with the real runtime', () => {
     expect(historicalCalls).toBe(1);
 
     env.db.prepare(`INSERT INTO agent_runs
-      (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+      (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
       VALUES ('prior-authoritative',?,'episode','p','faux','faux-1','completed',?)`).run(GUILD, NOW - 2);
     env.db.prepare(`INSERT INTO agent_runs
-      (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms,thinking_level,shadow_of_run_id)
+      (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms,thinking_level,shadow_of_run_id)
       VALUES ('prior-shadow',?,'episode','p','faux','faux-1','completed',?,'low','prior-authoritative')`).run(GUILD, NOW - 1);
     const liveEpisodeId = queuedEpisode(CHANNEL, [
       { id: 'm3', content: 'we decided this live policy' },

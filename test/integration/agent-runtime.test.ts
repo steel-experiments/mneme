@@ -1240,7 +1240,7 @@ describe('executeAgentRun', () => {
     env.db
       .prepare(
         `INSERT INTO agent_runs
-           (id, guild_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
+           (id, workspace_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
          VALUES (?, ?, NULL, 'episode', ?, 'faux', 'faux-1', 'running', ?)`,
       )
       .run('run-running', GUILD, PROMPT_VERSION, NOW);
