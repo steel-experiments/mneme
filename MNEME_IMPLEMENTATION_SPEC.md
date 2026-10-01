@@ -2490,7 +2490,7 @@ with the message tools when the question needs the underlying history.
 
 The rendered `question` is a structured message object containing `messageId`,
 `channelId`, `authorId`, `authorDisplayName`, `content`, `createdAtMs`, `createdAtIso`,
-`replyToMessageId`, and the host-generated `discordLink`. `precedingConversation` contains
+`replyToMessageId`, and the host-generated `link`. `precedingConversation` contains
 at most the ten immediately preceding permitted messages from the same channel, in
 chronological order. When the question replies to an older message outside that window,
 the host also includes that exact parent if it remains permitted. It never includes later

@@ -41,7 +41,7 @@ export interface CompactMessage {
   content: string;
   createdAtMs: number;
   replyToMessageId: string | null;
-  discordLink: string;
+  link: string;
 }
 
 export interface MessageContext {
@@ -70,7 +70,7 @@ function toCompact(row: Record<string, SQLOutputValue>): CompactMessage {
     content: String(row.content),
     createdAtMs: Number(row.created_at_ms),
     replyToMessageId: row.reply_to_message_id === null ? null : String(row.reply_to_message_id),
-    discordLink: discordMessageLink(guildId, channelId, messageId),
+    link: discordMessageLink(guildId, channelId, messageId),
   };
 }
 

@@ -401,7 +401,7 @@ function renderMessage(r: MessageSearchResult): string {
   return [
     `[${r.messageId}] ${formatTimestamp(r.createdAtMs)} ${r.authorDisplayName} in #${r.channelId}${reactions}`,
     r.snippet,
-    r.discordLink,
+    r.link,
   ].join('\n');
 }
 
@@ -410,7 +410,7 @@ function renderRecentMessage(r: RecentMessageResult): string {
   return [
     `[${r.messageId}] ${formatTimestamp(r.createdAtMs)} ${r.authorDisplayName} in #${r.channelName}${reactions}`,
     r.content,
-    r.discordLink,
+    r.link,
   ].join('\n');
 }
 
@@ -455,7 +455,7 @@ function renderEvidence(r: MemoryEvidenceResult): string {
   return [
     `[${r.messageId}] ${formatTimestamp(r.createdAtMs)} ${r.authorDisplayName} in #${r.channelId} (${r.stance}, weight ${r.weight.toFixed(2)})${note}`,
     r.content,
-    r.discordLink,
+    r.link,
   ].join('\n');
 }
 
@@ -597,7 +597,7 @@ const searchMemoriesTool: McpToolHandler = (args, ctx) => {
   });
   const lines = results.map((memory) => renderMemory(
     memory,
-    getMemoryEvidence(ctx.db, ctx.grant, memory.memoryId, 3).map((evidence) => evidence.discordLink),
+    getMemoryEvidence(ctx.db, ctx.grant, memory.memoryId, 3).map((evidence) => evidence.link),
   ));
   const header =
     lines.length > 0 ? `${lines.length} memory(ies):` : 'No permitted memories matched.';
@@ -624,7 +624,7 @@ const listMemoriesTool: McpToolHandler = (args, ctx) => {
   });
   const lines = page.items.map((memory) => renderMemory(
     memory,
-    getMemoryEvidence(ctx.db, ctx.grant, memory.memoryId, 3).map((evidence) => evidence.discordLink),
+    getMemoryEvidence(ctx.db, ctx.grant, memory.memoryId, 3).map((evidence) => evidence.link),
   ));
   const header = page.totalMatching > 0
     ? `Showing ${lines.length} of ${page.totalMatching} permitted matching memory(ies), ranked by importance, recency, and evidence density:`
@@ -666,7 +666,7 @@ const getMemoryTool: McpToolHandler = (args, ctx) => {
         type: 'text',
         text: renderMemoryDetails(
           details,
-          getMemoryEvidence(ctx.db, ctx.grant, memoryId, 10).map((evidence) => evidence.discordLink),
+          getMemoryEvidence(ctx.db, ctx.grant, memoryId, 10).map((evidence) => evidence.link),
         ),
       }],
       MCP_UNTRUSTED_META,

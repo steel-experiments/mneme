@@ -33,7 +33,7 @@ function renderEvidence(r: MemoryEvidenceResult): string {
   return [
     `[${r.messageId}] ${formatTimestamp(r.createdAtMs)} ${r.authorDisplayName} in #${r.channelId} (${r.stance}, weight ${r.weight.toFixed(2)})${note}`,
     r.content,
-    r.discordLink,
+    r.link,
   ].join('\n');
 }
 

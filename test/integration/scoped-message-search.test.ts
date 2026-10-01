@@ -239,8 +239,8 @@ describe('scoped message search', () => {
 
   it('generates host-built Discord jump links', () => {
     const r = searchMessages(env.db, ORG_GRANT, { query: 'onboarding' });
-    expect(r[0]!.discordLink).toBe(discordMessageLink(GUILD, ORG, 'm-org'));
-    expect(r[0]!.discordLink).toBe('https://discord.com/channels/' + GUILD + '/' + ORG + '/m-org');
+    expect(r[0]!.link).toBe(discordMessageLink(GUILD, ORG, 'm-org'));
+    expect(r[0]!.link).toBe('https://discord.com/channels/' + GUILD + '/' + ORG + '/m-org');
   });
 
   it('filters by author', () => {

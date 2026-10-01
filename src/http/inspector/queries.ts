@@ -544,7 +544,7 @@ export interface EpisodeDetailPageData {
     authorDisplayName: string;
     content: string;
     createdAtMs: number;
-    discordLink: string | null;
+    link: string | null;
   }>;
   /** The next page's cursor ordinal, or null when every message is shown. */
   messageNextOrdinal: number | null;
@@ -603,7 +603,7 @@ export function episodeDetailPage(
       authorDisplayName: s(r.author_display_name),
       content: s(r.content),
       createdAtMs: n(r.created_at_ms) ?? 0,
-      discordLink:
+      link:
         r.deleted_at_ms === null && r.workspace_id !== null
           ? `https://discord.com/channels/${s(r.workspace_id)}/${s(r.channel_id)}/${s(r.message_id)}`
           : null,
@@ -892,7 +892,7 @@ export function runDetailPage(db: DatabaseSync, _grant: RetrievalGrant, runId: s
 export interface FocusedExposureView {
   rows: Array<{
     kind: 'message' | 'memory'; id: string; fingerprintStatus: 'unchanged' | 'changed' | 'historic_unavailable';
-    content: string; secondary: string; atMs: number | null; discordLink: string | null;
+    content: string; secondary: string; atMs: number | null; link: string | null;
   }>;
   unavailableCount: number;
   nextOffset: number | null;
@@ -936,7 +936,7 @@ export function focusedExposurePage(
         fingerprintStatus: !current || ref.fingerprint === 'conflicting-exposure' || ref.fingerprint === 'unavailable-at-exposure'
           ? 'historic_unavailable' : current === ref.fingerprint ? 'unchanged' : 'changed',
         content: s(row.content), secondary: `${s(row.author_display_name)} in #${s(row.channel_name)}`,
-        atMs: n(row.created_at_ms), discordLink: `https://discord.com/channels/${s(row.workspace_id)}/${s(row.channel_id)}/${ref.id}` });
+        atMs: n(row.created_at_ms), link: `https://discord.com/channels/${s(row.workspace_id)}/${s(row.channel_id)}/${ref.id}` });
     } else {
       const memory = getMemoryDetails(db, grant, ref.id);
       if (!memory) { unavailableCount += 1; continue; }
@@ -945,7 +945,7 @@ export function focusedExposurePage(
         fingerprintStatus: !current || ref.fingerprint === 'conflicting-exposure' || ref.fingerprint === 'unavailable-at-exposure'
           ? 'historic_unavailable' : current === ref.fingerprint ? 'unchanged' : 'changed',
         content: memory.statement, secondary: `${memory.type} · ${memory.status} · ${memory.scopeType}${memory.scopeKey ? `:${memory.scopeKey}` : ''}`,
-        atMs: memory.reviewAfterMs, discordLink: null });
+        atMs: memory.reviewAfterMs, link: null });
     }
   }
   return { rows, unavailableCount, nextOffset: start + INSPECTOR_PAGE_SIZE < refs.length ? start + INSPECTOR_PAGE_SIZE : null };

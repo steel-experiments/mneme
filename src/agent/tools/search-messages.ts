@@ -35,7 +35,7 @@ function renderMessage(r: MessageSearchResult): string {
   return [
     `[${r.messageId}] ${formatTimestamp(r.createdAtMs)} ${r.authorDisplayName} in #${r.channelId}${reactions}`,
     r.snippet,
-    r.discordLink,
+    r.link,
   ].join('\n');
 }
 

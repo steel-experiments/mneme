@@ -29,7 +29,7 @@ function renderMessage(r: RecentMessageResult): string {
   return [
     `[${r.messageId}] ${formatTimestamp(r.createdAtMs)} ${r.authorDisplayName} in #${r.channelName}${reactions}`,
     r.content,
-    r.discordLink,
+    r.link,
   ].join('\n');
 }
 

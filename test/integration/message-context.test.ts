@@ -171,7 +171,7 @@ describe('message context retrieval', () => {
 
   it('generates Discord links for each returned message', () => {
     const ctx = getMessageContext(env.db, ORG_GRANT, { messageId: 'm3', beforeCount: 1 });
-    expect(ctx.anchor?.discordLink).toBe(
+    expect(ctx.anchor?.link).toBe(
       'https://discord.com/channels/' + GUILD + '/' + ORG + '/m3',
     );
   });

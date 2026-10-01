@@ -636,7 +636,7 @@ export interface MemoryEvidenceResult {
   content: string;
   createdAtMs: number;
   /** Host-generated canonical jump link to the permitted source message. */
-  discordLink: string;
+  link: string;
 }
 
 export interface MemoryEvidenceCursor {
@@ -723,7 +723,7 @@ export function getMemoryEvidencePage(
     authorDisplayName: String(r.author_display_name),
     content: String(r.content),
     createdAtMs: Number(r.created_at_ms),
-    discordLink: discordMessageLink(String(r.workspace_id), String(r.channel_id), String(r.message_id)),
+    link: discordMessageLink(String(r.workspace_id), String(r.channel_id), String(r.message_id)),
   }));
   const last = pageRows[pageRows.length - 1];
   return {

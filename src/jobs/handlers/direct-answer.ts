@@ -128,7 +128,7 @@ export interface DirectAnswerPromptMessage {
   createdAtMs: number;
   createdAtIso: string;
   replyToMessageId: string | null;
-  discordLink: string;
+  link: string;
 }
 
 /** Bounded initial payload plus its exact message provenance. */
@@ -217,7 +217,7 @@ function promptQuestion(question: MessageRow): DirectAnswerPromptMessage {
     createdAtMs: question.created_at_ms,
     createdAtIso: new Date(question.created_at_ms).toISOString(),
     replyToMessageId: question.reply_to_message_id,
-    discordLink: discordMessageLink(question.workspace_id, question.channel_id, question.id),
+    link: discordMessageLink(question.workspace_id, question.channel_id, question.id),
   };
 }
 
