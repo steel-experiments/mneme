@@ -4,6 +4,7 @@ import { transactionImmediate, type DatabaseSync } from '../../db/database.js';
 import { recordAdminEvent } from '../../db/repositories/admin-events.js';
 import { authorizeAdmin } from '../authorization.js';
 import { cancelJob, enqueue, getJob } from '../../jobs/queue.js';
+import { isPlatformId } from '../../platform/ids.js';
 
 export type DeletionSubcommand = 'status' | 'approve' | 'cancel' | 'retry';
 export interface DeletionCommandInput {
@@ -54,7 +55,7 @@ export function requestDeletion(
 ): string {
   const denial = access(input, deps);
   if (denial) { audit(input, deps, 'request', null, 'denied'); return denial; }
-  if (!/^\d{17,20}$/.test(input.targetId)) {
+  if (!isPlatformId(input.targetId)) {
     audit(input, deps, 'request', null, 'invalid_target');
     return 'Invalid target. Select a Discord user or provide a numeric Discord message ID.';
   }

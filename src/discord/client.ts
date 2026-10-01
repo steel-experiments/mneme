@@ -5,6 +5,7 @@ import { handleGatewayEvent, type IngestOptions } from './ingest.js';
 import { normalizeMessage, type NormalizedMessage } from './normalize.js';
 import { getMessage } from '../db/repositories/messages.js';
 import type { IngestionObserver, IngestionOutcome, IngestionReason } from '../observability.js';
+import { isPlatformId } from '../platform/ids.js';
 
 /**
  * Discord client (Sections 6.2, 9.3).
@@ -655,7 +656,7 @@ export function registerIngestionHandlers(client: Client, deps: IngestionHandler
   const track = (name: string): void => {
     deps.tracker?.recordEvent(name);
   };
-  const validId = (value: unknown): value is string => typeof value === 'string' && /^\d{17,20}$/.test(value);
+  const validId = isPlatformId;
   const emitOutcome = (
     eventType: string, outcome: IngestionOutcome, reason: IngestionReason,
     ids: { guildId?: unknown; channelId?: unknown; messageId?: unknown } = {},

@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync, realpathSync } from 'node:fs';
 import { dirname, extname, join, normalize, resolve, sep } from 'node:path';
 import type { AttachmentMode } from '../config.js';
 import type { NormalizedAttachment } from './normalize.js';
+import { isPlatformId } from '../platform/ids.js';
 
 /**
  * Safe attachment metadata and archive handling (Section 9.10, 43.5, 44).
@@ -81,7 +82,6 @@ const EXT_TO_MIME: Record<string, string> = {
   pdf: 'application/pdf',
 };
 
-const SNOWFLAKE_RE = /^\d{17,20}$/;
 
 /** Whether a mode stores per-attachment metadata rows at all. */
 export function shouldStoreMetadata(mode: AttachmentMode): boolean {
@@ -167,7 +167,7 @@ export function resolveArchivePath(
   attachmentId: string,
   filename: string,
 ): ResolvedArchivePath {
-  if (!SNOWFLAKE_RE.test(attachmentId)) {
+  if (!isPlatformId(attachmentId)) {
     throw new Error(`attachment id is not a snowflake: ${attachmentId}`);
   }
   const dir = resolve(join(cfg.dataDir, 'attachments'));
