@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import type { ChannelKind } from './platform/types.js';
 import { readFileSync } from 'node:fs';
 import { type DatabaseSync, transactionImmediate } from './db/database.js';
 import { recordAdminEvent } from './db/repositories/admin-events.js';
@@ -270,7 +271,7 @@ interface StoredPolicyChannel {
   id: string;
   parent_id: string | null;
   is_thread: number;
-  type: number;
+  kind: ChannelKind;
 }
 
 /** Persist the candidate policy for every known channel before it becomes live. */
@@ -282,7 +283,7 @@ function reconcileStoredChannels(
   previousPolicy?: ChannelPolicy,
 ): void {
   const rows = db.prepare(
-    `SELECT id, parent_id, is_thread, type
+    `SELECT id, parent_id, is_thread, kind
        FROM channels
       WHERE workspace_id = ? AND deleted_at_ms IS NULL`,
   ).all(guildId) as unknown as StoredPolicyChannel[];
@@ -304,7 +305,7 @@ function reconcileStoredChannels(
       guildId,
       parentId: row.parent_id,
       isThread: row.is_thread === 1,
-      type: row.type,
+      kind: row.kind,
       categoryId,
     };
     const resolutionContext = {

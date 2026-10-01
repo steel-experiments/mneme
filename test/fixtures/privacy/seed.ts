@@ -61,7 +61,7 @@ export function seedPrivacyChannels(db: DatabaseSync): void {
       id,
       guildId: GUILD,
       parentId: parent,
-      type: isThread ? 11 : 0,
+      kind: isThread ? 'thread' : 'text',
       name: id,
       topic: null,
       position: null,

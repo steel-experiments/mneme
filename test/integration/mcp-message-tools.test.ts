@@ -89,7 +89,7 @@ function seedChannel(
     id,
     guildId: GUILD,
     parentId: opts.parent ?? null,
-    type: opts.isThread ? 11 : 0,
+    kind: opts.isThread ? 'thread' : 'text',
     name: id,
     topic: null,
     position: null,

@@ -33,7 +33,7 @@ describe('migrations runner', () => {
   it('applies all migrations on first run', () => {
     const t = createTestDb();
     const applied = listAppliedMigrations(t.db);
-    expect(applied.map((m) => m.version)).toEqual(Array.from({ length: 41 }, (_, i) => i + 1));
+    expect(applied.map((m) => m.version)).toEqual(Array.from({ length: 42 }, (_, i) => i + 1));
     t.cleanup();
   });
 
@@ -41,7 +41,7 @@ describe('migrations runner', () => {
     const t = createTestDb();
     const result = applyMigrations(t.db, copyMigrationsToTemp());
     expect(result.applied).toHaveLength(0);
-    expect(listAppliedMigrations(t.db).map((m) => m.version)).toEqual(Array.from({ length: 41 }, (_, i) => i + 1));
+    expect(listAppliedMigrations(t.db).map((m) => m.version)).toEqual(Array.from({ length: 42 }, (_, i) => i + 1));
     t.cleanup();
   });
 
@@ -84,6 +84,7 @@ describe('migrations runner', () => {
       '039_deadline_decisions.sql',
       '040_deletion_requests.sql',
       '041_platform_neutral_names.sql',
+      '042_channel_kind.sql',
     ]) rmSync(`${oldDir}/${name}`);
     const dbPath = `${oldDir}/upgrade.sqlite`;
     const db = openDatabase(dbPath);
@@ -95,7 +96,7 @@ describe('migrations runner', () => {
     db.prepare("INSERT INTO proposals (id,run_id,target_channel_id,status,computed_score,reason,evidence_message_ids_json,created_at_ms,updated_at_ms) VALUES ('proposal-upgrade','run-upgrade','c-upgrade','observed',0,'legacy','[]',1,1)").run();
 
     applyMigrations(db, copyMigrationsToTemp());
-    expect(listAppliedMigrations(db).map((m) => m.version)).toEqual(Array.from({ length: 41 }, (_, i) => i + 1));
+    expect(listAppliedMigrations(db).map((m) => m.version)).toEqual(Array.from({ length: 42 }, (_, i) => i + 1));
     expect(db.prepare("SELECT name FROM sqlite_master WHERE name='message_tombstones'").get()).toBeDefined();
     expect(db.prepare("SELECT name FROM sqlite_master WHERE name='attachment_file_purges'").get()).toBeDefined();
     const syncColumns = db.prepare('PRAGMA table_info(sync_cursors)').all() as Array<{ name: string }>;
@@ -208,8 +209,8 @@ describe('migrations runner', () => {
     const g = "INSERT INTO workspaces (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-att','G',1,1)";
     t.db.prepare(g).run();
     t.db.prepare(`INSERT INTO channels
-      (id,workspace_id,type,visibility_class,discovered_at_ms,updated_at_ms)
-      VALUES ('c-att','g-att',0,'org',1,1)`).run();
+      (id,workspace_id,kind,visibility_class,discovered_at_ms,updated_at_ms)
+      VALUES ('c-att','g-att','text','org',1,1)`).run();
     t.db.prepare(`INSERT INTO agent_runs
       (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
       VALUES ('run-att','g-att','episode','p','faux','faux','completed',1)`).run();
@@ -284,6 +285,7 @@ describe('migrations runner', () => {
     rmSync(`${oldDir}/039_deadline_decisions.sql`);
     rmSync(`${oldDir}/040_deletion_requests.sql`);
     rmSync(`${oldDir}/041_platform_neutral_names.sql`);
+    rmSync(`${oldDir}/042_channel_kind.sql`);
     const db = openDatabase(`${oldDir}/deadline-upgrade.sqlite`);
     try {
       applyMigrations(db, oldDir);
@@ -320,7 +322,7 @@ describe('migrations runner', () => {
         (revision_id,proposal_id,consumed_at_ms,eligible_from_ms,eligible_until_ms)
         VALUES ('cleared',NULL,31,30,40)`).run();
 
-      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([39, 40, 41]);
+      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([39, 40, 41, 42]);
       expect(getDeadlineDecision(db, 'set-subject')).toEqual({
         subjectId: 'set-subject', sourceMessageId: 'new', sourceCreatedAtMs: 20,
         sourceContentDigest: 'source-digest', quoteStart: 0, quoteEnd: 25,
@@ -376,6 +378,7 @@ describe('migrations runner', () => {
     rmSync(`${v18Dir}/039_deadline_decisions.sql`);
     rmSync(`${v18Dir}/040_deletion_requests.sql`);
     rmSync(`${v18Dir}/041_platform_neutral_names.sql`);
+    rmSync(`${v18Dir}/042_channel_kind.sql`);
     const db = openDatabase(`${v18Dir}/lineage-upgrade.sqlite`);
     applyMigrations(db, v18Dir);
     db.prepare("INSERT INTO guilds (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-lineage','G',1,1)").run();
@@ -444,6 +447,7 @@ describe('migrations runner', () => {
     rmSync(`${v19Dir}/039_deadline_decisions.sql`);
     rmSync(`${v19Dir}/040_deletion_requests.sql`);
     rmSync(`${v19Dir}/041_platform_neutral_names.sql`);
+    rmSync(`${v19Dir}/042_channel_kind.sql`);
     const db = openDatabase(`${v19Dir}/cost-upgrade.sqlite`);
     applyMigrations(db, v19Dir);
     db.prepare("INSERT INTO guilds (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-cost','G',1,1)").run();
@@ -488,6 +492,7 @@ describe('migrations runner', () => {
     const newDir = copyMigrationsToTemp();
     rmSync(`${oldDir}/040_deletion_requests.sql`);
     rmSync(`${oldDir}/041_platform_neutral_names.sql`);
+    rmSync(`${oldDir}/042_channel_kind.sql`);
     const db = openDatabase(`${oldDir}/deletion-upgrade.sqlite`);
     try {
       applyMigrations(db, oldDir);
@@ -497,7 +502,7 @@ describe('migrations runner', () => {
       enqueue(db, { type: 'forget_user', payload: { userId }, now: 1 });
       claimNextJob(db, { type: 'forget_user', now: 1, owner: 'old-worker', leaseMs: 100 });
       enqueue(db, { type: 'forget_user', payload: { userId }, now: 1 });
-      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([40, 41]);
+      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([40, 41, 42]);
       expect(db.prepare("SELECT count(*) n FROM jobs WHERE type='forget_user' AND status='cancelled'").get()?.n).toBe(2);
       expect(db.prepare("SELECT content FROM messages WHERE id='m'").get()?.content).toBe('retained');
       expect(db.prepare("SELECT count(*) n FROM admin_events WHERE action='deletion_legacy_job_cancelled'").get()?.n).toBe(2);
@@ -513,6 +518,7 @@ describe('migrations runner', () => {
     const oldDir = copyMigrationsToTemp();
     const newDir = copyMigrationsToTemp();
     rmSync(`${oldDir}/041_platform_neutral_names.sql`);
+    rmSync(`${oldDir}/042_channel_kind.sql`);
     const db = openDatabase(`${oldDir}/workspace-rename.sqlite`);
     try {
       applyMigrations(db, oldDir);
@@ -545,7 +551,7 @@ describe('migrations runner', () => {
         db.prepare(sql).run(...params);
       }
 
-      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([41]);
+      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([41, 42]);
 
       const renamed = ['channels', 'workspace_members', 'messages', 'episodes', 'memories', 'agent_runs',
         'admin_events', 'message_tombstones', 'historical_memory_campaigns', 'direct_answer_requests',
@@ -584,12 +590,45 @@ describe('migrations runner', () => {
     }
   });
 
+  it('replaces the numeric channel type with a neutral kind in migration 042', () => {
+    const oldDir = copyMigrationsToTemp();
+    const newDir = copyMigrationsToTemp();
+    rmSync(`${oldDir}/042_channel_kind.sql`);
+    const db = openDatabase(`${oldDir}/channel-kind.sqlite`);
+    try {
+      applyMigrations(db, oldDir);
+      db.prepare("INSERT INTO workspaces (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-kind','G',1,1)").run();
+      const expected: Record<number, string> = {
+        0: 'text', 2: 'other', 4: 'category', 5: 'announcement', 10: 'thread', 11: 'thread',
+        12: 'thread', 13: 'other', 15: 'forum', 16: 'media',
+      };
+      for (const type of Object.keys(expected)) {
+        db.prepare(`INSERT INTO channels (id,workspace_id,type,visibility_class,discovered_at_ms,updated_at_ms)
+          VALUES (?,'g-kind',?,'restricted',1,1)`).run(`c-${type}`, Number(type));
+      }
+
+      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([42]);
+
+      const columns = (db.prepare('PRAGMA table_info(channels)').all() as Array<{ name: string }>).map((c) => c.name);
+      expect(columns).toContain('kind');
+      expect(columns).not.toContain('type');
+      for (const [type, kind] of Object.entries(expected)) {
+        expect(db.prepare('SELECT kind FROM channels WHERE id = ?').get(`c-${type}`)).toEqual({ kind });
+      }
+      expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
+    } finally {
+      db.close();
+      rmSync(oldDir, { recursive: true, force: true });
+      rmSync(newDir, { recursive: true, force: true });
+    }
+  });
+
   it('rolls back a failed migration while keeping prior ones', () => {
     const dir = copyMigrationsToTemp();
-    writeMigration(dir, '042_bad.sql', 'CREATE TABLE definitely valid syntax NOT;');
+    writeMigration(dir, '043_bad.sql', 'CREATE TABLE definitely valid syntax NOT;');
     const db = openDatabase(`${dir}/db.sqlite`);
     expect(() => applyMigrations(db, dir)).toThrow();
-    expect(listAppliedMigrations(db).map((m) => m.version)).toEqual(Array.from({ length: 41 }, (_, i) => i + 1));
+    expect(listAppliedMigrations(db).map((m) => m.version)).toEqual(Array.from({ length: 42 }, (_, i) => i + 1));
     db.close();
   });
 
@@ -649,8 +688,8 @@ describe('core storage migration integrity', () => {
     expect(() =>
       t.db
         .prepare(
-          `INSERT INTO channels (id, workspace_id, type, visibility_class, discovered_at_ms, updated_at_ms)
-           VALUES ('c1','100000000000000001',0,'public',1,1)`,
+          `INSERT INTO channels (id, workspace_id, kind, visibility_class, discovered_at_ms, updated_at_ms)
+           VALUES ('c1','100000000000000001','text','public',1,1)`,
         )
         .run(),
     ).toThrow();
@@ -662,8 +701,8 @@ describe('core storage migration integrity', () => {
     expect(() =>
       t.db
         .prepare(
-          `INSERT INTO channels (id, workspace_id, type, is_thread, visibility_class, discovered_at_ms, updated_at_ms)
-           VALUES ('c1','100000000000000001',0,2,'restricted',1,1)`,
+          `INSERT INTO channels (id, workspace_id, kind, is_thread, visibility_class, discovered_at_ms, updated_at_ms)
+           VALUES ('c1','100000000000000001','text',2,'restricted',1,1)`,
         )
         .run(),
     ).toThrow();
@@ -758,7 +797,7 @@ describe('memory migration integrity', () => {
       .run();
     t.db
       .prepare(
-        "INSERT INTO channels (id,workspace_id,type,visibility_class,discovered_at_ms,updated_at_ms) VALUES ('ch','g1',0,'org',1,1)",
+        "INSERT INTO channels (id,workspace_id,kind,visibility_class,discovered_at_ms,updated_at_ms) VALUES ('ch','g1','text','org',1,1)",
       )
       .run();
     t.db
@@ -793,7 +832,7 @@ describe('memory migration integrity', () => {
       .run();
     t.db
       .prepare(
-        "INSERT INTO channels (id,workspace_id,type,visibility_class,discovered_at_ms,updated_at_ms) VALUES ('ch','g1',0,'org',1,1)",
+        "INSERT INTO channels (id,workspace_id,kind,visibility_class,discovered_at_ms,updated_at_ms) VALUES ('ch','g1','text','org',1,1)",
       )
       .run();
     t.db
@@ -844,8 +883,8 @@ describe('operations migration integrity', () => {
       WHERE source_message_id='m-direct-1'`).run()).toThrow();
 
     t.db.prepare(`INSERT INTO channels (
-      id, workspace_id, type, visibility_class, discovered_at_ms, updated_at_ms
-    ) VALUES ('c-direct','g-direct',0,'org',1,1)`).run();
+      id, workspace_id, kind, visibility_class, discovered_at_ms, updated_at_ms
+    ) VALUES ('c-direct','g-direct','text','org',1,1)`).run();
     t.db.prepare(`INSERT INTO agent_runs (
       id, workspace_id, run_type, prompt_version, provider, model, status, started_at_ms
     ) VALUES ('run-direct','g-direct','direct_answer','pv','faux','faux','completed',1)`).run();
@@ -869,8 +908,8 @@ describe('operations migration integrity', () => {
     const t = createTestDb();
     t.db.prepare("INSERT INTO workspaces (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-recap','G',1,1)").run();
     t.db.prepare(`INSERT INTO channels
-      (id,workspace_id,type,visibility_class,discovered_at_ms,updated_at_ms)
-      VALUES ('c-recap','g-recap',0,'org',1,1)`).run();
+      (id,workspace_id,kind,visibility_class,discovered_at_ms,updated_at_ms)
+      VALUES ('c-recap','g-recap','text','org',1,1)`).run();
     const insert = t.db.prepare(`INSERT INTO deep_recap_requests
       (id,workspace_id,target_channel_id,requested_by_user_id,after_at_ms,before_at_ms,
        budget_usd,created_at_ms,updated_at_ms)
@@ -906,7 +945,7 @@ describe('operations migration integrity', () => {
       .run();
     t.db
       .prepare(
-        "INSERT INTO channels (id,workspace_id,type,visibility_class,discovered_at_ms,updated_at_ms) VALUES ('ch','g1',0,'org',1,1)",
+        "INSERT INTO channels (id,workspace_id,kind,visibility_class,discovered_at_ms,updated_at_ms) VALUES ('ch','g1','text','org',1,1)",
       )
       .run();
     const insert = t.db.prepare(

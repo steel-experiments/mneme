@@ -52,7 +52,7 @@ function channel(id: string, name: string, visibility: VisibilityClass): Channel
     id,
     guildId: GUILD,
     parentId: null,
-    type: 0,
+    kind: 'text',
     name,
     topic: null,
     position: 0,
@@ -74,7 +74,7 @@ function thread(id: string, name: string, parentId: string): ChannelUpsertInput 
   return {
     ...channel(id, name, 'org'),
     parentId,
-    type: 11,
+    kind: 'thread',
     isThread: true,
   };
 }

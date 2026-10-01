@@ -13,17 +13,19 @@ import {
   type ArchivedThreadPage,
 } from '../../src/ingestion/threads.js';
 import {
-  GUILD_TEXT,
-  GUILD_ANNOUNCEMENT,
-  GUILD_FORUM,
-  GUILD_MEDIA,
-  GUILD_CATEGORY,
-  PUBLIC_THREAD,
-  ANNOUNCEMENT_THREAD,
-  PRIVATE_THREAD,
   type DiscoveredChannelDescriptor,
 } from '../../src/ingestion/discovery.js';
 import type { ChannelAccessCapabilities } from '../../src/db/repositories/channel-access.js';
+import type { ChannelKind } from '../../src/platform/types.js';
+
+/** Neutral channel kinds, named after the Discord channel types they replace. */
+const GUILD_TEXT = 'text' as const;
+const GUILD_FORUM = 'forum' as const;
+const GUILD_CATEGORY = 'category' as const;
+const PUBLIC_THREAD = 'thread' as const;
+const ANNOUNCEMENT_THREAD = 'thread' as const;
+const PRIVATE_THREAD = 'thread' as const;
+
 
 /**
  * Active and archived thread discovery (Sections 6.5, 7.1, 9.7).
@@ -73,16 +75,16 @@ channels:
 
 function parentDescriptors(): DiscoveredChannelDescriptor[] {
   return [
-    { id: CAT, parentId: null, type: GUILD_CATEGORY, name: 'Engineering' },
-    { id: TEXT, parentId: CAT, type: GUILD_TEXT, name: 'general', capabilities: FULL },
-    { id: ANNOUNCE, parentId: CAT, type: GUILD_ANNOUNCEMENT, name: 'news', capabilities: FULL },
-    { id: FORUM, parentId: null, type: GUILD_FORUM, name: 'forum', capabilities: FULL },
-    { id: MEDIA, parentId: CAT, type: GUILD_MEDIA, name: 'media', capabilities: FULL },
+    { id: CAT, parentId: null, kind: 'category', name: 'Engineering' },
+    { id: TEXT, parentId: CAT, kind: 'text', name: 'general', capabilities: FULL },
+    { id: ANNOUNCE, parentId: CAT, kind: 'announcement', name: 'news', capabilities: FULL },
+    { id: FORUM, parentId: null, kind: 'forum', name: 'forum', capabilities: FULL },
+    { id: MEDIA, parentId: CAT, kind: 'media', name: 'media', capabilities: FULL },
   ];
 }
 
-function threadDescriptor(id: string, parentId: string, type: number, archived = true): DiscoveredChannelDescriptor {
-  return { id, parentId, type, name: id, archived, capabilities: FULL };
+function threadDescriptor(id: string, parentId: string, kind: ChannelKind, archived = true): DiscoveredChannelDescriptor {
+  return { id, parentId, kind, name: id, archived, capabilities: FULL };
 }
 
 function page(threads: DiscoveredChannelDescriptor[], hasMore = false): ArchivedThreadPage {
@@ -105,9 +107,9 @@ describe('thread helpers', () => {
     expect(isThreadCapableParent(GUILD_FORUM)).toBe(true);
     expect(isThreadCapableParent(GUILD_CATEGORY)).toBe(false);
     const active = extractActiveThreads([
-      { id: '1', parentId: null, type: GUILD_TEXT },
-      { id: '2', parentId: '1', type: PUBLIC_THREAD },
-      { id: '3', parentId: '1', type: PRIVATE_THREAD },
+      { id: '1', parentId: null, kind: 'text' },
+      { id: '2', parentId: '1', kind: 'thread' },
+      { id: '3', parentId: '1', kind: 'thread' },
     ]);
     expect(active.map((t) => t.id)).toEqual(['2', '3']);
   });
@@ -151,7 +153,7 @@ describe('fetchArchivedThreads pagination', () => {
       { [TEXT]: [page([p1], false)] },
     );
 
-    const result = await fetchArchivedThreads(source, [{ id: TEXT, type: GUILD_TEXT }], {
+    const result = await fetchArchivedThreads(source, [{ id: TEXT, kind: 'text' }], {
       canManageThreads: true,
       maxPagesPerEndpoint: 50,
     });
@@ -168,7 +170,7 @@ describe('fetchArchivedThreads pagination', () => {
     const t1 = threadDescriptor('300000000000000201', TEXT, PUBLIC_THREAD);
     const source = makeSource({ [TEXT]: [page([t1], false)] }, { [TEXT]: [page([threadDescriptor('300000000000000203', TEXT, PRIVATE_THREAD)], false)] });
 
-    const result = await fetchArchivedThreads(source, [{ id: TEXT, type: GUILD_TEXT }], {
+    const result = await fetchArchivedThreads(source, [{ id: TEXT, kind: 'text' }], {
       canManageThreads: false,
       maxPagesPerEndpoint: 50,
     });
@@ -183,7 +185,7 @@ describe('fetchArchivedThreads pagination', () => {
     // hasMore never becomes false; the bound must stop pagination.
     const t = threadDescriptor('300000000000000201', TEXT, PUBLIC_THREAD);
     const source = makeSource({ [TEXT]: [page([t], true)] });
-    const result = await fetchArchivedThreads(source, [{ id: TEXT, type: GUILD_TEXT }], {
+    const result = await fetchArchivedThreads(source, [{ id: TEXT, kind: 'text' }], {
       canManageThreads: false,
       maxPagesPerEndpoint: 3,
     });
@@ -195,7 +197,7 @@ describe('fetchArchivedThreads pagination', () => {
 
   it('treats a non-advancing page that still has more as incomplete', async () => {
     const source = makeSource({ [TEXT]: [page([], true)] });
-    const result = await fetchArchivedThreads(source, [{ id: TEXT, type: GUILD_TEXT }], {
+    const result = await fetchArchivedThreads(source, [{ id: TEXT, kind: 'text' }], {
       canManageThreads: true,
       maxPagesPerEndpoint: 50,
     });
@@ -211,8 +213,8 @@ describe('fetchArchivedThreads pagination', () => {
       [ANNOUNCE]: [page([])],
     });
     const result = await fetchArchivedThreads(source, [
-      { id: TEXT, type: GUILD_TEXT, canManageThreads: true },
-      { id: ANNOUNCE, type: GUILD_ANNOUNCEMENT, canManageThreads: false },
+      { id: TEXT, kind: 'text', canManageThreads: true },
+      { id: ANNOUNCE, kind: 'announcement', canManageThreads: false },
     ], {
       canManageThreads: true,
       maxPagesPerEndpoint: 50,
@@ -225,7 +227,7 @@ describe('fetchArchivedThreads pagination', () => {
 
   it('ignores parents that cannot host threads', async () => {
     const source = makeSource({});
-    const result = await fetchArchivedThreads(source, [{ id: CAT, type: GUILD_CATEGORY }], {
+    const result = await fetchArchivedThreads(source, [{ id: CAT, kind: 'category' }], {
       canManageThreads: true,
       maxPagesPerEndpoint: 50,
     });
@@ -281,8 +283,8 @@ describe('discoverThreads — parent scope inheritance', () => {
     expect(byId.get(ACTIVE_PUBLIC)?.visibilityClass).toBe('org');
     expect(byId.get(PUBLIC_ARCHIVED)?.visibilityClass).toBe('org');
     expect(byId.get(PRIVATE_ARCHIVED)?.visibilityClass).toBe('org');
-    // Announcement thread (type 10) under an announcement parent.
-    expect(byId.get(PUBLIC_ARCHIVED)?.type).toBe(ANNOUNCEMENT_THREAD);
+    // Announcement thread (Discord type 10) under an announcement parent.
+    expect(byId.get(PUBLIC_ARCHIVED)?.kind).toBe(ANNOUNCEMENT_THREAD);
     // FORUM is explicitly restricted → its post is restricted.
     expect(byId.get(FORUM_POST)?.visibilityClass).toBe('restricted');
     // MEDIA inherits org from the category.

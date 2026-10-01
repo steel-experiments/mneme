@@ -167,10 +167,10 @@ export async function runStartupSync(deps: StartupSyncDeps): Promise<StartupSync
   if (deps.archiveSource) {
     record('enumerate-archived-threads');
     const parents: ThreadParentRef[] = deps.channels
-      .filter((c) => isThreadCapableParent(c.type))
+      .filter((c) => isThreadCapableParent(c.kind))
       .map((c) => ({
         id: c.id,
-        type: c.type,
+        kind: c.kind,
         // Parent-local permission is the only safe proof. The coarse caller flag
         // remains a compatibility fallback inside fetchArchivedThreads, but an
         // explicit false here prevents one permissive parent from standing in for

@@ -17,6 +17,7 @@ import {
   type ReactionEventInput,
 } from '../../ingestion/ingest.js';
 import { emojiKeyOf, normalizeMessage, normalizeMessageUpdate } from './normalize.js';
+import { THREAD_TYPES, channelKindOf } from './channel-types.js';
 
 // ---- Gateway event dispatch (Section 9.3) -----------------------------------
 
@@ -62,9 +63,6 @@ export interface GatewayEventResult {
     | 'no_threads' | 'missing_channel' | 'missing_message';
 }
 
-/** Discord channel types that represent threads (announcement/public/private). */
-const THREAD_TYPES = new Set([10, 11, 12]);
-
 /**
  * Map a raw Discord channel or thread payload to a channel upsert input with safe
  * defaults. Visibility policy is applied upstream (Section 7); a freshly seen
@@ -90,7 +88,7 @@ export function channelInputFromRaw(
     id: r.id,
     guildId: r.guild_id,
     parentId: typeof r.parent_id === 'string' ? r.parent_id : null,
-    type,
+    kind: channelKindOf(type),
     name: typeof r.name === 'string' ? r.name : null,
     topic: typeof r.topic === 'string' ? r.topic : null,
     position: typeof r.position === 'number' ? r.position : null,

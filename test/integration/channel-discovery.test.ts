@@ -20,13 +20,12 @@ import {
   discoverChannels,
   describeAccessWarnings,
   DiscoveryError,
-  GUILD_TEXT,
-  GUILD_FORUM,
-  PUBLIC_THREAD,
-  GUILD_CATEGORY,
   type DiscoveredChannelDescriptor,
   type ChannelAccessCapabilities,
 } from '../../src/ingestion/discovery.js';
+
+/** Neutral channel kinds, named after the Discord channel types they replace. */
+
 
 /**
  * Channel discovery and access auditing (Sections 6.3, 6.5, 7, 9.2, 48).
@@ -75,14 +74,14 @@ review_channel:
 
 function fullDescriptors(): DiscoveredChannelDescriptor[] {
   return [
-    { id: CAT, parentId: null, type: GUILD_CATEGORY, name: 'Engineering' },
-    { id: TEXT, parentId: CAT, type: GUILD_TEXT, name: 'general', capabilities: FULL, lastMessageId: '900000000000000001' },
-    { id: THREAD, parentId: TEXT, type: PUBLIC_THREAD, name: 'side', capabilities: FULL },
-    { id: EXCLUDED, parentId: null, type: GUILD_TEXT, name: 'legal', capabilities: FULL },
-    { id: FORUM, parentId: null, type: GUILD_FORUM, name: 'forum', capabilities: FULL },
+    { id: CAT, parentId: null, kind: 'category', name: 'Engineering' },
+    { id: TEXT, parentId: CAT, kind: 'text', name: 'general', capabilities: FULL, lastMessageId: '900000000000000001' },
+    { id: THREAD, parentId: TEXT, kind: 'thread', name: 'side', capabilities: FULL },
+    { id: EXCLUDED, parentId: null, kind: 'text', name: 'legal', capabilities: FULL },
+    { id: FORUM, parentId: null, kind: 'forum', name: 'forum', capabilities: FULL },
     // Inaccessible: cannot view → recorded but not persisted.
-    { id: INACCESSIBLE, parentId: null, type: GUILD_TEXT, name: 'hidden', capabilities: NO_ACCESS },
-    { id: REVIEW, parentId: null, type: GUILD_TEXT, name: 'review', capabilities: FULL },
+    { id: INACCESSIBLE, parentId: null, kind: 'text', name: 'hidden', capabilities: NO_ACCESS },
+    { id: REVIEW, parentId: null, kind: 'text', name: 'review', capabilities: FULL },
   ];
 }
 
@@ -107,9 +106,9 @@ describe('channel-access repository', () => {
   it('records and reads back the latest audit, including the warning text', () => {
     // Need a channel row for the FK.
     db.prepare(
-      `INSERT INTO channels (id, workspace_id, parent_id, type, name, is_thread, is_archived, is_locked,
+      `INSERT INTO channels (id, workspace_id, parent_id, kind, name, is_thread, is_archived, is_locked,
          ingest_enabled, visibility_class, allow_interventions, discovered_at_ms, updated_at_ms)
-       VALUES (?, ?, NULL, 0, 'c', 0, 0, 0, 1, 'restricted', 0, ?, ?)`,
+       VALUES (?, ?, NULL, 'text', 'c', 0, 0, 0, 1, 'restricted', 0, ?, ?)`,
     ).run(TEXT, GUILD, NOW, NOW);
 
     recordAccessAudit(db, {
@@ -366,9 +365,9 @@ describe('discoverChannels', () => {
   it('reflects an existing sync cursor in the summary sync state', () => {
     // Pre-seed a cursor for the text channel.
     db.prepare(
-      `INSERT INTO channels (id, workspace_id, parent_id, type, name, is_thread, is_archived, is_locked,
+      `INSERT INTO channels (id, workspace_id, parent_id, kind, name, is_thread, is_archived, is_locked,
          ingest_enabled, visibility_class, allow_interventions, discovered_at_ms, updated_at_ms)
-       VALUES (?, ?, NULL, 0, 'pre', 0, 0, 0, 1, 'restricted', 0, ?, ?)`,
+       VALUES (?, ?, NULL, 'text', 'pre', 0, 0, 0, 1, 'restricted', 0, ?, ?)`,
     ).run(TEXT, GUILD, NOW - 1000, NOW - 1000);
     db.prepare(
       `INSERT INTO sync_cursors (channel_id, state, history_complete, updated_at_ms) VALUES (?, 'live', 1, ?)`,
@@ -387,9 +386,9 @@ describe('discoverChannels', () => {
   it('records permission warnings when an org/intervention channel lacks Send Messages', () => {
     const caps: ChannelAccessCapabilities = { ...FULL, canSend: false, canSendInThreads: false };
     const descriptors: DiscoveredChannelDescriptor[] = [
-      { id: CAT, parentId: null, type: GUILD_CATEGORY, name: 'c' },
-      { id: TEXT, parentId: CAT, type: GUILD_TEXT, name: 'general', capabilities: caps },
-      { id: REVIEW, parentId: null, type: GUILD_TEXT, name: 'review', capabilities: FULL },
+      { id: CAT, parentId: null, kind: 'category', name: 'c' },
+      { id: TEXT, parentId: CAT, kind: 'text', name: 'general', capabilities: caps },
+      { id: REVIEW, parentId: null, kind: 'text', name: 'review', capabilities: FULL },
     ];
     const result = discoverChannels(db, descriptors, { guildId: GUILD, policy: parseChannelPolicy(POLICY_YAML), now: NOW });
     const text = result.channels.find((c) => c.id === TEXT)!;
@@ -402,9 +401,9 @@ describe('discoverChannels', () => {
 
   it('ignores non text-bearing channel types (voice, stage) in the enumeration', () => {
     const descriptors: DiscoveredChannelDescriptor[] = [
-      { id: REVIEW, parentId: null, type: GUILD_TEXT, name: 'review', capabilities: FULL },
-      { id: '200000000000000008', parentId: null, type: 2, name: 'voice', capabilities: FULL },
-      { id: '200000000000000009', parentId: null, type: 13, name: 'stage', capabilities: FULL },
+      { id: REVIEW, parentId: null, kind: 'text', name: 'review', capabilities: FULL },
+      { id: '200000000000000008', parentId: null, kind: 'other', name: 'voice', capabilities: FULL },
+      { id: '200000000000000009', parentId: null, kind: 'other', name: 'stage', capabilities: FULL },
     ];
     const result = discoverChannels(db, descriptors, { guildId: GUILD, policy: parseChannelPolicy(POLICY_YAML), now: NOW });
     const ids = result.channels.map((c) => c.id);
@@ -463,7 +462,7 @@ describe('discoverChannels', () => {
 
     it('throws DiscoveryError when the review channel exists but is inaccessible', () => {
       const descriptors: DiscoveredChannelDescriptor[] = [
-        { id: REVIEW, parentId: null, type: GUILD_TEXT, name: 'review', capabilities: NO_ACCESS },
+        { id: REVIEW, parentId: null, kind: 'text', name: 'review', capabilities: NO_ACCESS },
       ];
       expect(() =>
         discoverChannels(db, descriptors, { guildId: GUILD, policy: parseChannelPolicy(POLICY_YAML), now: NOW }),
@@ -478,7 +477,7 @@ default:
   visibility: restricted
   allow_interventions: false
 `);
-      const result = discoverChannels(db, [{ id: TEXT, parentId: null, type: GUILD_TEXT, name: 'g', capabilities: FULL }], {
+      const result = discoverChannels(db, [{ id: TEXT, parentId: null, kind: 'text', name: 'g', capabilities: FULL }], {
         guildId: GUILD,
         policy: noReview,
         now: NOW,

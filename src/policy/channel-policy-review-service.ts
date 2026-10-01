@@ -8,9 +8,10 @@ import {
 } from '../db/repositories/channel-policy-reviews.js';
 import { enqueue } from '../jobs/queue.js';
 import type { ChannelPolicySource } from '../config.js';
+import type { ChannelKind } from '../platform/types.js';
 import { resolveChannel, type ChannelPolicy, type ResolvedPolicy } from './channel-policy.js';
 import {
-  isReviewableTopLevelChannelType,
+  isReviewableTopLevelChannelKind,
   resolveEffectiveChannelPolicy,
 } from './channel-policy-review.js';
 
@@ -21,8 +22,8 @@ export interface ObservedChannelIdentity {
   guildId: string;
   parentId: string | null;
   isThread: boolean;
-  /** Discord channel type used to reject voice/category/stage and other unsupported rows. */
-  type: number;
+  /** Channel kind used to reject voice/category/stage and other unsupported rows. */
+  kind: ChannelKind;
   /** Optional already-resolved category from a complete discovery graph. */
   categoryId?: string | null;
 }
@@ -63,7 +64,7 @@ export function resolveObservedChannelPolicy(
     guildId: channel.guildId,
     parentId: channel.parentId,
     isThread: channel.isThread,
-    channelType: channel.type,
+    channelKind: channel.kind,
     reviewChannelId: policy.review_channel?.id,
     staticPolicy,
     activeReview: options.channelPolicySource === 'basic'
@@ -124,7 +125,7 @@ export function reconcileObservedChannelPolicyReviewInTransaction(
     && options.deleted !== true
     && options.unsupported !== true
     && !channel.isThread
-    && isReviewableTopLevelChannelType(channel.type)
+    && isReviewableTopLevelChannelKind(channel.kind)
     && policy.review_channel?.secure === true
     && channel.id !== policy.review_channel?.id
     && staticPolicy.source === 'default'
@@ -191,6 +192,6 @@ export function rowIdentity(row: ChannelRow): ObservedChannelIdentity {
     guildId: row.workspace_id,
     parentId: row.parent_id,
     isThread: row.is_thread === 1,
-    type: row.type,
+    kind: row.kind,
   };
 }

@@ -69,14 +69,14 @@ function countChannelMessages(db: DatabaseSync, channelId = CHANNEL): number {
 
 function seedThread(db: DatabaseSync): void {
   db.prepare(
-    `INSERT INTO channels (id, workspace_id, parent_id, type, name, is_thread, is_archived, is_locked,
+    `INSERT INTO channels (id, workspace_id, parent_id, kind, name, is_thread, is_archived, is_locked,
        ingest_enabled, visibility_class, allow_interventions, discovered_at_ms, updated_at_ms)
-     VALUES (?, ?, NULL, 0, 'project', 0, 0, 0, 1, 'org', 0, ?, ?)`,
+     VALUES (?, ?, NULL, 'text', 'project', 0, 0, 0, 1, 'org', 0, ?, ?)`,
   ).run(THREAD_PARENT, GUILD, NOW, NOW);
   db.prepare(
-    `INSERT INTO channels (id, workspace_id, parent_id, type, name, is_thread, is_archived, is_locked,
+    `INSERT INTO channels (id, workspace_id, parent_id, kind, name, is_thread, is_archived, is_locked,
        ingest_enabled, visibility_class, allow_interventions, discovered_at_ms, updated_at_ms)
-     VALUES (?, ?, ?, 11, 'discussion', 1, 1, 0, 1, 'org', 0, ?, ?)`,
+     VALUES (?, ?, ?, 'thread', 'discussion', 1, 1, 0, 1, 'org', 0, ?, ?)`,
   ).run(THREAD_CHANNEL, GUILD, THREAD_PARENT, NOW, NOW);
 }
 

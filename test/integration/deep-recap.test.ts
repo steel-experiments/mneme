@@ -30,7 +30,7 @@ describe('durable deep recap worker', () => {
     env = createTestDb();
     ids = seedIdentity(env.db);
     upsertChannel(env.db, {
-      id: CHANNEL, guildId: ids.guildId, parentId: null, type: 0, name: 'general', topic: null,
+      id: CHANNEL, guildId: ids.guildId, parentId: null, kind: 'text', name: 'general', topic: null,
       position: 0, isThread: false, isArchived: false, isLocked: false, ingestEnabled: true,
       visibilityClass: 'org', allowInterventions: true, permissionFingerprint: null,
       lastMessageId: null, discoveredAtMs: NOW, updatedAtMs: NOW, rawJson: null,
@@ -516,7 +516,7 @@ describe('durable deep recap worker', () => {
   it('revalidates current source scope before synthesis even when its fingerprint is current', async () => {
     const sourceChannelId = '100000000000000199';
     const putSourceChannel = (visibilityClass: 'org' | 'restricted') => upsertChannel(env.db, {
-      id: sourceChannelId, guildId: ids.guildId, parentId: null, type: 0, name: 'source', topic: null,
+      id: sourceChannelId, guildId: ids.guildId, parentId: null, kind: 'text', name: 'source', topic: null,
       position: 1, isThread: false, isArchived: false, isLocked: false, ingestEnabled: true,
       visibilityClass, allowInterventions: true, permissionFingerprint: null,
       lastMessageId: null, discoveredAtMs: NOW, updatedAtMs: NOW + 1, rawJson: null,
@@ -580,7 +580,7 @@ describe('durable deep recap worker', () => {
   it('does not publish stale coverage counts when an omitted source leaves the grant', async () => {
     const omittedChannelId = '100000000000000249';
     const putOmittedChannel = (visibilityClass: 'org' | 'restricted') => upsertChannel(env.db, {
-      id: omittedChannelId, guildId: ids.guildId, parentId: null, type: 0,
+      id: omittedChannelId, guildId: ids.guildId, parentId: null, kind: 'text',
       name: 'omitted-source', topic: null, position: 2, isThread: false,
       isArchived: false, isLocked: false, ingestEnabled: true, visibilityClass,
       allowInterventions: true, permissionFingerprint: null, lastMessageId: null,
@@ -637,7 +637,7 @@ describe('durable deep recap worker', () => {
   it('re-resolves the current source grant after synthesis before enqueue', async () => {
     const sourceChannelId = '100000000000000299';
     const putSourceChannel = (visibilityClass: 'org' | 'restricted') => upsertChannel(env.db, {
-      id: sourceChannelId, guildId: ids.guildId, parentId: null, type: 0, name: 'source-mid-run', topic: null,
+      id: sourceChannelId, guildId: ids.guildId, parentId: null, kind: 'text', name: 'source-mid-run', topic: null,
       position: 2, isThread: false, isArchived: false, isLocked: false, ingestEnabled: true,
       visibilityClass, allowInterventions: true, permissionFingerprint: null,
       lastMessageId: null, discoveredAtMs: NOW, updatedAtMs: NOW + 1, rawJson: null,
@@ -1029,7 +1029,7 @@ describe('durable deep recap worker', () => {
   it('does not expose stored activity counts when source scope tightens before a budget stop', async () => {
     const sourceChannelId = '100000000000000399';
     const putSourceChannel = (visibilityClass: 'org' | 'restricted') => upsertChannel(env.db, {
-      id: sourceChannelId, guildId: ids.guildId, parentId: null, type: 0,
+      id: sourceChannelId, guildId: ids.guildId, parentId: null, kind: 'text',
       name: 'budget-source', topic: null, position: 3, isThread: false,
       isArchived: false, isLocked: false, ingestEnabled: true, visibilityClass,
       allowInterventions: true, permissionFingerprint: null, lastMessageId: null,

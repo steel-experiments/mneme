@@ -3,9 +3,6 @@ import type { DatabaseSync } from 'node:sqlite';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 import { parseChannelPolicy } from '../../src/policy/channel-policy.js';
 import {
-  GUILD_TEXT,
-  GUILD_CATEGORY,
-  PUBLIC_THREAD,
   type DiscoveredChannelDescriptor,
 } from '../../src/ingestion/discovery.js';
 import type { ThreadArchiveSource } from '../../src/ingestion/threads.js';
@@ -15,12 +12,17 @@ import {
   STARTUP_PHASES,
   type StartupPhase,
 } from '../../src/ingestion/sync.js';
-import { DiscoveryError } from '../../src/ingestion/discovery.js';
+import {
+  DiscoveryError,
+} from '../../src/ingestion/discovery.js';
 import { markBackfillComplete } from '../../src/db/repositories/sync-cursors.js';
 import { getChannel } from '../../src/db/repositories/channels.js';
 import { createReconcileChannelHandler } from '../../src/jobs/handlers/reconcile-channel.js';
 import type { JobRow } from '../../src/jobs/types.js';
 import { opts as messageOptions } from '../helpers/messages.js';
+
+/** Neutral channel kinds, named after the Discord channel types they replace. */
+
 
 /**
  * Startup sync scheduling (Sections 9.2, 46.2).
@@ -63,10 +65,10 @@ channels:
 /** Parents + active thread; the archived thread is NOT in here (it comes from the source). */
 function baseDescriptors(): DiscoveredChannelDescriptor[] {
   return [
-    { id: CAT, parentId: null, type: GUILD_CATEGORY, name: 'Engineering' },
-    { id: TEXT, parentId: CAT, type: GUILD_TEXT, name: 'general', capabilities: FULL },
-    { id: THREAD, parentId: TEXT, type: PUBLIC_THREAD, name: 'active-side', capabilities: FULL },
-    { id: EXCLUDED, parentId: null, type: GUILD_TEXT, name: 'legal', capabilities: FULL },
+    { id: CAT, parentId: null, kind: 'category', name: 'Engineering' },
+    { id: TEXT, parentId: CAT, kind: 'text', name: 'general', capabilities: FULL },
+    { id: THREAD, parentId: TEXT, kind: 'thread', name: 'active-side', capabilities: FULL },
+    { id: EXCLUDED, parentId: null, kind: 'text', name: 'legal', capabilities: FULL },
   ];
 }
 
@@ -79,7 +81,7 @@ function fakeArchiveSource(archivedId = ARCHIVED): ThreadArchiveSource {
         publicCalled = true;
         return {
           threads: [
-            { id: archivedId, parentId: TEXT, type: PUBLIC_THREAD, name: 'old-side', archived: true, capabilities: FULL },
+            { id: archivedId, parentId: TEXT, kind: 'thread', name: 'old-side', archived: true, capabilities: FULL },
           ],
           hasMore: false,
         };
@@ -204,7 +206,7 @@ describe('runStartupSync — phase ordering', () => {
           announceArchiveStarted();
           await archiveGate;
           return {
-            threads: [{ id: ARCHIVED, parentId: TEXT, type: PUBLIC_THREAD, name: 'old-side', archived: true, capabilities: FULL }],
+            threads: [{ id: ARCHIVED, parentId: TEXT, kind: 'thread', name: 'old-side', archived: true, capabilities: FULL }],
             hasMore: false,
           };
         }
@@ -293,9 +295,9 @@ describe('runStartupSync — backfill enqueue', () => {
   it('does not re-enqueue a channel whose history is already complete', async () => {
     // Persist the text channel + a complete cursor so step 8 skips it.
     db.prepare(
-      `INSERT INTO channels (id, workspace_id, parent_id, type, name, is_thread, is_archived, is_locked,
+      `INSERT INTO channels (id, workspace_id, parent_id, kind, name, is_thread, is_archived, is_locked,
          ingest_enabled, visibility_class, allow_interventions, discovered_at_ms, updated_at_ms)
-       VALUES (?, ?, NULL, 0, 'pre', 0, 0, 0, 1, 'restricted', 0, ?, ?)`,
+       VALUES (?, ?, NULL, 'text', 'pre', 0, 0, 0, 1, 'restricted', 0, ?, ?)`,
     ).run(TEXT, GUILD, NOW - 1000, NOW - 1000);
     markBackfillComplete(db, TEXT, {}, NOW - 500);
 
@@ -425,7 +427,7 @@ describe('runStartupSync — archived coverage & variants', () => {
       archiveSource: {
         fetchPublicArchived(parentId) {
           return parentId === TEXT
-            ? { threads: [{ id: ARCHIVED, parentId: TEXT, type: PUBLIC_THREAD, name: 'old-side', archived: true, capabilities: FULL }], hasMore: true }
+            ? { threads: [{ id: ARCHIVED, parentId: TEXT, kind: 'thread', name: 'old-side', archived: true, capabilities: FULL }], hasMore: true }
             : { threads: [], hasMore: false };
         },
         fetchPrivateArchived() {

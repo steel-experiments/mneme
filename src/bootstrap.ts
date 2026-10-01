@@ -708,7 +708,7 @@ async function defaultBeginIngestion(ctx: BootstrapContext, discord: DiscordWiri
         guildId,
         parentId: input.parentId,
         isThread: input.isThread,
-        type: input.type,
+        kind: input.kind,
       }, { channelPolicySource: ctx.config.channelPolicySource });
       const existing = getChannel(ctx.db, input.id);
       return {

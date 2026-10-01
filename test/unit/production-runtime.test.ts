@@ -37,7 +37,7 @@ describe('periodic reconciliation channel selection', () => {
           id,
           guildId: ids.guildId,
           parentId,
-          type: isThread ? 11 : 0,
+          kind: isThread ? 'thread' : 'text',
           name,
           topic: null,
           position: 0,

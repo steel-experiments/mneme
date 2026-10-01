@@ -162,7 +162,7 @@ live('live direct-answer semantic planning', () => {
           id: activityChannelId,
           guildId: identity.guildId,
           parentId: null,
-          type: 0,
+          kind: 'text',
           name: 'team-activity',
           topic: null,
           position: null,
