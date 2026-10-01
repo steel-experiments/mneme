@@ -237,7 +237,7 @@ describe('backfillChannel — current parent eligibility', () => {
       channelId: THREAD_CHANNEL,
       fetcher: {
         async fetchMessages() {
-          db.prepare("UPDATE channels SET name='cassandra-project-test' WHERE id=?").run(THREAD_PARENT);
+          db.prepare("UPDATE channels SET name='mneme-project-test' WHERE id=?").run(THREAD_PARENT);
           return [];
         },
       },
@@ -353,7 +353,7 @@ describe('createBackfillChannelHandler', () => {
     expect(worker.dispatch()).toBe(1);
     await fetchStarted;
 
-    db.prepare("UPDATE channels SET name='cassandra-project-test' WHERE id=?").run(THREAD_PARENT);
+    db.prepare("UPDATE channels SET name='mneme-project-test' WHERE id=?").run(THREAD_PARENT);
     releaseFetch();
     await worker.settle();
 

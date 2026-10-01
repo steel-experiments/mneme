@@ -27,7 +27,7 @@ describe('production job lease sizing', () => {
 });
 
 describe('periodic reconciliation channel selection', () => {
-  it('excludes a Cassandra test channel and its normally named child thread', () => {
+  it('excludes a Mneme test channel and its normally named child thread', () => {
     const env = createTestDb();
     try {
       const ids = seedIdentity(env.db);
@@ -53,7 +53,7 @@ describe('periodic reconciliation channel selection', () => {
           updatedAtMs: now,
           rawJson: null,
         });
-      add('test-parent', 'cassandra-test', null, false);
+      add('test-parent', 'mneme-test', null, false);
       add('test-child', 'ordinary-thread', 'test-parent', true);
       add('ordinary', 'general', null, false);
 

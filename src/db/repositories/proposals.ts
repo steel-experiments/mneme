@@ -168,7 +168,7 @@ export function getProposalByReviewMessageId(
 /**
  * The proposal behind the newest review card posted in a channel at or before
  * the given time (Section 26). Used to resolve "this proposal" when someone
- * addresses Cassandra in the secure review channel without replying to a card.
+ * addresses Mneme in the secure review channel without replying to a card.
  */
 export function getLatestProposalCardInChannel(
   db: DatabaseSync,
@@ -405,7 +405,7 @@ export function proposalShortId(id: string): string {
   return id.slice(0, PROPOSAL_SHORT_ID_LENGTH);
 }
 
-/** One bounded pending-proposal row for the `/cassandra proposals` list. */
+/** One bounded pending-proposal row for the `/mneme proposals` list. */
 export interface ProposalListItem {
   id: string;
   shortId: string;
@@ -437,7 +437,7 @@ interface ProposalListDbRow {
   expires_at_ms: number | null;
 }
 
-/** Shared deadline rule for status and `/cassandra proposals`. */
+/** Shared deadline rule for status and `/mneme proposals`. */
 const ACTIONABLE_PROPOSAL_DEADLINE_SQL =
   '(p.expires_at_ms IS NULL OR p.expires_at_ms >= @now)';
 

@@ -5,7 +5,7 @@ import { authorizeAdmin, type AuthorizationReason } from '../authorization.js';
 import { recordAdminEvent } from '../../db/repositories/admin-events.js';
 
 /**
- * `/cassandra channels` (Sections 27, 33).
+ * `/mneme channels` (Sections 27, 33).
  *
  * Lists the visible channels an authorized administrator need a digest of: policy
  * (visibility) class, ingestion flag, intervention allowance, sync/history state,
@@ -153,7 +153,7 @@ export type ChannelsOutcome =
   | { kind: 'not_authorized'; reason: AuthorizationReason }
   | { kind: 'done'; report: ChannelsReport };
 
-/** Run `/cassandra channels`. Authorization is checked first and audited on denial. */
+/** Run `/mneme channels`. Authorization is checked first and audited on denial. */
 export function handleChannelsCommand(input: HandleChannelsInput, deps: HandleChannelsDeps): ChannelsOutcome {
   const outcome = authorizeAdmin(input.memberRoleIds, deps.adminRoleIds);
   if (!outcome.authorized) {
@@ -212,7 +212,7 @@ export function formatChannelsReply(outcome: ChannelsOutcome): string {
     lines.push(`${shortId(c.id)} ${name} · ${flags.join(' ')}`);
   }
   if (r.hasMore) {
-    lines.push(`Use \`/cassandra channels\` page ${r.page + 1} for more.`);
+    lines.push(`Use \`/mneme channels\` page ${r.page + 1} for more.`);
   }
   // Cap the reply length defensively; Discord caps an ephemeral followup body.
   return lines.join('\n').slice(0, 1900);

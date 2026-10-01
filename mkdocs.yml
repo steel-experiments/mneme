@@ -1,6 +1,6 @@
-site_name: Cassandra for Discord
-site_description: Public documentation for Cassandra, a quiet organizational-memory agent for Discord.
-site_url: https://steel-experiments.github.io/cassandra-discord/
+site_name: Mneme for Discord
+site_description: Public documentation for Mneme, a quiet organizational-memory agent for Discord.
+site_url: https://steel-experiments.github.io/mneme/
 
 docs_dir: docs
 site_dir: site
@@ -17,7 +17,7 @@ nav:
       - Roll out safely: how-to/roll-out-safely.md
       - Publish the member privacy notice: how-to/publish-privacy-notice.md
   - Use:
-      - Team member guide: how-to/use-cassandra.md
+      - Team member guide: how-to/use-mneme.md
       - Connect MCP clients: how-to/connect-mcp-clients.md
   - Privacy: privacy-notice.md
   - Security: security.md

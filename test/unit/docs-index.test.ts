@@ -87,7 +87,7 @@ describe('docSummary — first paragraph as one bounded line', () => {
 
 describe('loadDocsIndex — scanning', () => {
   it('indexes every markdown file with a relative path, title, and summary', () => {
-    write('index.md', '# Cassandra documentation\n\nStart here.\n');
+    write('index.md', '# Mneme documentation\n\nStart here.\n');
     write('reference/configuration.md', '# Configuration\n\nEvery setting.\n');
 
     const index = loadDocsIndex(dir);
@@ -104,10 +104,10 @@ describe('loadDocsIndex — scanning', () => {
     write('index.md', '# Home\n');
     write('how-to/setup.md', '# Setup\n');
 
-    const publicIndex = loadDocsIndex(dir, 'https://docs.example.com/cassandra/');
-    expect(publicIndex.entry('index.md')?.publicUrl).toBe('https://docs.example.com/cassandra/');
+    const publicIndex = loadDocsIndex(dir, 'https://docs.example.com/mneme/');
+    expect(publicIndex.entry('index.md')?.publicUrl).toBe('https://docs.example.com/mneme/');
     expect(publicIndex.entry('how-to/setup.md')?.publicUrl).toBe(
-      'https://docs.example.com/cassandra/how-to/setup/',
+      'https://docs.example.com/mneme/how-to/setup/',
     );
     expect(loadDocsIndex(dir).entry('index.md')?.publicUrl).toBeUndefined();
   });

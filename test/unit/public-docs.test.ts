@@ -29,7 +29,7 @@ describe('public documentation boundary', () => {
       expect(entry, `docs index holds ${entry}`).not.toMatch(internalOpsName);
     }
     expect(paths).not.toContain('acceptance-checklist.md');
-    expect(paths).toContain('how-to/use-cassandra.md');
+    expect(paths).toContain('how-to/use-mneme.md');
     expect(paths).toContain('explanation/safety-and-assurance.md');
   });
 

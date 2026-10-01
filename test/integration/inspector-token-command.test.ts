@@ -11,11 +11,11 @@ import { resolveInspectorToken, DEFAULT_INSPECTOR_TOKEN_TTL_MS } from '../../src
 import { listInspectorTokens } from '../../src/db/repositories/inspector-tokens.js';
 
 /**
- * `/cassandra inspector-token create|list|revoke` integration suite (Sections
+ * `/mneme inspector-token create|list|revoke` integration suite (Sections
  * 27, 32.6).
  *
  * Acceptance — verbatim from Section 32.6: inspector tokens are "issued by the
- * `/cassandra inspector-token` commands, stored as SHA-256 hashes, shown exactly
+ * `/mneme inspector-token` commands, stored as SHA-256 hashes, shown exactly
  * once at creation, carrying expiry and revocation".
  *
  * The suite proves: authorization fails closed and is audited on both denial
@@ -63,7 +63,7 @@ function input(subcommand: 'create' | 'list' | 'revoke', fields: Partial<HandleI
   };
 }
 
-describe('/cassandra inspector-token — Sections 27, 32.6', () => {
+describe('/mneme inspector-token — Sections 27, 32.6', () => {
   it('fails closed without an admin role and audits the denial', () => {
     const outcome = handleInspectorTokenCommand(
       input('create', { name: 'x', memberRoleIds: null }),

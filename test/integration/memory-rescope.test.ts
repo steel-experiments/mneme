@@ -14,7 +14,7 @@ import { createRescopeMemoriesHandler } from '../../src/jobs/handlers/rescope-me
 const GUILD = '100000000000000001';
 const USER = '100000000000000003';
 const NOW = 1_700_000_001_000;
-const ACTOR = 'system-cassandra';
+const ACTOR = 'system-mneme';
 
 let env: TestDb;
 

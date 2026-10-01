@@ -22,12 +22,12 @@ import type { ChannelPolicySource } from '../config.js';
 /**
  * Channel discovery and access auditing (Sections 6.3, 6.5, 7, 9.2, 48 Ingestion).
  *
- * Discovery enumerates the text-bearing channels Discord exposes to Cassandra —
+ * Discovery enumerates the text-bearing channels Discord exposes to Mneme —
  * guild text, announcement, forum, media, and public/private/announcement threads
  * (Section 6.5) — resolves each one's effective visibility policy, persists the
  * channel metadata and a capability audit, and reports the set the bot can actually
  * reach. It is the startup step 7 ("enumerate channels and active threads") and the
- * source of the `/cassandra channels` and `list_channels` views.
+ * source of the `/mneme channels` and `list_channels` views.
  *
  * The core operates on plain descriptors so it is testable without a live guild; a
  * discord.js adapter converts guild channels into descriptors in production.
@@ -112,7 +112,7 @@ export interface DiscoveredChannelSummary {
   historyComplete: boolean;
   permissionWarnings: string[];
   permissionFingerprint: string;
-  /** Cassandra can View Channel — required to read or persist anything. */
+  /** Mneme can View Channel — required to read or persist anything. */
   accessible: boolean;
   /** Excluded by policy (ingest=false or visibility=excluded). */
   excluded: boolean;
@@ -131,11 +131,11 @@ export interface ReviewChannelValidation {
 
 export interface DiscoveryResult {
   guildId: string;
-  /** Channels Cassandra can view that are not excluded by policy. */
+  /** Channels Mneme can view that are not excluded by policy. */
   channels: DiscoveredChannelSummary[];
   /** Channels excluded by policy (still persisted with ingest_enabled=0). */
   excluded: DiscoveredChannelSummary[];
-  /** Channels Cassandra cannot view — recorded in the result, not persisted (FK-safe). */
+  /** Channels Mneme cannot view — recorded in the result, not persisted (FK-safe). */
   inaccessible: DiscoveredChannelSummary[];
   review: ReviewChannelValidation;
 }
@@ -517,7 +517,7 @@ function validateReviewChannel(
       warning = 'Secure review channel is configured but was not discovered';
     } else if (!accessible) {
       ok = false;
-      warning = 'Secure review channel is inaccessible to Cassandra';
+      warning = 'Secure review channel is inaccessible to Mneme';
     }
   }
   return { configured: true, channelId: rc.id, present, accessible, ok, warning };

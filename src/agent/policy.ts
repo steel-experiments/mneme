@@ -802,7 +802,7 @@ export function routeProposal(input: ProposalRoutingInput): ProposalRoutingResul
 
   // E. Rate controls gate the autonomous target send (Section 24.4): a channel
   //    cooldown, topic cooldown, or the global daily limit suppresses; a
-  //    near-duplicate of a recent Cassandra post suppresses. The proposal is
+  //    near-duplicate of a recent Mneme post suppresses. The proposal is
   //    stored observed so the dedupe is auditable, never silently dropped.
   if (!input.cooldown.allowed) {
     return {

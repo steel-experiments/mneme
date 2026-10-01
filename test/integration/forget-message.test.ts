@@ -236,7 +236,7 @@ describe('forgetMessage — derived memory handling', () => {
 
     const maintenance = rescopeMemories(d, {
       affectedChannelIds: null,
-      actorUserId: 'system-cassandra',
+      actorUserId: 'system-mneme',
       guildId,
       now: FORGET_NOW + 1,
     });

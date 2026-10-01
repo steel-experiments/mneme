@@ -4,7 +4,7 @@
 /**
  * OAuth client identity (Section 32.5.2, amended).
  *
- * Cassandra recognizes exactly one client: the id an operator sets in
+ * Mneme recognizes exactly one client: the id an operator sets in
  * `MCP_OAUTH_CLIENT_ID` and pastes into the connector dialog. There is no
  * registration endpoint and no client table, so this module is the whole of
  * "which clients exist" — a comparison against configuration.
@@ -32,7 +32,7 @@
  * ephemeral loopback port, which would require matching redirect URIs with the
  * port ignored (RFC 8252 Section 7.3) — a looser rule that lets any local process
  * receive an authorization code. Claude Code can present an admin-issued bearer
- * token instead, so Cassandra does not take on that rule.
+ * token instead, so Mneme does not take on that rule.
  */
 export const CLAUDE_HOSTED_REDIRECT_URI = 'https://claude.ai/api/mcp/auth_callback';
 
@@ -107,7 +107,7 @@ export type RedirectUriProblem =
  * a loopback host, where the traffic never leaves the machine (RFC 8252
  * Section 8.3). A fragment is not permitted on a registered redirect (RFC 6749
  * Section 3.1.2), and embedded credentials would be carried into a redirect
- * Cassandra emits.
+ * Mneme emits.
  */
 export function checkRedirectUri(value: string): RedirectUriProblem | null {
   let url: URL;

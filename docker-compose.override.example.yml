@@ -13,6 +13,6 @@
 # Docker Compose applies `docker-compose.override.yml` automatically on top of
 # the base file for `docker compose up`, so no `-f` flag is required.
 services:
-  cassandra:
+  mneme:
     ports:
       - "127.0.0.1:3000:3000"

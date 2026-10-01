@@ -152,7 +152,7 @@ beforeEach(() => {
   seedIdentity(env.db, GUILD);
   upsertChannel(env.db, channel(ORG_CHANNEL, 'general-org', 'org'));
   upsertChannel(env.db, channel(RESTRICTED_A, 'sec-ops', 'restricted'));
-  upsertChannel(env.db, channel(REVIEW_ONLY, 'cassandra-review', 'review_only'));
+  upsertChannel(env.db, channel(REVIEW_ONLY, 'mneme-review', 'review_only'));
   upsertChannel(env.db, channel(EXCLUDED_CHANNEL, 'muted', 'excluded'));
 
   clockMs = NOW;
@@ -203,7 +203,7 @@ describe('inspector concealment and methods — Section 32.6', () => {
     // No credential: every method and every subpath gets the same 401.
     const post = await fetch(`${base}/inspector`, { method: 'POST' });
     expect(post.status).toBe(401);
-    expect(post.headers.get('www-authenticate')).toBe('Basic realm="Cassandra inspector", charset="UTF-8"');
+    expect(post.headers.get('www-authenticate')).toBe('Basic realm="Mneme inspector", charset="UTF-8"');
     const unknown = await get('/inspector/nope', '');
     expect(unknown.status).toBe(401);
     // The same requests with a valid token get their real answers.
@@ -222,7 +222,7 @@ describe('inspector authentication — Section 32.6', () => {
     const missing = await get('/inspector', '');
     expect(missing.status).toBe(401);
     // Basic alone, so every browser prompts; Bearer is accepted without being advertised.
-    expect(missing.headers.get('www-authenticate')).toBe('Basic realm="Cassandra inspector", charset="UTF-8"');
+    expect(missing.headers.get('www-authenticate')).toBe('Basic realm="Mneme inspector", charset="UTF-8"');
     expect(await missing.text()).toContain('paste the token as the <strong>password</strong>');
 
     const wrong = await get('/inspector', 'Bearer not-a-real-token');
@@ -371,7 +371,7 @@ describe('inspector pages — Section 32.6 pages table', () => {
     env.db
       .prepare(
         `INSERT INTO outbox (id, proposal_id, channel_id, content, dedupe_key, status, next_attempt_at_ms, created_at_ms, updated_at_ms)
-         VALUES ('out-0001','prop-0001', ?, 'Cassandra speaks: see decision mem-0001.', 'dk-1', 'sent', ?, ?, ?)`,
+         VALUES ('out-0001','prop-0001', ?, 'Mneme speaks: see decision mem-0001.', 'dk-1', 'sent', ?, ?, ?)`,
       )
       .run(ORG_CHANNEL, NOW, NOW, NOW);
     env.db
@@ -393,7 +393,7 @@ describe('inspector pages — Section 32.6 pages table', () => {
     const res = await get('/inspector');
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain('Cassandra inspector');
+    expect(html).toContain('Mneme inspector');
     expect(html).toContain('active memories');
     expect(html).toContain('run-0001'); // recent-run table links to the run page
     expect(html).toContain('Recent proposals');
@@ -428,7 +428,7 @@ describe('inspector pages — Section 32.6 pages table', () => {
     expect(html).toContain('ready');
     expect(html).toContain('mode review (configured)');
 
-    // A durable override from `/cassandra mode` wins over the configured value.
+    // A durable override from `/mneme mode` wins over the configured value.
     setRuntimeModeOverride(env.db, {
       mode: 'autonomous',
       actorUserId: '100000000000000003',
@@ -851,18 +851,18 @@ describe('inspector pages — Section 32.6 pages table', () => {
   it('speech page separates proposals from deliveries', async () => {
     const sourceUrl = `https://discord.com/channels/${GUILD}/${ORG_CHANNEL}/900000000000000001`;
     env.db.prepare('UPDATE outbox SET content = ? WHERE id = ?').run(
-      `Cassandra speaks: [source](${sourceUrl})`,
+      `Mneme speaks: [source](${sourceUrl})`,
       'out-0001',
     );
     const res = await get('/inspector/speech');
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain('A decision was forgotten.');
-    expect(html).not.toContain('Cassandra speaks:');
+    expect(html).not.toContain('Mneme speaks:');
 
     const deliveries = await get('/inspector/speech?view=deliveries');
     const deliveriesHtml = await deliveries.text();
-    expect(deliveriesHtml).toContain(`Cassandra speaks: <a href="${sourceUrl}">source</a>`);
+    expect(deliveriesHtml).toContain(`Mneme speaks: <a href="${sourceUrl}">source</a>`);
     expect(deliveriesHtml).not.toContain(`[source](${sourceUrl})`);
     expect(deliveriesHtml).not.toContain('A decision was forgotten.');
   });

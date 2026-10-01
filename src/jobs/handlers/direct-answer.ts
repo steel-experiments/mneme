@@ -62,7 +62,7 @@ import type { JobHandler } from '../worker.js';
 import type { JobRow } from '../types.js';
 import { DeferJobError, TransientJobError } from '../errors.js';
 import { computeRetryDelay } from '../queue.js';
-import { isCassandraTestSurface } from '../../discord/test-channels.js';
+import { isMnemeTestSurface } from '../../discord/test-channels.js';
 import { ModelAdmissionTimeoutError } from '../../agent/model-admission.js';
 import { getMemory } from '../../memory/repository.js';
 import { recomputeMemoryScopes } from '../../memory/search.js';
@@ -75,7 +75,7 @@ import {
 /**
  * `direct_answer` job handler (Sections 19, 26, 46.3).
  *
- * When a user explicitly addresses Cassandra, one queued `direct_answer` job
+ * When a user explicitly addresses Mneme, one queued `direct_answer` job
  * becomes one bounded agent run that answers in the **same channel** it was asked
  * in. The handler pins that channel as both the retrieval scope and the only
  * legal target, renders the direct-answer prompt with a bounded preceding
@@ -94,7 +94,7 @@ import {
  * and fallback delivery share one source-question response intent, so retries or
  * a crash cannot create two outbox rows for the same addressed message.
  *
- * A question about Cassandra herself is answered from the documentation shipped
+ * A question about Mneme herself is answered from the documentation shipped
  * with the image: the run receives `list_docs` and `read_doc` (Section 22.7). The
  * documentation carries no channel visibility, and it is private — the answer
  * quotes or summarizes it inline and never contains a documentation link.
@@ -239,7 +239,7 @@ export function buildDirectAnswerPromptContext(
   // A test console is an answer surface, never a conversational evidence
   // source. Keep this empty even if stale policy accidentally marks the
   // concrete channel (or a thread below it) ingestion-enabled.
-  const retrieved = isCassandraTestSurface(db, question.channel_id)
+  const retrieved = isMnemeTestSurface(db, question.channel_id)
     ? { anchor: null, before: [], after: [], replies: [] }
     : getMessageContext(db, grant, {
         messageId: question.id,
@@ -315,7 +315,7 @@ export interface DirectAnswerHandlerDeps {
   guildId: string;
   promptCompiler: PromptCompiler | (() => PromptCompiler);
   channelPolicyYml?: string | (() => string);
-  cassandraYml?: string;
+  mnemeYml?: string;
   /** Rendered system prompt, or a renderer using this run's complete context. */
   systemPrompt: string | ((context: Record<string, unknown>) => string);
   /** Resolve the retrieval grant and target scope for the question's channel. */
@@ -326,7 +326,7 @@ export interface DirectAnswerHandlerDeps {
   mode: string | (() => string);
   /** Agent runtime inputs; required unless `executeRun` overrides the run. */
   agent?: AgentRuntimeInputs;
-  /** Cassandra's own documentation, exposed to the run through `list_docs` / `read_doc`. */
+  /** Mneme's own documentation, exposed to the run through `list_docs` / `read_doc`. */
   docs?: DocsIndex;
   /** Override the agent-run executor (tests). Defaults to {@link executeAgentRun}. */
   executeRun?: (deps: ExecuteAgentRunDeps) => Promise<AgentRunResult>;
@@ -419,7 +419,7 @@ export function createDirectAnswerHandler(
       now: clock(),
     });
 
-    // Cassandra-named test consoles deliberately store an explicit mention even
+    // Mneme-named test consoles deliberately store an explicit mention even
     // when ordinary ingestion is disabled. Remember that narrow exception at
     // run start so the exact initial question can remain a reply anchor without
     // making any other row in the channel a retrievable/citable source.
@@ -427,7 +427,7 @@ export function createDirectAnswerHandler(
     const allowTestConsoleQuestion = Boolean(
       targetChannelAtStart
       && targetChannelAtStart.deleted_at_ms === null
-      && isCassandraTestSurface(db, pinnedChannelId)
+      && isMnemeTestSurface(db, pinnedChannelId)
       && resolveCurrentChannelScope(db, pinnedChannelId)?.visibility !== 'excluded'
     );
 
@@ -468,7 +468,7 @@ export function createDirectAnswerHandler(
     const compiler = typeof deps.promptCompiler === 'function' ? deps.promptCompiler() : deps.promptCompiler;
     const promptText = compiler.render('direct-answer', context);
     const promptVersion = compiler.versionFor('direct-answer', {
-      cassandraYml: deps.cassandraYml,
+      mnemeYml: deps.mnemeYml,
       channelPolicyYml: typeof deps.channelPolicyYml === 'function' ? deps.channelPolicyYml() : deps.channelPolicyYml,
     });
 
@@ -481,7 +481,7 @@ export function createDirectAnswerHandler(
       model: a?.model ?? (undefined as unknown as ExecuteAgentRunDeps['model']),
       thinkingLevel: a?.thinkingLevel ?? 'minimal',
       streamFn: a?.streamFn ?? (undefined as unknown as ExecuteAgentRunDeps['streamFn']),
-      sessionId: `cassandra:direct:${pinnedChannelId}:${messageId}`,
+      sessionId: `mneme:direct:${pinnedChannelId}:${messageId}`,
       cacheProfile: 'direct',
       promptText,
       promptVersion,
@@ -1035,7 +1035,7 @@ function validateSafeFallback(
     || !currentScope
   ) return { allow: false, reasonCategory: 'target_invalid' };
 
-  const testConsole = isCassandraTestSurface(deps.db, input.pinnedChannelId)
+  const testConsole = isMnemeTestSurface(deps.db, input.pinnedChannelId)
     && currentScope.visibility !== 'excluded';
   if (!testConsole && !resolveRetrievableChannelScope(deps.db, input.pinnedChannelId)) {
     return { allow: false, reasonCategory: 'policy_disabled' };
@@ -1115,7 +1115,7 @@ export function validateDirectAnswer(
     questionMessageId?: string;
     /** Conservative timestamp defense in addition to exact exposure fingerprints. */
     runStartedAtMs: number;
-    /** Narrow exception for the exact question in a Cassandra-named reply console. */
+    /** Narrow exception for the exact question in a Mneme-named reply console. */
     allowTestConsoleQuestion: boolean;
   },
 ): DirectAnswerValidation {
@@ -1126,7 +1126,7 @@ export function validateDirectAnswer(
     input.allowTestConsoleQuestion
     && currentPinnedChannel
     && currentPinnedChannel.deleted_at_ms === null
-    && isCassandraTestSurface(db, input.pinnedChannelId)
+    && isMnemeTestSurface(db, input.pinnedChannelId)
   );
   const resolveProvenanceChannel = (
     channelId: string,
@@ -1156,7 +1156,7 @@ export function validateDirectAnswer(
   // deleted while its channel remains visible. Re-fetch every model-visible
   // message, compare it with the exact version captured at exposure time, and
   // gate its current concrete scope. Only the exact source question may use the
-  // Cassandra-console reply exception.
+  // Mneme-console reply exception.
   const messageIds = [...new Set(input.provenance.messageIds ?? [])];
   const messageFingerprints = new Map<string, string>();
   for (const row of input.provenance.messageFingerprints ?? []) {
@@ -1206,7 +1206,7 @@ export function validateDirectAnswer(
     const scope = isExactTestQuestion
       ? resolveCurrentChannelScope(db, message.channel_id)
       : resolveRetrievableChannelScope(db, message.channel_id);
-    if (!scope || (!isExactTestQuestion && isCassandraTestSurface(db, message.channel_id))) {
+    if (!scope || (!isExactTestQuestion && isMnemeTestSurface(db, message.channel_id))) {
       reasons.push(`exposed message "${id}" is no longer retrievable`);
       continue;
     }
@@ -1325,7 +1325,7 @@ export function validateDirectAnswer(
   }
   if (input.snapshotCoverage) {
     const coverageScopes = input.snapshotCoverage.matchedChannelIds.map((channelId) => {
-      const scope = isCassandraTestSurface(db, channelId)
+      const scope = isMnemeTestSurface(db, channelId)
         ? undefined
         : resolveRetrievableChannelScope(db, channelId);
       return {

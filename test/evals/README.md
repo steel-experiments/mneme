@@ -7,7 +7,7 @@ intervention-precision threshold.
 
 The harness never calls a live model. Each fixture in `episodes.json` contains
 the recorded response for every prompt version under comparison. The harness
-applies Cassandra's host rules for visibility, deployment mode, evidence, and
+applies Mneme's host rules for visibility, deployment mode, evidence, and
 intervention thresholds, then aggregates the Section 46.4 metrics.
 
 ## Files
@@ -98,7 +98,7 @@ RUN_LIVE_MODEL_EVALS=1 \
 
 The live evaluation defaults to `gpt-5.6-terra` with medium reasoning. Override only the
 model with `DIRECT_ANSWER_EVAL_MODEL`. Synthetic tool arguments are inspected only
-in-process for assertions; Cassandra's persisted run audit retains names and argument
+in-process for assertions; Mneme's persisted run audit retains names and argument
 sizes, not generated search text or retrieved content.
 
 To add a new prompt version: add its id to `promptVersions`, add a `responses`
@@ -118,7 +118,7 @@ raw SQLite file. The copied filename must contain `experiment` or `replay`:
 
 ```bash
 npm run experiment:episodes -- \
-  --database /absolute/path/cassandra-experiment.sqlite
+  --database /absolute/path/mneme-experiment.sqlite
 ```
 
 That command is a dry run: it applies current migrations only to the copy, selects up to
@@ -130,7 +130,7 @@ After inspecting the sample plan, explicitly enable paid calls:
 OPENAI_API_KEY=... \
 DISCORD_APPLICATION_ID=... \
 npm run experiment:episodes -- \
-  --database /absolute/path/cassandra-experiment.sqlite \
+  --database /absolute/path/mneme-experiment.sqlite \
   --live \
   --confirm-copy
 ```
@@ -139,7 +139,7 @@ The live command caps `--limit` at 100. Terra candidate runs are written only to
 supplied copy so the normal runtime can validate evidence and account for complete usage;
 the experiment never invokes the review handler and therefore never applies memories,
 creates routed proposals, writes outbox work, or sends Discord messages. Luna failures,
-invalid JSON, low confidence, Cassandra mentions, memory links, scheduled feedback, and
+invalid JSON, low confidence, Mneme mentions, memory links, scheduled feedback, and
 non-org visibility all resolve to `escalate`.
 
 Results are written with owner-only permissions under `.experiment/` by default. The
@@ -167,7 +167,7 @@ semantic clock. Only Terra can create memories or route an intervention. The ins
 links every pair, exposes a bounded proposal view for blinded human review, and groups
 category agreement, important recall, silence retention, memory counts, tokens, latency,
 and spend by candidate model/reasoning pair. The cumulative cap is exact per pair within
-Cassandra's single process even when multiple episode workers are enabled; an earlier
+Mneme's single process even when multiple episode workers are enabled; an earlier
 Terra-low cohort therefore does not consume the Luna-high cap.
 
 After 50 pairs, manually review every category disagreement, every important baseline,

@@ -1,6 +1,6 @@
 import type { DatabaseSync } from '../db/database.js';
 import { transactionImmediate } from '../db/database.js';
-import { isCassandraTestSurface } from '../discord/test-channels.js';
+import { isMnemeTestSurface } from '../discord/test-channels.js';
 
 export type HistoricalCampaignStatus = 'running' | 'paused' | 'completed' | 'budget_exhausted';
 
@@ -152,7 +152,7 @@ export function wakeHistoricalCampaignReviews(
      WHERE id=? AND type='review_episode' AND status='queued' AND run_after_ms>?
   `);
   const persist = () => candidates.reduce(
-    (changes, candidate) => isCassandraTestSurface(db, candidate.conversation_channel_id)
+    (changes, candidate) => isMnemeTestSurface(db, candidate.conversation_channel_id)
       ? changes
       : changes + Number(wake.run(now, now, candidate.id, now).changes),
     0,

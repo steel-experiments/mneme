@@ -24,10 +24,10 @@ export interface ListMemoriesDetails {
 }
 
 const DESCRIPTION = `List a bounded, relevance-ranked inventory of organizational memories
-visible to this run. Use this for broad questions such as what Cassandra remembers or knows.
+visible to this run. Use this for broad questions such as what Mneme remembers or knows.
 Optionally filter by memory type or lifecycle status; active memories are the default.
 No search query is needed. Returns an exact scoped total plus a ranked page (at most 50),
-so never describe the returned page size as Cassandra's total memory count. Returns id,
+so never describe the returned page size as Mneme's total memory count. Returns id,
 type, status, confidence, importance, scope, and statement.`;
 
 function renderMemory(r: MemorySearchResult): string {

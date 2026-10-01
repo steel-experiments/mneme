@@ -50,7 +50,7 @@ const VALID_SELECTIONS = new Set<ModeSelection>([
 ]);
 
 /**
- * Change Cassandra's effective mode immediately and durably.
+ * Change Mneme's effective mode immediately and durably.
  *
  * Autonomous mode deliberately requires a second, exact confirmation value.
  * Review-capable modes also fail closed unless the active review channel is
@@ -136,7 +136,7 @@ function auditRejected(
 export function formatModeReply(outcome: ModeCommandOutcome): string {
   switch (outcome.kind) {
     case 'not_authorized':
-      return 'You are not authorized to change Cassandra’s mode.';
+      return 'You are not authorized to change Mneme’s mode.';
     case 'invalid_selection':
       return 'Unknown mode. Choose configured, observe, review, or autonomous.';
     case 'review_channel_required':
@@ -148,8 +148,8 @@ export function formatModeReply(outcome: ModeCommandOutcome): string {
         ? 'The durable override was cleared; environment configuration controls the mode.'
         : 'This durable override takes effect immediately and survives redeploys.';
       return outcome.already
-        ? `Cassandra is already in ${outcome.current} mode. ${source}`
-        : `Cassandra changed from ${outcome.previous} to ${outcome.current} mode. ${source}`;
+        ? `Mneme is already in ${outcome.current} mode. ${source}`
+        : `Mneme changed from ${outcome.previous} to ${outcome.current} mode. ${source}`;
     }
   }
 }

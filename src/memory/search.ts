@@ -114,9 +114,9 @@ const CURRENT_EVIDENCE_VISIBILITY_SQL = `
   CASE
     WHEN msg.id IS NULL OR msg.deleted_at_ms IS NOT NULL OR c.id IS NULL THEN 'excluded'
     WHEN c.is_thread = 1 AND parent.id IS NULL THEN 'excluded'
-    WHEN INSTR(LOWER(COALESCE(c.name, '')), 'cassandra') > 0 THEN 'excluded'
+    WHEN INSTR(LOWER(COALESCE(c.name, '')), 'mneme') > 0 THEN 'excluded'
     WHEN c.is_thread = 1
-      AND INSTR(LOWER(COALESCE(parent.name, '')), 'cassandra') > 0 THEN 'excluded'
+      AND INSTR(LOWER(COALESCE(parent.name, '')), 'mneme') > 0 THEN 'excluded'
     ELSE c.visibility_class
   END`;
 

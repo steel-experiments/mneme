@@ -90,7 +90,7 @@ afterEach(() => env.cleanup());
 describe('bootstrapApplication — Section 9.2 ordering and singletons', () => {
   it('restores a durable Discord mode override before connecting', async () => {
     setRuntimeModeOverride(env.db, { mode: 'observe', actorUserId: 'admin', now: Date.now() });
-    const config = loadConfig({ env: { ...baseEnv(), CASSANDRA_MODE: 'review', CASSANDRA_REVIEW_CHANNEL_ID: '345678901234567890' },
+    const config = loadConfig({ env: { ...baseEnv(), MNEME_MODE: 'review', MNEME_REVIEW_CHANNEL_ID: '345678901234567890' },
       channelPolicyReview: { id: '345678901234567890', secure: true } });
     let modeSeenAtConnect: string | undefined;
     const seams = recordingSeams([]);

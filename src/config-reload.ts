@@ -28,7 +28,7 @@ import {
 /**
  * Atomic policy and prompt reload (Sections 7.2, 8, 15, 27).
  *
- * Cassandra's retrieval boundary is computed at read time from the *currently
+ * Mneme's retrieval boundary is computed at read time from the *currently
  * active* channel policy, so reloading that policy tightens (or loosens)
  * retrieval immediately for every subsequent run. To make a reload safe, a
  * candidate snapshot — parsed channel policy plus compiled prompt surface — is

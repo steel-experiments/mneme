@@ -16,7 +16,7 @@ import {
  * Discord message creation has no idempotency key, so a crash between the Discord
  * send and the database `sent` update leaves an outbox row in `sending` with the
  * message possibly already posted. At startup, each such row is reconciled: fetch
- * Cassandra's own recent messages in the pinned target channel and match against
+ * Mneme's own recent messages in the pinned target channel and match against
  * the row's content. A match records the existing Discord id and marks the row
  * `sent` (no duplicate post). Only a *completed* lookup that finds no match may
  * return the row to `queued` for another attempt — a lookup that errors leaves
@@ -24,7 +24,7 @@ import {
  * post. Network lookups run outside any transaction (Section 9.1).
  */
 
-/** A Cassandra message recently present in a target channel (for matching). */
+/** A Mneme message recently present in a target channel (for matching). */
 export interface RecentSentMessage {
   discordMessageId: string;
   content: string;
@@ -33,7 +33,7 @@ export interface RecentSentMessage {
   dedupeMarker?: string | null;
 }
 
-/** Port for fetching Cassandra's recent own messages in a channel. */
+/** Port for fetching Mneme's recent own messages in a channel. */
 export interface RecentSentMessageLookup {
   fetch(channelId: string, sinceMs: number): Promise<readonly RecentSentMessage[]>;
 }
@@ -64,7 +64,7 @@ export interface RecoveryReport {
   errored: number;
 }
 
-/** Find a recent Cassandra message whose normalized content equals the row's. */
+/** Find a recent Mneme message whose normalized content equals the row's. */
 function findSentMatch(
   dedupeMarker: string,
   messages: readonly RecentSentMessage[],
@@ -181,13 +181,13 @@ export async function reconcileOutboxSending(
 
 /**
  * discord.js-backed recent-message lookup: fetches up to 50 recent messages in
- * the channel and keeps only Cassandra's own, within the window. Returns an empty
+ * the channel and keeps only Mneme's own, within the window. Returns an empty
  * list (not a throw) for a missing or non-text channel — absence is a legitimate
  * "no match" outcome, not a lookup failure.
  */
 export function createDiscordRecentSentLookup(
   client: Client,
-  cassandraId: string,
+  mnemeId: string,
 ): RecentSentMessageLookup {
   return {
     async fetch(channelId, sinceMs) {
@@ -208,7 +208,7 @@ export function createDiscordRecentSentLookup(
             reachedBoundary = true;
             continue;
           }
-          if (m.author?.id !== cassandraId) continue;
+          if (m.author?.id !== mnemeId) continue;
           out.push({ discordMessageId: m.id, content: m.content, sentAtMs: m.createdTimestamp,
             dedupeMarker: m.nonce == null ? null : String(m.nonce) });
         }

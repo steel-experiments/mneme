@@ -46,8 +46,8 @@ describe('parseMentions — independent syntax parsing', () => {
     expect(m.map((x) => x.kind)).toEqual(['everyone', 'here']);
   });
 
-  it('does not flag a textual @Cassandra (prose, not mention syntax)', () => {
-    expect(parseMentions('I asked @Cassandra about it')).toEqual([]);
+  it('does not flag a textual @Mneme (prose, not mention syntax)', () => {
+    expect(parseMentions('I asked @Mneme about it')).toEqual([]);
   });
 
   it('ignores channel, emoji, and slash-command tokens (not pings)', () => {

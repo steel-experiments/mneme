@@ -96,7 +96,7 @@ beforeEach(() => {
   env.db.prepare(
     `INSERT INTO users
        (id, username, global_name, is_bot, first_seen_at_ms, last_seen_at_ms, raw_json)
-     VALUES (?, 'cassandra-helper', 'Cassandra Helper', 1, ?, ?, NULL)`,
+     VALUES (?, 'mneme-helper', 'Mneme Helper', 1, ?, ?, NULL)`,
   ).run(BOT, START, START);
 });
 
@@ -113,7 +113,7 @@ describe('recent activity snapshot repository', () => {
         const id = `${channelId}-m-${String(message).padStart(2, '0')}`;
         seedMessage(id, channelId, START + 100 + message * 20 + index, {
           authorId: index === 2 && message === 3 ? BOT : HUMAN,
-          authorDisplayName: index === 2 && message === 3 ? 'Cassandra Helper' : 'Alice',
+          authorDisplayName: index === 2 && message === 3 ? 'Mneme Helper' : 'Alice',
           replyToMessageId: index === 3 && message === 4 ? `${channelId}-m-03` : null,
         });
       }
@@ -122,15 +122,15 @@ describe('recent activity snapshot repository', () => {
     seedChannel('restricted', { visibility: 'restricted' });
     seedChannel('excluded', { visibility: 'excluded' });
     seedChannel('disabled', { ingestEnabled: false });
-    seedChannel('cassandra-console-enabled', { name: '#CASSANDRA-test' });
-    seedChannel('cassandra-console-disabled', {
-      name: '#cassandra-test-disabled',
+    seedChannel('mneme-console-enabled', { name: '#MNEME-test' });
+    seedChannel('mneme-console-disabled', {
+      name: '#mneme-test-disabled',
       ingestEnabled: false,
     });
-    seedChannel('cassandra-parent-enabled', { name: '#cassandra-thread-console' });
+    seedChannel('mneme-parent-enabled', { name: '#mneme-thread-console' });
     seedChannel('ordinary-child-thread', {
       name: 'release-notes',
-      parentId: 'cassandra-parent-enabled',
+      parentId: 'mneme-parent-enabled',
       isThread: true,
     });
     seedMessage('restricted-row', 'restricted', START + 500);
@@ -138,11 +138,11 @@ describe('recent activity snapshot repository', () => {
     seedMessage('disabled-row', 'disabled', START + 502);
     seedMessage('deleted-row', orgChannels[0]!, START + 503);
     env.db.prepare('UPDATE messages SET deleted_at_ms = ? WHERE id = ?').run(START + 900, 'deleted-row');
-    seedMessage('test-ordinary-enabled', 'cassandra-console-enabled', START + 504);
-    seedMessage('test-mention-enabled', 'cassandra-console-enabled', START + 505, {
+    seedMessage('test-ordinary-enabled', 'mneme-console-enabled', START + 504);
+    seedMessage('test-mention-enabled', 'mneme-console-enabled', START + 505, {
       content: `<@${HUMAN}> catch me up`,
     });
-    seedMessage('test-ordinary-disabled', 'cassandra-console-disabled', START + 506);
+    seedMessage('test-ordinary-disabled', 'mneme-console-disabled', START + 506);
     seedMessage('test-parent-thread-row', 'ordinary-child-thread', START + 507);
 
     const snapshot = getRecentActivitySnapshot(env.db, ORG_GRANT, {

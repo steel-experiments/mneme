@@ -11,7 +11,7 @@ import {
 } from '../../src/mcp/oauth/authorize.js';
 import { CLAUDE_HOSTED_REDIRECT_URI } from '../../src/mcp/oauth/client.js';
 
-const BASE = 'https://cassandra.example.up.railway.app';
+const BASE = 'https://mneme.example.up.railway.app';
 
 const ctx: AuthorizationContext = {
   client: { clientId: 'b7f3c1a9d24e40f8', redirectUris: [CLAUDE_HOSTED_REDIRECT_URI] },
@@ -28,7 +28,7 @@ function request(overrides: Partial<AuthorizationRequest> = {}): AuthorizationRe
     redirectUri: CLAUDE_HOSTED_REDIRECT_URI,
     codeChallenge: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
     codeChallengeMethod: 'S256',
-    scope: 'cassandra:read',
+    scope: 'mneme:read',
     state: 'client-state-value',
     resource: `${BASE}/mcp`,
     ...overrides,
@@ -43,7 +43,7 @@ describe('authorization request planning', () => {
       clientState: 'client-state-value',
       codeChallenge: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
       resource: `${BASE}/mcp`,
-      scope: 'cassandra:read',
+      scope: 'mneme:read',
     });
   });
 
@@ -57,7 +57,7 @@ describe('authorization request planning', () => {
   it('defaults an omitted scope and resource to this server', () => {
     // A client that sends neither still gets a token bound to this MCP endpoint.
     const plan = planAuthorization(ctx, request({ scope: undefined, resource: undefined }));
-    expect(plan).toMatchObject({ kind: 'accepted', scope: 'cassandra:read', resource: `${BASE}/mcp` });
+    expect(plan).toMatchObject({ kind: 'accepted', scope: 'mneme:read', resource: `${BASE}/mcp` });
   });
 
   describe('errors that must never be redirected', () => {
@@ -121,7 +121,7 @@ describe('authorization request planning', () => {
     });
 
     it('refuses a scope beyond what this server issues', () => {
-      expectRedirectError({ scope: 'cassandra:read cassandra:admin' }, 'invalid_scope');
+      expectRedirectError({ scope: 'mneme:read mneme:admin' }, 'invalid_scope');
       expectRedirectError({ scope: 'everything' }, 'invalid_scope');
     });
   });

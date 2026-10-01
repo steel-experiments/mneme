@@ -45,7 +45,7 @@ function run(selection: string, confirmation: string | null = null, secureReview
   });
 }
 
-describe('/cassandra mode', () => {
+describe('/mneme mode', () => {
   it('applies and persists an observe override immediately', () => {
     const outcome = run('observe');
     expect(outcome).toMatchObject({ kind: 'done', previous: 'review', current: 'observe' });

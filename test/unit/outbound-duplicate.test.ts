@@ -3,7 +3,7 @@ import {
   detectDuplicate,
   normalizeForDuplicate,
   DEFAULT_NEAR_DUPLICATE_THRESHOLD,
-  type RecentCassandraMessage,
+  type RecentMnemeMessage,
 } from '../../src/agent/duplicate-policy.js';
 
 /**
@@ -16,7 +16,7 @@ import {
 const NOW = 1_700_000_001_000;
 const DAY = 24 * 60 * 60 * 1000;
 
-function recent(content: string, ageMs: number, source: 'outbox' | 'observed' = 'outbox'): RecentCassandraMessage {
+function recent(content: string, ageMs: number, source: 'outbox' | 'observed' = 'outbox'): RecentMnemeMessage {
   return { content, sentAtMs: NOW - ageMs, source };
 }
 

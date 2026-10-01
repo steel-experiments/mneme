@@ -76,7 +76,7 @@ function reviewScope() {
 function renderSystemPrompt(compiler: PromptCompiler, context: ScheduledReviewRenderContext): string {
   return compiler.render('system', {
     ...context,
-    agent: { name: 'Cassandra', role: 'organizational memory' },
+    agent: { name: 'Mneme', role: 'organizational memory' },
     organization: { name: 'Test Co', timezone: 'UTC' },
     personality: { traits: ['calm'], avoid: ['sarcasm'] },
   });
@@ -476,7 +476,7 @@ describe('scheduled-review approval regression', () => {
       `[#general · 2023-11-14](https://discord.com/channels/${GUILD}/${CHANNEL}/m-due)`,
     );
     expect(outbox.content).not.toContain('[[cite:');
-    expect(outbox.content).toContain('Cassandra tracks decisions and open commitments');
+    expect(outbox.content).toContain('Mneme tracks decisions and open commitments');
     // The durable proposal now carries the exact delivered text, so
     // reply-feedback association (content === message) keeps working.
     expect(getProposal(env.db, proposalId)!.message).toBe(outbox.content);
@@ -545,7 +545,7 @@ describe('scheduled-review approval regression', () => {
     expect(presentation.proposedMessage).toContain(
       `Sources: [#general · 2023-11-14](https://discord.com/channels/${GUILD}/${CHANNEL}/${evidenceId})`,
     );
-    expect(presentation.proposedMessage).toContain('Cassandra tracks decisions and open commitments');
+    expect(presentation.proposedMessage).toContain('Mneme tracks decisions and open commitments');
   });
 
   it('omits card links that were not exposed by the scheduled run', () => {
@@ -570,7 +570,7 @@ describe('scheduled-review approval regression', () => {
     expect(presentation.sources).toEqual([]);
   });
 
-  it('omits card links when an exposed source becomes a Cassandra test surface', () => {
+  it('omits card links when an exposed source becomes a Mneme test surface', () => {
     const evidenceId = seedMessage('test-surface-source', CHANNEL, 'Initially ordinary.');
     setRunProvenance('run-1', [evidenceId], [CHANNEL]);
     const proposalId = insertProposal(env.db, {
@@ -583,7 +583,7 @@ describe('scheduled-review approval regression', () => {
       evidenceMessageIds: [evidenceId],
       now: NOW,
     });
-    env.db.prepare('UPDATE channels SET name = ? WHERE id = ?').run('cassandra-test', CHANNEL);
+    env.db.prepare('UPDATE channels SET name = ? WHERE id = ?').run('mneme-test', CHANNEL);
 
     const presentation = buildScheduledReviewPresentation(
       env.db,
@@ -1233,7 +1233,7 @@ describe('createReviewDueMemoriesHandler', () => {
     // Durable text carries the marker; links are host-built at delivery.
     expect(proposal.message).toContain('[[cite:m-due]]');
     expect(proposal.message).not.toContain('discord.com');
-    expect(proposal.message).not.toContain('Cassandra tracks decisions');
+    expect(proposal.message).not.toContain('Mneme tracks decisions');
   });
 
   it('observes a notification whose citation marker is not validated evidence', async () => {
@@ -1274,9 +1274,9 @@ describe('createReviewDueMemoriesHandler', () => {
     expect(proposal.expiresAtMs).toBeNull();
   });
 
-  it('observes run-exposed evidence that is currently on a Cassandra test surface', async () => {
+  it('observes run-exposed evidence that is currently on a Mneme test surface', async () => {
     const memId = seedDueMemory();
-    env.db.prepare('UPDATE channels SET name = ? WHERE id = ?').run('cassandra-test', CHANNEL);
+    env.db.prepare('UPDATE channels SET name = ? WHERE id = ?').run('mneme-test', CHANNEL);
     const handler = createReviewDueMemoriesHandler({
       db: env.db,
       guildId: GUILD,
@@ -1418,7 +1418,7 @@ describe('createReviewDueMemoriesHandler', () => {
       // Exercise a real strict system render failure on stable required context.
       systemPrompt: (context) => compiler.render('system', {
         ...context,
-        agent: { name: 'Cassandra', role: 'organizational memory' },
+        agent: { name: 'Mneme', role: 'organizational memory' },
         organization: { name: 'Test Co' },
         personality: { traits: ['calm'], avoid: ['sarcasm'] },
       }),

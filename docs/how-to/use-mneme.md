@@ -1,27 +1,27 @@
-# Use Cassandra in Discord
+# Use Mneme in Discord
 
-This is the everyday guide for members of a Discord server where Cassandra is already
-installed. You do not need an administrator role to ask Cassandra a question.
+This is the everyday guide for members of a Discord server where Mneme is already
+installed. You do not need an administrator role to ask Mneme a question.
 
 ## Ask a question
 
-Mention Cassandra in a server channel she can access:
+Mention Mneme in a server channel she can access:
 
 ~~~text
-@Cassandra what did we decide about the launch sequence?
-@Cassandra what risks have we recorded for the migration?
-@Cassandra bring me up to speed on this channel since Monday
+@Mneme what did we decide about the launch sequence?
+@Mneme what risks have we recorded for the migration?
+@Mneme bring me up to speed on this channel since Monday
 ~~~
 
-Make follow-up questions self-contained when possible. Cassandra can use permitted
+Make follow-up questions self-contained when possible. Mneme can use permitted
 conversation and memories, but she does not treat every earlier chat message as an
 unbounded conversation history.
 
-## Why Cassandra rarely speaks first
+## Why Mneme rarely speaks first
 
-Cassandra sends an unsolicited message only when current work deserves it: a human
+Mneme sends an unsolicited message only when current work deserves it: a human
 message from the last seven days made a new commitment, changed a decision, reopened a
-question, reported a specific outcome, or contradicted something Cassandra remembers —
+question, reported a specific outcome, or contradicted something Mneme remembers —
 or a human-stated deadline became due. Each such development earns one reminder at
 most, whatever happens to it. Silence does not delete or invalidate anything: the
 memory stays searchable, and an explicit question about older material always works
@@ -34,7 +34,7 @@ the same way.
 | Recent activity across a bounded window | A catch-up, such as “last two days” |
 | A decision, risk, prediction, or commitment retained over time | A memory question |
 | A focused subject | A topical memory question with the key term |
-| A large, durable report over many days | Ask an admin to run `/cassandra recap start` |
+| A large, durable report over many days | Ask an admin to run `/mneme recap start` |
 
 A normal catch-up is intentionally bounded. A deep recap is an admin-started background
 job that splits a larger window into smaller analyses and posts a durable report later.
@@ -42,12 +42,12 @@ Neither operation silently expands what the requester is allowed to see.
 
 ## Read citations and coverage
 
-Cassandra places host-built Discord source links beside supported claims. A link points
-to a message you are permitted to open; Cassandra does not let the model author source
+Mneme places host-built Discord source links beside supported claims. A link points
+to a message you are permitted to open; Mneme does not let the model author source
 URLs.
 
 A catch-up footer says whether coverage was complete or partial. Partial coverage means
-the requested window exceeded a retrieval bound and Cassandra used a deterministic
+the requested window exceeded a retrieval bound and Mneme used a deterministic
 channel- and time-balanced sample. It does not mean the omitted messages do not exist.
 Narrow the channel, topic, or time window when completeness matters.
 
@@ -57,7 +57,7 @@ absent.
 
 ## Understand visibility
 
-Cassandra answers from the intersection of:
+Mneme answers from the intersection of:
 
 - Discord channels the bot may read;
 - the configured channel policy; and
@@ -65,23 +65,23 @@ Cassandra answers from the intersection of:
 
 Organization-visible evidence can be used in organization-visible answers. Restricted
 evidence stays within its channel family. Review-only evidence stays in the secure review
-context. Excluded content is not available. Cassandra fails closed when a channel is
+context. Excluded content is not available. Mneme fails closed when a channel is
 unknown or permissions become insufficient.
 
 ## DMs are not a conversation surface
 
-Cassandra does not read or answer questions in direct messages. A DM receives a fixed,
+Mneme does not read or answer questions in direct messages. A DM receives a fixed,
 rate-limited notice directing the sender back to a server mention. DM content is not
 ingested, stored, logged, or sent to the model.
 
 ## Report a wrong or unsafe answer
 
-Preserve the answer and its source links, then contact a Cassandra administrator. Say
+Preserve the answer and its source links, then contact a Mneme administrator. Say
 which claim is wrong, which source contradicts it, and whether the problem appears to be
 missing context, stale memory, or visibility.
 
-Administrators can inspect a memory with `/cassandra memory-get`, find related memories
-with `/cassandra memory-search`, pause review/outbound work, and use the deletion
+Administrators can inspect a memory with `/mneme memory-get`, find related memories
+with `/mneme memory-search`, pause review/outbound work, and use the deletion
 commands when content must be removed. Do not paste restricted evidence into a broader
 channel while reporting the issue.
 

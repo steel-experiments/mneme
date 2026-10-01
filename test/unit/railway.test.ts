@@ -67,7 +67,7 @@ describe('railway.json (Section 41.1)', () => {
 
   it('makes no ephemeral-database assumption', () => {
     // No inline DATABASE_PATH override: the persistent path comes from the
-    // base compose / app config (/app/data/cassandra.sqlite on the volume).
+    // base compose / app config (/app/data/mneme.sqlite on the volume).
     expect(cfg.deploy).not.toHaveProperty('DATABASE_PATH');
     expect(cfg).not.toHaveProperty('ephemeralFileSystem');
   });

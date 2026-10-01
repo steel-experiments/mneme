@@ -173,8 +173,8 @@ describe('scoped message search', () => {
     );
   });
 
-  it('never retrieves Cassandra test surfaces or their normally named child threads', () => {
-    const testChannel = 'cassandra-test-stale';
+  it('never retrieves Mneme test surfaces or their normally named child threads', () => {
+    const testChannel = 'mneme-test-stale';
     const childThread = 'ordinary-test-child';
     seedChannel(testChannel, 'org');
     seedChannel(childThread, 'org', { parent: testChannel, isThread: true });

@@ -81,7 +81,7 @@ export interface FixtureModeOptions {
 
 /**
  * Seed the synthetic guild: one org channel, one restricted channel, a human,
- * and Cassandra. Mirrors the FK-safe scaffolding the repository tests use.
+ * and Mneme. Mirrors the FK-safe scaffolding the repository tests use.
  */
 function seedFixture(db: DatabaseSync, now: number): void {
   db.prepare(
@@ -106,8 +106,8 @@ function seedFixture(db: DatabaseSync, now: number): void {
   });
   upsertUser(db, {
     id: CASS,
-    username: 'cassandra',
-    globalName: 'Cassandra',
+    username: 'mneme',
+    globalName: 'Mneme',
     isBot: true,
     firstSeenAtMs: now,
     lastSeenAtMs: now,
@@ -221,7 +221,7 @@ function buildFauxAgent(): { agent: AgentRuntimeInputs; prime: () => void } {
 export async function runFixtureMode(options: FixtureModeOptions = {}): Promise<FixtureReport> {
   const nowFn = options.now ?? (() => 1_700_000_001_000);
   const now = nowFn();
-  const dir = mkdtempSync(join(tmpdir(), 'cassandra-fixture-'));
+  const dir = mkdtempSync(join(tmpdir(), 'mneme-fixture-'));
   const dbPath = join(dir, 'fixture.sqlite');
   const backupsDir = join(dir, 'backups');
   mkdirSync(backupsDir, { recursive: true });
@@ -262,9 +262,9 @@ export async function runFixtureMode(options: FixtureModeOptions = {}): Promise<
     const deps: ReviewEpisodeHandlerDeps = {
       db,
       guildId: GUILD,
-      cassandraId: CASS,
+      mnemeId: CASS,
       promptCompiler: compiler,
-      systemPrompt: 'Cassandra system prompt (fixture mode).',
+      systemPrompt: 'Mneme system prompt (fixture mode).',
       resolveChannelScope: () => ({
         grant: ORG_GRANT,
         target: { label: '#general', visibility: 'org' },

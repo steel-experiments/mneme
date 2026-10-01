@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "./schema.json",
-  "title": "Cassandra eval fixture set",
+  "title": "Mneme eval fixture set",
   "description": "Synthetic, labeled evaluation episodes for the versioned prompt harness (Section 46.4). No production content.",
   "type": "object",
   "required": ["version", "promptVersions", "thresholds", "episodes"],

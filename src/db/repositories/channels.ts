@@ -175,7 +175,7 @@ export function resolveCurrentChannelScope(
  * Resolve a channel as a readable evidence/provenance source. Unlike
  * {@link resolveCurrentChannelScope}, this requires ingestion to remain enabled
  * on both the concrete channel and a thread's parent. Use the looser resolver
- * only for host-pinned reply targets such as an ingest-disabled Cassandra test
+ * only for host-pinned reply targets such as an ingest-disabled Mneme test
  * console; retrieved or cited source material must always use this function.
  */
 export function resolveRetrievableChannelScope(

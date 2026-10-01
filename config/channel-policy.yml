@@ -45,10 +45,10 @@ channels:
     visibility: restricted
     allow_interventions: false
 
-# Where Cassandra sends review cards. "secure: true" is your claim that you
+# Where Mneme sends review cards. "secure: true" is your claim that you
 # checked who can read this channel. The ID alone proves nothing. Check the
 # real audience before you trust this block. If you set
-# CASSANDRA_REVIEW_CHANNEL_ID, it must equal this id.
+# MNEME_REVIEW_CHANNEL_ID, it must equal this id.
 review_channel:
   id: "100000000000000021"
   secure: true

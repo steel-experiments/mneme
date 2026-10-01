@@ -16,7 +16,7 @@
  * token is hashed and looked up in `inspector_tokens` (revocation and expiry
  * checked, `last_used_at_ms` touched). Failed authentications share one global
  * fixed-window budget; authenticated traffic carries a per-token budget. Both
- * budgets are global, not per-IP, for the Section 32.5.4 reason: Cassandra
+ * budgets are global, not per-IP, for the Section 32.5.4 reason: Mneme
  * cannot see client identity behind a proxy, so a per-IP budget would be a
  * bypass, not a protection.
  *
@@ -46,7 +46,7 @@ export interface InspectorRouterDeps {
   timezone?: string;
   /** Readiness source for the overview page; absent renders an unknown state. */
   readiness?: () => { ready: boolean; reason: string | null };
-  /** Configured autonomy mode (`CASSANDRA_MODE`); the durable override wins when set. */
+  /** Configured autonomy mode (`MNEME_MODE`); the durable override wins when set. */
   configuredMode?: string;
   /** Override limiters for tests; defaults derive from `config`. */
   tokenLimiter?: RateLimiter;
@@ -68,7 +68,7 @@ const BASIC_RE = /^Basic\s+([A-Za-z0-9+/=_-]+)$/i;
  * rejected, and no dialog appears. Command-line clients send `Bearer` without
  * needing it advertised; the server accepts both schemes.
  */
-export const INSPECTOR_WWW_AUTHENTICATE = 'Basic realm="Cassandra inspector", charset="UTF-8"';
+export const INSPECTOR_WWW_AUTHENTICATE = 'Basic realm="Mneme inspector", charset="UTF-8"';
 
 /**
  * Extract the presented token from an `Authorization` header, or null when
@@ -437,10 +437,10 @@ function unauthorizedPage(basePath: string): string {
 <html lang="en"><head><meta charset="utf-8"><title>Sign in required</title>
 <style>body{font:14px/1.5 system-ui,sans-serif;max-width:40em;margin:4em auto;padding:0 1em;color:#1f2328}code{background:#f6f8fa;padding:2px 6px;border-radius:4px}</style>
 </head><body>
-<h1>Cassandra inspector</h1>
+<h1>Mneme inspector</h1>
 <p>This surface requires an inspector token. In a browser, reload and paste the token as the <strong>password</strong> in the login dialog (any username). From a command-line client, send it as a header:</p>
 <p><code>Authorization: Bearer &lt;token&gt;</code></p>
-<p>Tokens are issued with <code>/cassandra inspector-token create</code> in the server.</p>
+<p>Tokens are issued with <code>/mneme inspector-token create</code> in the server.</p>
 <p><a href="${basePath.replace(/"/g, '&quot;')}">Try again</a></p>
 </body></html>`;
 }

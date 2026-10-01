@@ -13,7 +13,7 @@ import {
   DIRECT_ANSWER_PRIORITY,
   directAnswerJobKey,
 } from './direct-answer-identity.js';
-import { isCassandraTestSurface } from '../discord/test-channels.js';
+import { isMnemeTestSurface } from '../discord/test-channels.js';
 import {
   expirePendingProposals,
   PROPOSAL_EXPIRY_BATCH_SIZE,
@@ -259,7 +259,7 @@ export function repairDurableWork(db: DatabaseSync, input: {
       "UPDATE episodes SET status='queued', updated_at_ms=? WHERE id=? AND status='reviewing'",
     );
     for (const row of reviewing) {
-      if (isCassandraTestSurface(db, row.conversation_channel_id)) {
+      if (isMnemeTestSurface(db, row.conversation_channel_id)) {
         markSkipped(db, row.id, input.now);
       } else {
         reviewsReset += Number(resetReview.run(input.now, row.id).changes);
@@ -270,7 +270,7 @@ export function repairDurableWork(db: DatabaseSync, input: {
       "SELECT id,conversation_channel_id FROM episodes WHERE status='queued'",
     ).all() as Array<{ id: string; conversation_channel_id: string }>;
     for (const row of queued) {
-      if (isCassandraTestSurface(db, row.conversation_channel_id)) {
+      if (isMnemeTestSurface(db, row.conversation_channel_id)) {
         markSkipped(db, row.id, input.now);
         continue;
       }
@@ -283,7 +283,7 @@ export function repairDurableWork(db: DatabaseSync, input: {
       "SELECT id,last_activity_at_ms,conversation_channel_id FROM episodes WHERE status='open'",
     ).all() as Array<{ id: string; last_activity_at_ms: number; conversation_channel_id: string }>;
     for (const row of open) {
-      if (isCassandraTestSurface(db, row.conversation_channel_id)) {
+      if (isMnemeTestSurface(db, row.conversation_channel_id)) {
         const closed = closeEpisode(db, row.conversation_channel_id, input.now);
         if (closed) markSkipped(db, closed, input.now);
         continue;
@@ -299,7 +299,7 @@ export function repairDurableWork(db: DatabaseSync, input: {
       WHERE sc.history_complete=0 AND c.ingest_enabled=1 AND c.visibility_class<>'excluded'
         AND c.deleted_at_ms IS NULL`).all() as Array<{ channel_id: string }>;
     for (const row of cursors) {
-      if (isCassandraTestSurface(db, row.channel_id)) continue;
+      if (isMnemeTestSurface(db, row.channel_id)) continue;
       if (enqueue(db, { type: 'backfill_channel', payload: { channelId: row.channel_id },
         uniqueKey: `backfill:${row.channel_id}`, now: input.now }).enqueued) backfillJobs++;
     }

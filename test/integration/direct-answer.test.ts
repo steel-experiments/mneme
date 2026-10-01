@@ -254,7 +254,7 @@ function buildHandler(over: Partial<{
 describe('createDirectAnswerHandler — answers in the pinned channel', () => {
   it('answers an explicit mention when unsolicited interventions are disabled', async () => {
     env.db.prepare('UPDATE channels SET allow_interventions = 0 WHERE id = ?').run(ORG_CHANNEL);
-    const q = seedMessage('msg-q-opt-out', ORG_CHANNEL, '<@cassandra> what do you remember?');
+    const q = seedMessage('msg-q-opt-out', ORG_CHANNEL, '<@mneme> what do you remember?');
     const handler = buildHandler();
 
     const res = await handler.runDirectAnswer(q, ORG_CHANNEL);
@@ -264,7 +264,7 @@ describe('createDirectAnswerHandler — answers in the pinned channel', () => {
   });
 
   it('enqueues a reply in the question channel with the validated content', async () => {
-    const q = seedMessage('msg-q-1', ORG_CHANNEL, '<@cassandra> what is the deploy status?');
+    const q = seedMessage('msg-q-1', ORG_CHANNEL, '<@mneme> what is the deploy status?');
     const handler = buildHandler({
       executeRun: fakeExecutor({
         proposal: { targetChannelId: ORG_CHANNEL, message: 'Deploy is green.', citedMessageIds: [] },
@@ -290,7 +290,7 @@ describe('createDirectAnswerHandler — answers in the pinned channel', () => {
 
   it('appends host-built masked source links for citations visible in the target', async () => {
     const cited = seedMessage('msg-cite-1', ORG_CHANNEL, 'deploy succeeded at noon');
-    seedMessage('msg-q-2', ORG_CHANNEL, '<@cassandra> status?');
+    seedMessage('msg-q-2', ORG_CHANNEL, '<@mneme> status?');
     const handler = buildHandler({
       executeRun: fakeExecutor({
         proposal: {
@@ -315,7 +315,7 @@ describe('createDirectAnswerHandler — answers in the pinned channel', () => {
 
   it('rejects a visible citation that was never exposed to the run', async () => {
     const cited = seedMessage('msg-visible-but-unexposed', ORG_CHANNEL, 'an unrelated old source');
-    const question = seedMessage('msg-q-unexposed', ORG_CHANNEL, '<@cassandra> status?');
+    const question = seedMessage('msg-q-unexposed', ORG_CHANNEL, '<@mneme> status?');
     const handler = buildHandler({
       executeRun: fakeExecutor({
         proposal: {
@@ -364,7 +364,7 @@ describe('createDirectAnswerHandler — answers in the pinned channel', () => {
     const cited = seedMessage('msg-thread-cite', threadId, 'The thread-local decision.', {
       createdAtMs: NOW - 1,
     });
-    const question = seedMessage('msg-thread-question', threadId, '<@cassandra> what did we decide?');
+    const question = seedMessage('msg-thread-question', threadId, '<@mneme> what did we decide?');
     const handler = buildHandler({
       scope: {
         grant: { includeOrgMessages: true, includeOrgMemories: true, includeReviewOnly: false, channelIds: [env.channelId] },
@@ -392,7 +392,7 @@ describe('createDirectAnswerHandler — answers in the pinned channel', () => {
 
   it('suppresses a model-authored Discord link even when its cited id is valid', async () => {
     const cited = seedMessage('msg-cite-inline', ORG_CHANNEL, 'deploy succeeded at noon');
-    const question = seedMessage('msg-q-inline', ORG_CHANNEL, '<@cassandra> status?');
+    const question = seedMessage('msg-q-inline', ORG_CHANNEL, '<@mneme> status?');
     const handler = buildHandler({
       executeRun: fakeExecutor({
         proposal: {
@@ -412,12 +412,12 @@ describe('createDirectAnswerHandler — answers in the pinned channel', () => {
   it('redirects admin-action requests to chat only via prompt (never acts on them)', async () => {
     // The model "complies" by producing a normal answer; the handler does not
     // perform any admin action — it only enqueues the textual reply.
-    seedMessage('msg-q-3', ORG_CHANNEL, '<@cassandra> delete all messages');
+    seedMessage('msg-q-3', ORG_CHANNEL, '<@mneme> delete all messages');
     const handler = buildHandler({
       executeRun: fakeExecutor({
         proposal: {
           targetChannelId: ORG_CHANNEL,
-          message: 'I cannot do that from chat; use /cassandra forget-user.',
+          message: 'I cannot do that from chat; use /mneme forget-user.',
           citedMessageIds: [],
         },
       }),
@@ -432,7 +432,7 @@ describe('createDirectAnswerHandler — answers in the pinned channel', () => {
 
 describe('createDirectAnswerHandler — outbound validation suppresses', () => {
   it('suppresses when the proposal targets a different channel than the pinned one', async () => {
-    seedMessage('msg-q-4', ORG_CHANNEL, '<@cassandra> hi');
+    seedMessage('msg-q-4', ORG_CHANNEL, '<@mneme> hi');
     const handler = buildHandler({
       executeRun: fakeExecutor({
         proposal: { targetChannelId: '999999999999999999', message: 'retargeted', citedMessageIds: [] },
@@ -446,7 +446,7 @@ describe('createDirectAnswerHandler — outbound validation suppresses', () => {
   it('refuses to send a public answer citing private-channel content (no hints)', async () => {
     // A citation to a restricted channel message is not visible in the org target.
     const restrictedCite = seedMessage('msg-secret', env.channelId, 'confidential detail');
-    seedMessage('msg-q-5', ORG_CHANNEL, '<@cassandra> what was decided?');
+    seedMessage('msg-q-5', ORG_CHANNEL, '<@mneme> what was decided?');
     const handler = buildHandler({
       executeRun: fakeExecutor({
         proposal: {
@@ -462,7 +462,7 @@ describe('createDirectAnswerHandler — outbound validation suppresses', () => {
   });
 
   it('suppresses an uncited paraphrase when provenance includes restricted content', async () => {
-    seedMessage('msg-q-provenance', ORG_CHANNEL, '<@cassandra> what was decided?');
+    seedMessage('msg-q-provenance', ORG_CHANNEL, '<@mneme> what was decided?');
     const handler = buildHandler({
       executeRun: fakeExecutor({
         proposal: {
@@ -497,7 +497,7 @@ describe('createDirectAnswerHandler — outbound validation suppresses', () => {
     const question = seedMessage(
       'msg-deleted-uncited-question',
       ORG_CHANNEL,
-      '<@cassandra> summarize that',
+      '<@mneme> summarize that',
     );
     const base = fakeExecutor({
       proposal: {
@@ -536,7 +536,7 @@ describe('createDirectAnswerHandler — outbound validation suppresses', () => {
     const edited = seedMessage('msg-edited-uncited', ORG_CHANNEL, 'Pre-redaction detail.', {
       createdAtMs: NOW - 1_000,
     });
-    const question = seedMessage('msg-edit-race-question', ORG_CHANNEL, '<@cassandra> summarize');
+    const question = seedMessage('msg-edit-race-question', ORG_CHANNEL, '<@mneme> summarize');
     const base = fakeExecutor({
       proposal: {
         targetChannelId: ORG_CHANNEL,
@@ -571,7 +571,7 @@ describe('createDirectAnswerHandler — outbound validation suppresses', () => {
     const question = seedMessage(
       'msg-initial-edit-race',
       ORG_CHANNEL,
-      '<@cassandra> summarize the pre-redaction request',
+      '<@mneme> summarize the pre-redaction request',
     );
     const base = fakeExecutor({
       proposal: {
@@ -583,7 +583,7 @@ describe('createDirectAnswerHandler — outbound validation suppresses', () => {
     const handler = buildHandler({
       executeRun: async (deps) => {
         deps.db.prepare('UPDATE messages SET content = ?, updated_at_ms = ? WHERE id = ?')
-          .run('<@cassandra> redacted', NOW - 10_000, question);
+          .run('<@mneme> redacted', NOW - 10_000, question);
         return base(deps);
       },
     });
@@ -618,7 +618,7 @@ describe('createDirectAnswerHandler — outbound validation suppresses', () => {
     const question = seedMessage(
       'msg-memory-scope-question',
       ORG_CHANNEL,
-      '<@cassandra> what was decided?',
+      '<@mneme> what was decided?',
     );
     const base = fakeExecutor({
       proposal: {
@@ -670,7 +670,7 @@ describe('createDirectAnswerHandler — outbound validation suppresses', () => {
       evidence: [{ messageId: evidence, stance: 'origin' }],
       now: NOW,
     });
-    const question = seedMessage('msg-memory-edit-question', ORG_CHANNEL, '<@cassandra> recap');
+    const question = seedMessage('msg-memory-edit-question', ORG_CHANNEL, '<@mneme> recap');
     const base = fakeExecutor({
       proposal: {
         targetChannelId: ORG_CHANNEL,
@@ -722,7 +722,7 @@ describe('createDirectAnswerHandler — outbound validation suppresses', () => {
       evidence: [{ messageId: evidence, stance: 'origin' }],
       now: NOW,
     });
-    const question = seedMessage('msg-memory-source-question', ORG_CHANNEL, '<@cassandra> recap');
+    const question = seedMessage('msg-memory-source-question', ORG_CHANNEL, '<@mneme> recap');
     const base = fakeExecutor({
       proposal: {
         targetChannelId: ORG_CHANNEL,
@@ -774,7 +774,7 @@ describe('createDirectAnswerHandler — outbound validation suppresses', () => {
       evidence: [{ messageId: evidence, stance: 'origin', note: 'Pre-redaction note.' }],
       now: NOW,
     });
-    const question = seedMessage('msg-memory-note-question', ORG_CHANNEL, '<@cassandra> recap');
+    const question = seedMessage('msg-memory-note-question', ORG_CHANNEL, '<@mneme> recap');
     const base = fakeExecutor({
       proposal: {
         targetChannelId: ORG_CHANNEL,
@@ -811,7 +811,7 @@ describe('createDirectAnswerHandler — outbound validation suppresses', () => {
   });
 
   it('suppresses a message containing a user mention', async () => {
-    seedMessage('msg-q-6', ORG_CHANNEL, '<@cassandra> hi');
+    seedMessage('msg-q-6', ORG_CHANNEL, '<@mneme> hi');
     const handler = buildHandler({
       executeRun: fakeExecutor({
         proposal: { targetChannelId: ORG_CHANNEL, message: 'hey <@123456789012345678>', citedMessageIds: [] },
@@ -823,7 +823,7 @@ describe('createDirectAnswerHandler — outbound validation suppresses', () => {
   });
 
   it('suppresses when the channel is cooling down', async () => {
-    seedMessage('msg-q-7', ORG_CHANNEL, '<@cassandra> hi');
+    seedMessage('msg-q-7', ORG_CHANNEL, '<@mneme> hi');
     const cooldownBlock: CooldownDecision = {
       allowed: false,
       blocks: [{ rule: 'channel_cooldown', retryAfterMs: NOW + 60_000, detail: 'cooling down' }],
@@ -838,8 +838,8 @@ describe('createDirectAnswerHandler — outbound validation suppresses', () => {
     expect(outboxCount()).toBe(0);
   });
 
-  it('suppresses a near-duplicate of a recent Cassandra message', async () => {
-    seedMessage('msg-q-8', ORG_CHANNEL, '<@cassandra> hi');
+  it('suppresses a near-duplicate of a recent Mneme message', async () => {
+    seedMessage('msg-q-8', ORG_CHANNEL, '<@mneme> hi');
     const dup: DuplicateResult = {
       matched: true,
       kind: 'near',
@@ -856,7 +856,7 @@ describe('createDirectAnswerHandler — outbound validation suppresses', () => {
 
   it('suppresses when the reply anchor is in a different channel', async () => {
     const otherChannelMsg = seedMessage('msg-other', env.channelId, 'in restricted channel');
-    seedMessage('msg-q-9', ORG_CHANNEL, '<@cassandra> hi');
+    seedMessage('msg-q-9', ORG_CHANNEL, '<@mneme> hi');
     const handler = buildHandler({
       executeRun: fakeExecutor({
         proposal: {
@@ -880,7 +880,7 @@ describe('createDirectAnswerHandler — source availability vs reply targets', (
     const question = seedMessage(
       'msg-source-disabled-question',
       ORG_CHANNEL,
-      '<@cassandra> what is the status?',
+      '<@mneme> what is the status?',
     );
     const completeRun = fakeExecutor({
       proposal: {
@@ -904,8 +904,8 @@ describe('createDirectAnswerHandler — source availability vs reply targets', (
     expect(outboxCount()).toBe(0);
   });
 
-  it('answers in an ingest-disabled Cassandra console using only the exact question as its anchor', async () => {
-    const consoleId = seedChannel('100000000000000013', 'cassandra-test', {
+  it('answers in an ingest-disabled Mneme console using only the exact question as its anchor', async () => {
+    const consoleId = seedChannel('100000000000000013', 'mneme-test', {
       ingestEnabled: false,
       allowInterventions: false,
     });
@@ -915,7 +915,7 @@ describe('createDirectAnswerHandler — source availability vs reply targets', (
     const question = seedMessage(
       'msg-console-question',
       consoleId,
-      '<@cassandra> can you answer here?',
+      '<@mneme> can you answer here?',
     );
     let capturedRun: ExecuteAgentRunDeps | undefined;
     const completeRun = fakeExecutor({
@@ -961,8 +961,8 @@ describe('createDirectAnswerHandler — source availability vs reply targets', (
     });
   });
 
-  it('never exposes prior rows from an ingestion-enabled Cassandra test surface', async () => {
-    const consoleId = seedChannel('100000000000000016', 'cassandra-enabled-console', {
+  it('never exposes prior rows from an ingestion-enabled Mneme test surface', async () => {
+    const consoleId = seedChannel('100000000000000016', 'mneme-enabled-console', {
       ingestEnabled: true,
     });
     seedMessage('msg-enabled-console-prior', consoleId, 'Ordinary stale test chatter.', {
@@ -971,7 +971,7 @@ describe('createDirectAnswerHandler — source availability vs reply targets', (
     const question = seedMessage(
       'msg-enabled-console-question',
       consoleId,
-      '<@cassandra> bring me up to speed',
+      '<@mneme> bring me up to speed',
     );
     let rendered: Record<string, unknown> | undefined;
     let capturedRun: ExecuteAgentRunDeps | undefined;
@@ -1007,8 +1007,8 @@ describe('createDirectAnswerHandler — source availability vs reply targets', (
     ]);
   });
 
-  it('does not let the Cassandra-console exception cite an unrelated prior row', async () => {
-    const consoleId = seedChannel('100000000000000014', 'Cassandra Console', {
+  it('does not let the Mneme-console exception cite an unrelated prior row', async () => {
+    const consoleId = seedChannel('100000000000000014', 'Mneme Console', {
       ingestEnabled: false,
     });
     const unrelated = seedMessage(
@@ -1020,7 +1020,7 @@ describe('createDirectAnswerHandler — source availability vs reply targets', (
     const question = seedMessage(
       'msg-console-citation-question',
       consoleId,
-      '<@cassandra> answer without using other console rows',
+      '<@mneme> answer without using other console rows',
     );
     const handler = buildHandler({
       scope: {
@@ -1065,7 +1065,7 @@ describe('createDirectAnswerHandler — source availability vs reply targets', (
     const question = seedMessage(
       'msg-parent-disabled-question',
       threadId,
-      '<@cassandra> what is the status?',
+      '<@mneme> what is the status?',
     );
     const completeRun = fakeExecutor({
       proposal: {
@@ -1112,7 +1112,7 @@ describe('createDirectAnswerHandler — run and message state', () => {
         createdAtMs: NOW - 11_000 + i * 1_000,
       });
     }
-    const question = seedMessage('msg-context-question', ORG_CHANNEL, '<@cassandra> what about that?', {
+    const question = seedMessage('msg-context-question', ORG_CHANNEL, '<@mneme> what about that?', {
       createdAtMs: NOW,
       replyToMessageId: parent,
     });
@@ -1146,7 +1146,7 @@ describe('createDirectAnswerHandler — run and message state', () => {
     expect(rendered?.question).toMatchObject({
       messageId: question,
       channelId: ORG_CHANNEL,
-      content: '<@cassandra> what about that?',
+      content: '<@mneme> what about that?',
       replyToMessageId: parent,
     });
     // Outside the secure review channel no proposal record is attached.
@@ -1170,7 +1170,7 @@ describe('createDirectAnswerHandler — run and message state', () => {
   });
 
   it('enqueues a neutral fallback when the run does not finalize', async () => {
-    seedMessage('msg-q-10', ORG_CHANNEL, '<@cassandra> hi');
+    seedMessage('msg-q-10', ORG_CHANNEL, '<@mneme> hi');
     const handler = buildHandler({ executeRun: fakeExecutor({ outcome: 'no_finalization' }) });
     const res = await handler.runDirectAnswer('msg-q-10', ORG_CHANNEL);
     expectNeutralFallback(res, 'no_finalization');
@@ -1186,7 +1186,7 @@ describe('createDirectAnswerHandler — run and message state', () => {
   });
 
   it('records an intentional suppression when the question is not in the pinned channel', async () => {
-    const q = seedMessage('msg-q-11', env.channelId, '<@cassandra> hi'); // restricted channel
+    const q = seedMessage('msg-q-11', env.channelId, '<@mneme> hi'); // restricted channel
     const handler = buildHandler();
     const res = await handler.runDirectAnswer(q, ORG_CHANNEL); // pinned to a different channel
     expect(res.kind).toBe('suppressed');
@@ -1197,7 +1197,7 @@ describe('createDirectAnswerHandler — run and message state', () => {
 describe('createDirectAnswerHandler — durable completion and safe fallback', () => {
   it('turns prompt-preparation failures into a neutral fallback instead of silent job success', async () => {
     const sensitive = 'prompt-render-private-detail';
-    const question = seedMessage('msg-prompt-fallback', ORG_CHANNEL, '<@cassandra> catch me up');
+    const question = seedMessage('msg-prompt-fallback', ORG_CHANNEL, '<@mneme> catch me up');
     const promptCompiler = {
       render: () => { throw new Error(sensitive); },
       versionFor: () => 'unreachable',
@@ -1212,7 +1212,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
   });
 
   it('atomically links the source, job, run, and stable outbox intent', async () => {
-    const question = seedMessage('msg-durable-primary', ORG_CHANNEL, '<@cassandra> status?');
+    const question = seedMessage('msg-durable-primary', ORG_CHANNEL, '<@mneme> status?');
     const queued = enqueue(env.db, {
       type: 'direct_answer',
       payload: { messageId: question, channelId: ORG_CHANNEL },
@@ -1249,7 +1249,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
   });
 
   it('turns model-admission timeout into one neutral, source-anchored fallback', async () => {
-    const question = seedMessage('msg-admission-fallback', ORG_CHANNEL, '<@cassandra> catch me up');
+    const question = seedMessage('msg-admission-fallback', ORG_CHANNEL, '<@mneme> catch me up');
     const handler = buildHandler({
       executeRun: async () => { throw new ModelAdmissionTimeoutError(60_000); },
     });
@@ -1268,7 +1268,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
   });
 
   it('retries one transient run only when worst-case queue backoff fits the deadline', async () => {
-    const question = seedMessage('msg-transient-retry-fits', ORG_CHANNEL, '<@cassandra> catch me up');
+    const question = seedMessage('msg-transient-retry-fits', ORG_CHANNEL, '<@mneme> catch me up');
     const queued = enqueue(env.db, {
       type: 'direct_answer',
       payload: { messageId: question, channelId: ORG_CHANNEL },
@@ -1288,7 +1288,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
   });
 
   it('falls back when worst-case retry backoff would overrun the immutable deadline', async () => {
-    const question = seedMessage('msg-transient-retry-too-late', ORG_CHANNEL, '<@cassandra> catch me up');
+    const question = seedMessage('msg-transient-retry-too-late', ORG_CHANNEL, '<@mneme> catch me up');
     const queued = enqueue(env.db, {
       type: 'direct_answer',
       payload: { messageId: question, channelId: ORG_CHANNEL },
@@ -1310,7 +1310,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
   });
 
   it('falls back when the validated primary response cannot be persisted', async () => {
-    const question = seedMessage('msg-primary-enqueue-fails', ORG_CHANNEL, '<@cassandra> status?');
+    const question = seedMessage('msg-primary-enqueue-fails', ORG_CHANNEL, '<@mneme> status?');
     env.db.exec(`CREATE TRIGGER reject_primary_direct_outbox BEFORE INSERT ON outbox
       WHEN NEW.content = 'Here is the answer.'
       BEGIN SELECT RAISE(ABORT, 'simulated primary outbox failure'); END`);
@@ -1327,7 +1327,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
   });
 
   it('rolls back a stale answer when another execution suppresses the request first', async () => {
-    const question = seedMessage('msg-terminal-race', ORG_CHANNEL, '<@cassandra> status?');
+    const question = seedMessage('msg-terminal-race', ORG_CHANNEL, '<@mneme> status?');
     const duplicate: DuplicateResult = {
       matched: true,
       kind: 'near',
@@ -1381,7 +1381,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
 
   it('stores no provider error or retrieved content in the durable outcome or fallback', async () => {
     const sensitive = 'customer-secret-error-detail';
-    const question = seedMessage('msg-private-fallback', ORG_CHANNEL, `<@cassandra> ${sensitive}`);
+    const question = seedMessage('msg-private-fallback', ORG_CHANNEL, `<@mneme> ${sensitive}`);
     const handler = buildHandler({
       executeRun: async () => { throw new Error(sensitive); },
     });
@@ -1397,7 +1397,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
   });
 
   it('throws and leaves the request pending when fallback enqueue fails', async () => {
-    const question = seedMessage('msg-fallback-enqueue-fails', ORG_CHANNEL, '<@cassandra> status?');
+    const question = seedMessage('msg-fallback-enqueue-fails', ORG_CHANNEL, '<@mneme> status?');
     env.db.exec(`CREATE TRIGGER reject_direct_outbox BEFORE INSERT ON outbox
       BEGIN SELECT RAISE(ABORT, 'simulated outbox failure'); END`);
     const handler = buildHandler({
@@ -1418,7 +1418,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
     const cited = seedMessage('msg-snapshot-cited', ORG_CHANNEL, 'A recent deploy decision.', {
       createdAtMs: NOW - 1_000,
     });
-    const question = seedMessage('msg-snapshot-question', ORG_CHANNEL, '<@cassandra> catch me up');
+    const question = seedMessage('msg-snapshot-question', ORG_CHANNEL, '<@mneme> catch me up');
     const provenance = {
       channels: [{ channelId: ORG_CHANNEL, source: 'activity_snapshot' as const }],
       messageIds: [question, cited],
@@ -1485,7 +1485,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
     const question = seedMessage(
       'msg-dual-cap-question',
       ORG_CHANNEL,
-      '<@cassandra> catch me up',
+      '<@mneme> catch me up',
     );
     const provenance = {
       channels: [{ channelId: ORG_CHANNEL, source: 'activity_snapshot' as const }],
@@ -1543,7 +1543,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
     const cited = seedMessage('msg-snapshot-uncited', ORG_CHANNEL, 'A recent decision.', {
       createdAtMs: NOW - 1_000,
     });
-    const question = seedMessage('msg-snapshot-no-citation', ORG_CHANNEL, '<@cassandra> catch me up');
+    const question = seedMessage('msg-snapshot-no-citation', ORG_CHANNEL, '<@mneme> catch me up');
     const base = fakeExecutor({
       proposal: {
         targetChannelId: ORG_CHANNEL,
@@ -1577,7 +1577,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
     const question = seedMessage(
       'msg-snapshot-zero-included',
       ORG_CHANNEL,
-      '<@cassandra> catch me up',
+      '<@mneme> catch me up',
     );
     const base = fakeExecutor({
       proposal: {
@@ -1613,7 +1613,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
     const question = seedMessage(
       'msg-snapshot-empty-interval',
       ORG_CHANNEL,
-      '<@cassandra> catch me up',
+      '<@mneme> catch me up',
     );
     const base = fakeExecutor({
       proposal: {
@@ -1654,7 +1654,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
   });
 
   it('allows an empty snapshot only with a host-authored complete coverage footer', async () => {
-    const question = seedMessage('msg-snapshot-empty', ORG_CHANNEL, '<@cassandra> catch me up');
+    const question = seedMessage('msg-snapshot-empty', ORG_CHANNEL, '<@mneme> catch me up');
     const base = fakeExecutor({
       proposal: {
         targetChannelId: ORG_CHANNEL,
@@ -1697,7 +1697,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
     const question = seedMessage(
       'msg-snapshot-empty-race',
       ORG_CHANNEL,
-      '<@cassandra> catch me up',
+      '<@mneme> catch me up',
     );
     const base = fakeExecutor({
       proposal: {
@@ -1744,7 +1744,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
     const question = seedMessage(
       'msg-snapshot-model-coverage',
       ORG_CHANNEL,
-      '<@cassandra> catch me up',
+      '<@mneme> catch me up',
     );
     const base = fakeExecutor({
       proposal: {
@@ -1785,7 +1785,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
   });
 
   it('rechecks the clock after model work and never enqueues a late primary answer', async () => {
-    const question = seedMessage('msg-late-primary', ORG_CHANNEL, '<@cassandra> status?');
+    const question = seedMessage('msg-late-primary', ORG_CHANNEL, '<@mneme> status?');
     let currentNow = NOW;
     const base = fakeExecutor({
       proposal: { targetChannelId: ORG_CHANNEL, message: 'Late facts.', citedMessageIds: [] },
@@ -1816,7 +1816,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
     const cited = seedMessage('msg-race-cited', ORG_CHANNEL, 'Permitted recent item.', {
       createdAtMs: NOW - 1_000,
     });
-    const question = seedMessage('msg-race-question', ORG_CHANNEL, '<@cassandra> catch me up');
+    const question = seedMessage('msg-race-question', ORG_CHANNEL, '<@mneme> catch me up');
     const base = fakeExecutor({
       proposal: {
         targetChannelId: ORG_CHANNEL,
@@ -1850,7 +1850,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
     expect(onlyOutboxContent()).toContain('Coverage: complete — analyzed all 1 matching messages');
   });
 
-  it('recomputes coverage when an omitted channel becomes a Cassandra test surface', async () => {
+  it('recomputes coverage when an omitted channel becomes a Mneme test surface', async () => {
     const omittedChannel = seedChannel('100000000000000098', 'recent-rename-source');
     seedMessage('msg-rename-omitted', omittedChannel, 'Soon-to-be a test surface.', {
       createdAtMs: NOW - 2_000,
@@ -1858,7 +1858,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
     const cited = seedMessage('msg-rename-cited', ORG_CHANNEL, 'Permitted recent item.', {
       createdAtMs: NOW - 1_000,
     });
-    const question = seedMessage('msg-rename-question', ORG_CHANNEL, '<@cassandra> catch me up');
+    const question = seedMessage('msg-rename-question', ORG_CHANNEL, '<@mneme> catch me up');
     const base = fakeExecutor({
       proposal: {
         targetChannelId: ORG_CHANNEL,
@@ -1880,7 +1880,7 @@ describe('createDirectAnswerHandler — durable completion and safe fallback', (
             exposedMessageIds: [cited], matchedChannelIds: [ORG_CHANNEL, omittedChannel],
           };
         deps.db.prepare('UPDATE channels SET name = ? WHERE id = ?')
-          .run('cassandra-renamed-console', omittedChannel);
+          .run('mneme-renamed-console', omittedChannel);
         return result;
       },
     });
@@ -1974,7 +1974,7 @@ describe('referenced proposal resolution in the secure review channel — Sectio
     const target = seedCardProposal('card-target', NOW - 20_000, 'Please record the launch status.');
     seedCardProposal('card-newest', NOW - 10_000, 'Newest proposed text.');
     void older;
-    const question = seedMessage('msg-rev-q1', REVIEW, '<@cassandra> is this proposal still current?', {
+    const question = seedMessage('msg-rev-q1', REVIEW, '<@mneme> is this proposal still current?', {
       createdAtMs: NOW,
       replyToMessageId: 'card-target',
     });
@@ -1998,7 +1998,7 @@ describe('referenced proposal resolution in the secure review channel — Sectio
     reviewSetup();
     seedCardProposal('card-a', NOW - 30_000, 'First proposed text.');
     const newest = seedCardProposal('card-b', NOW - 10_000, 'Second proposed text.');
-    const question = seedMessage('msg-rev-q2', REVIEW, '<@cassandra> this proposal is super old', {
+    const question = seedMessage('msg-rev-q2', REVIEW, '<@mneme> this proposal is super old', {
       createdAtMs: NOW,
     });
 
@@ -2014,7 +2014,7 @@ describe('referenced proposal resolution in the secure review channel — Sectio
 
   it('attaches null when the review channel has no cards', async () => {
     reviewSetup();
-    const question = seedMessage('msg-rev-q3', REVIEW, '<@cassandra> anything pending?', {
+    const question = seedMessage('msg-rev-q3', REVIEW, '<@mneme> anything pending?', {
       createdAtMs: NOW,
     });
 

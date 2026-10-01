@@ -6,10 +6,10 @@ import { enqueue } from '../../jobs/queue.js';
 import { RECONCILE_CHANNEL_KEY } from '../../jobs/scheduler.js';
 import { authorizeAdmin, type AuthorizationReason } from '../authorization.js';
 import { recordAdminEvent } from '../../db/repositories/admin-events.js';
-import { isCassandraTestSurface } from '../test-channels.js';
+import { isMnemeTestSurface } from '../test-channels.js';
 
 /**
- * `/cassandra sync [channel]` and the episode-flush operation
+ * `/mneme sync [channel]` and the episode-flush operation
  * (Sections 11.3, 27).
  *
  * Both acknowledge the interaction immediately and enqueue the real work as
@@ -38,7 +38,7 @@ export interface EnqueuedJob {
   enqueued: boolean;
 }
 
-// ---- /cassandra sync --------------------------------------------------------
+// ---- /mneme sync --------------------------------------------------------
 
 export interface HandleSyncInput {
   actorUserId: string;
@@ -63,7 +63,7 @@ export type SyncOutcome =
   | { kind: 'channel_excluded'; channelId: string; visibilityClass: string }
   | { kind: 'enqueued'; full: boolean; jobs: EnqueuedJob[] };
 
-/** Run `/cassandra sync [channel]`. Authorize, validate scope, enqueue, return. */
+/** Run `/mneme sync [channel]`. Authorize, validate scope, enqueue, return. */
 export function handleSyncCommand(input: HandleSyncInput, deps: HandleSyncDeps): SyncOutcome {
   const outcome = authorizeAdmin(input.memberRoleIds, deps.adminRoleIds);
   if (!outcome.authorized) {
@@ -136,7 +136,7 @@ function resolveTargetChannels(
     if (!channel || channel.guild_id !== input.guildId || channel.deleted_at_ms !== null) {
       return { ok: false, outcome: { kind: 'channel_not_found', channelId: input.channelId } };
     }
-    if (channel.visibility_class === 'excluded' || isCassandraTestSurface(db, channel.id)) {
+    if (channel.visibility_class === 'excluded' || isMnemeTestSurface(db, channel.id)) {
       return { ok: false, outcome: { kind: 'channel_excluded', channelId: input.channelId, visibilityClass: 'excluded' } };
     }
     return { ok: true, channelIds: [input.channelId] };
@@ -151,7 +151,7 @@ function resolveTargetChannels(
   return {
     ok: true,
     channelIds: rows.map((row) => row.id)
-      .filter((channelId) => !isCassandraTestSurface(db, channelId)),
+      .filter((channelId) => !isMnemeTestSurface(db, channelId)),
   };
 }
 

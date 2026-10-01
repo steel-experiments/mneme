@@ -20,7 +20,7 @@ import {
  *   both the channel map and the category map with the same rule, because a
  *   snowflake names exactly one resource kind: the matching entry applies and
  *   the other is inert.
- * - `CASSANDRA_REVIEW_CHANNEL_ID` plus `CASSANDRA_REVIEW_CHANNEL_SECURE=true`
+ * - `MNEME_REVIEW_CHANNEL_ID` plus `MNEME_REVIEW_CHANNEL_SECURE=true`
  *   configures the review channel.
  *
  * The default rule is fail-closed. A channel that no selection list names is
@@ -35,8 +35,8 @@ const SNOWFLAKE_RE = /^\d{17,20}$/;
 
 const ORG_VISIBLE_VAR = 'ORG_VISIBLE_CHANNEL_IDS';
 const RESTRICTED_VAR = 'RESTRICTED_CHANNEL_IDS';
-const REVIEW_ID_VAR = 'CASSANDRA_REVIEW_CHANNEL_ID';
-const REVIEW_SECURE_VAR = 'CASSANDRA_REVIEW_CHANNEL_SECURE';
+const REVIEW_ID_VAR = 'MNEME_REVIEW_CHANNEL_ID';
+const REVIEW_SECURE_VAR = 'MNEME_REVIEW_CHANNEL_SECURE';
 
 /** Fail-closed rule for channels that no selection list names. */
 const UNSELECTED_RULE: ChannelRule = {
@@ -108,12 +108,12 @@ export function buildBasicChannelPolicy(env: NodeJS.ProcessEnv): ChannelPolicy {
 
   if (reviewId !== undefined && reviewSecureRaw !== 'true') {
     throw new ChannelPolicyError(
-      'channel policy: CASSANDRA_REVIEW_CHANNEL_ID requires CASSANDRA_REVIEW_CHANNEL_SECURE=true (verify the channel audience before enabling)',
+      'channel policy: MNEME_REVIEW_CHANNEL_ID requires MNEME_REVIEW_CHANNEL_SECURE=true (verify the channel audience before enabling)',
     );
   }
   if (reviewId === undefined && reviewSecureRaw === 'true') {
     throw new ChannelPolicyError(
-      'channel policy: CASSANDRA_REVIEW_CHANNEL_SECURE=true requires CASSANDRA_REVIEW_CHANNEL_ID',
+      'channel policy: MNEME_REVIEW_CHANNEL_SECURE=true requires MNEME_REVIEW_CHANNEL_ID',
     );
   }
   if (reviewId !== undefined && (orgIds.includes(reviewId) || restrictedSet.has(reviewId))) {

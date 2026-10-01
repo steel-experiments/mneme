@@ -1,4 +1,4 @@
-// ABOUTME: Builds the in-memory index of Cassandra's shipped Markdown documentation.
+// ABOUTME: Builds the in-memory index of Mneme's shipped Markdown documentation.
 // ABOUTME: The index is the only path list the documentation tools accept.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -6,7 +6,7 @@ import path from 'node:path';
 /**
  * Self-knowledge documentation index (Sections 4.1, 22).
  *
- * Cassandra answers questions about herself — how she works, her Discord
+ * Mneme answers questions about herself — how she works, her Discord
  * commands, MCP client setup, her configuration — from the documentation shipped
  * with the image, not from model memory. The host scans `docsDir` once at load
  * time and keeps the title, summary, and content of every `*.md` file in memory,

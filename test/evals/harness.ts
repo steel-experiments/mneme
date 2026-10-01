@@ -3,7 +3,7 @@
  *
  * The harness is fully deterministic and never calls a live model. Each fixture
  * in {@link episodes.json} carries the model's *response* for every prompt
- * version being compared; the harness applies Cassandra's deterministic host
+ * version being compared; the harness applies Mneme's deterministic host
  * rules (visibility, deployment mode, evidence, intervention threshold) to derive
  * the outcome, then aggregates the Section 46.4 quality metrics per version.
  *
@@ -179,7 +179,7 @@ export function loadEvalSet(input: unknown): EvalSet {
 }
 
 /**
- * Apply Cassandra's deterministic host rules to a mock response and return the
+ * Apply Mneme's deterministic host rules to a mock response and return the
  * derived outcome plus the per-episode metric inputs. This mirrors (without
  * importing) the deployment-mode routing and visibility refusal logic so the
  * harness stays self-contained and mockable.

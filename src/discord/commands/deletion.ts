@@ -90,8 +90,8 @@ export function requestDeletion(
     audit(input, deps, 'request', id, 'pending');
     return `${describe(deps.db, getDeletionRequest(deps.db, id, input.guildId)!)}\n`
       + 'Nothing has been deleted. Only these currently stored messages are included; future messages and later backfill are excluded.\n'
-      + `A different authorized approver must run \`/cassandra deletion approve id:${id} confirmation:DELETE\`. `
-      + `Approval starts a 24-hour cancellation window. Cancel with \`/cassandra deletion cancel id:${id}\`. `
+      + `A different authorized approver must run \`/mneme deletion approve id:${id} confirmation:DELETE\`. `
+      + `Approval starts a 24-hour cancellation window. Cancel with \`/mneme deletion cancel id:${id}\`. `
       + 'The final purge cannot be undone. Discord originals are not deleted.';
   });
 }
@@ -155,6 +155,6 @@ export function handleDeletionCommand(
       approved_at_ms = ?, execute_after_ms = ?, job_id = ? WHERE id = ?`)
       .run(input.actorUserId, deps.nowMs, deadline, queued.id, row.id);
     return result('scheduled', `Scheduled for deletion no earlier than <t:${Math.floor(deadline / 1000)}:F>. Nothing has been deleted. `
-      + `Cancel before the purge starts with \`/cassandra deletion cancel id:${row.id}\`. After it starts, there is no undo.`);
+      + `Cancel before the purge starts with \`/mneme deletion cancel id:${row.id}\`. After it starts, there is no undo.`);
   });
 }

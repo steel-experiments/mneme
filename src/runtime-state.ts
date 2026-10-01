@@ -269,7 +269,7 @@ export function setPaused(db: DatabaseSync, input: SetPausedInput): PauseState {
 // ---------------------------------------------------------------------------
 // Durable runtime mode override (Section 27).
 //
-// Railway's CASSANDRA_MODE remains the configured baseline. An administrator
+// Railway's MNEME_MODE remains the configured baseline. An administrator
 // may override it from Discord without granting the bot Railway credentials;
 // the override is stored in SQLite and therefore survives a redeploy. Clearing
 // it returns control to the configured environment value.

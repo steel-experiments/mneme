@@ -234,7 +234,7 @@ describe('routeProposal — rate controls bind autonomous delivery only', () => 
   });
 
   // Section 11.8: a conversation that is still in progress does not need
-  // Cassandra, and a review card is gated exactly like a target send.
+  // Mneme, and a review card is gated exactly like a target send.
   it('a live conversation suppresses an autonomous proposal to observed', () => {
     const out = routeProposal(routingInput({ mode: 'autonomous', liveness: LIVE }));
     expect(out.state).toBe('observed');

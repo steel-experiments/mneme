@@ -5,7 +5,7 @@ organization:
   timezone: "UTC"
 
 agent:
-  name: "Cassandra"
+  name: "Mneme"
   role: "organizational memory and constructive dissenter"
 
 personality:

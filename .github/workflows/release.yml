@@ -28,20 +28,20 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE_NAME: ghcr.io/steel-experiments/cassandra-discord
+  IMAGE_NAME: ghcr.io/steel-experiments/mneme
   # The pushed tag, for example v1.2.3. It is also the exact image tag that is published.
   VERSION_TAG: ${{ github.ref_name }}
   SOURCE_REVISION: ${{ github.sha }}
-  # The application reads CASSANDRA_SOURCE_REVISION through build-info (Section
+  # The application reads MNEME_SOURCE_REVISION through build-info (Section
   # 35.2). Pass the revision as a build argument. The runtime stage must declare
   # the argument and record it as ENV so the image names its own source.
   BUILD_ARGS: |
-    CASSANDRA_SOURCE_REVISION=${{ github.sha }}
+    MNEME_SOURCE_REVISION=${{ github.sha }}
   # The verify builds and the publish build use identical inputs and share the
   # GitHub Actions build cache, one scope per architecture, so the publish
   # build reuses the verified layers instead of compiling again.
   OCI_LABELS: |
-    org.opencontainers.image.source=https://github.com/steel-experiments/cassandra-discord
+    org.opencontainers.image.source=https://github.com/steel-experiments/mneme
     org.opencontainers.image.revision=${{ github.sha }}
     org.opencontainers.image.version=${{ github.ref_name }}
     org.opencontainers.image.description=A quiet organizational-memory agent for one Discord server
@@ -89,14 +89,14 @@ jobs:
           load: true
           push: false
           provenance: false
-          tags: cassandra-discord:smoke-${{ matrix.arch }}
+          tags: mneme:smoke-${{ matrix.arch }}
           build-args: ${{ env.BUILD_ARGS }}
           labels: ${{ env.OCI_LABELS }}
           cache-from: type=gha,scope=${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
 
       - name: Run offline fixture smoke test
-        run: docker run --rm --network none cassandra-discord:smoke-${{ matrix.arch }} node dist/fixture-mode.js
+        run: docker run --rm --network none mneme:smoke-${{ matrix.arch }} node dist/fixture-mode.js
 
   publish:
     name: Publish image to the registry

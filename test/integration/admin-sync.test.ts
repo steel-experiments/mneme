@@ -12,7 +12,7 @@ import { RECONCILE_CHANNEL_KEY } from '../../src/jobs/scheduler.js';
 import { countAdminEvents } from '../../src/db/repositories/admin-events.js';
 
 /**
- * `/cassandra sync [channel]` and the episode-flush operation (Sections 11.3, 27;
+ * `/mneme sync [channel]` and the episode-flush operation (Sections 11.3, 27;
  * ).
  *
  * Acceptance: "Long sync work never blocks an interaction and duplicate requests
@@ -191,9 +191,9 @@ describe('handleSyncCommand — all channels', () => {
     expect(out.jobs).toHaveLength(3);
   });
 
-  it('skips a Cassandra test channel and its normally named child thread', () => {
-    seedChannel('c-cassandra', 'org', 'cassandra-test');
-    seedThread('c-cassandra-thread', 'c-cassandra', 'org', 'ordinary-thread');
+  it('skips a Mneme test channel and its normally named child thread', () => {
+    seedChannel('c-mneme', 'org', 'mneme-test');
+    seedThread('c-mneme-thread', 'c-mneme', 'org', 'ordinary-thread');
 
     const out = handleSyncCommand(
       { actorUserId: 'alice', guildId: GUILD, ...admin() },
@@ -201,8 +201,8 @@ describe('handleSyncCommand — all channels', () => {
     );
 
     if (out.kind !== 'enqueued') throw new Error('expected enqueued');
-    expect(out.jobs.map((job) => job.targetId)).not.toContain('c-cassandra');
-    expect(out.jobs.map((job) => job.targetId)).not.toContain('c-cassandra-thread');
+    expect(out.jobs.map((job) => job.targetId)).not.toContain('c-mneme');
+    expect(out.jobs.map((job) => job.targetId)).not.toContain('c-mneme-thread');
   });
 });
 
@@ -229,12 +229,12 @@ describe('handleSyncCommand — channel validation', () => {
     expect((out as { kind: string }).kind).toBe('channel_excluded');
   });
 
-  it('rejects a normally named thread below a Cassandra test channel', () => {
-    seedChannel('c-cassandra', 'org', 'cassandra-test');
-    seedThread('c-cassandra-thread', 'c-cassandra', 'org', 'ordinary-thread');
+  it('rejects a normally named thread below a Mneme test channel', () => {
+    seedChannel('c-mneme', 'org', 'mneme-test');
+    seedThread('c-mneme-thread', 'c-mneme', 'org', 'ordinary-thread');
 
     const out = handleSyncCommand(
-      { actorUserId: 'alice', guildId: GUILD, channelId: 'c-cassandra-thread', ...admin() },
+      { actorUserId: 'alice', guildId: GUILD, channelId: 'c-mneme-thread', ...admin() },
       { db, adminRoleIds: [ADMIN_ROLE], nowMs: NOW },
     );
 

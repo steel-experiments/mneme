@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   evaluateEpisodePrefilter,
   evaluateEpisodePrefilterNormalized,
-  messageMentionsCassandra,
+  messageMentionsMneme,
   DEFAULT_REACTION_BURST_THRESHOLD,
   DEFAULT_MIN_INFORMATION_CHARS,
   type PrefilterMessage,
@@ -55,7 +55,7 @@ function nmsg(over: Partial<NormalizedMessage> & { id: string }): NormalizedMess
 describe('evaluateEpisodePrefilter — skips only trivial episodes', () => {
   it('skips a lone short human message with no signals (all conditions hold)', () => {
     const e = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [msg({ id: 'm1', content: 'ok' })],
     });
     expect(e.skip).toBe(true);
@@ -63,7 +63,7 @@ describe('evaluateEpisodePrefilter — skips only trivial episodes', () => {
     expect(e.humanMessageCount).toBe(1);
     expect(e.conditions).toEqual({
       fewHumanMessages: true,
-      noCassandraMention: true,
+      noMnemeMention: true,
       noDecisionPhrase: true,
       noReactionBurst: true,
       noMemoryLink: true,
@@ -72,14 +72,14 @@ describe('evaluateEpisodePrefilter — skips only trivial episodes', () => {
   });
 
   it('skips an empty episode (nothing to review)', () => {
-    const e = evaluateEpisodePrefilter({ cassandraId: CASS, messages: [] });
+    const e = evaluateEpisodePrefilter({ mnemeId: CASS, messages: [] });
     expect(e.skip).toBe(true);
     expect(e.humanMessageCount).toBe(0);
   });
 
   it('skips bot-only chatter with no human content and no signals', () => {
     const e = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [
         msg({ id: 'b1', content: 'beep', author: { id: 'bot1', isBot: true } }),
         msg({ id: 'b2', content: 'boop', author: { id: 'bot2', isBot: true } }),
@@ -91,27 +91,27 @@ describe('evaluateEpisodePrefilter — skips only trivial episodes', () => {
 });
 
 describe('evaluateEpisodePrefilter — never skips a direct mention', () => {
-  it('does not skip when the mentions array names Cassandra', () => {
+  it('does not skip when the mentions array names Mneme', () => {
     const e = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [msg({ id: 'm1', content: 'ok', mentions: [{ id: CASS }] })],
     });
     expect(e.skip).toBe(false);
-    expect(e.blockers).toContain('cassandra_mention');
+    expect(e.blockers).toContain('mneme_mention');
   });
 
   it('does not skip when the content carries the raw ping <@id>', () => {
     const e = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [msg({ id: 'm1', content: `<@${CASS}> hi` })],
     });
     expect(e.skip).toBe(false);
-    expect(e.blockers).toContain('cassandra_mention');
+    expect(e.blockers).toContain('mneme_mention');
   });
 
   it('does not skip when the content carries the nickname ping <@!id>', () => {
     const e = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [msg({ id: 'm1', content: `<@!${CASS}>` })],
     });
     expect(e.skip).toBe(false);
@@ -119,23 +119,23 @@ describe('evaluateEpisodePrefilter — never skips a direct mention', () => {
 
   it('a mention by a bot still prevents a skip (mention is mention)', () => {
     const e = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [msg({ id: 'b1', content: 'ok', author: { id: 'bot1', isBot: true }, mentions: [{ id: CASS }] })],
     });
     expect(e.skip).toBe(false);
-    expect(e.blockers).toContain('cassandra_mention');
+    expect(e.blockers).toContain('mneme_mention');
   });
 
-  it('messageMentionsCassandra is exact: a different id does not match', () => {
-    expect(messageMentionsCassandra(msg({ id: 'm1', mentions: [{ id: '111111111111111111' }] }), CASS)).toBe(false);
-    expect(messageMentionsCassandra(msg({ id: 'm1', content: `<@${CASS}>` }), CASS)).toBe(true);
+  it('messageMentionsMneme is exact: a different id does not match', () => {
+    expect(messageMentionsMneme(msg({ id: 'm1', mentions: [{ id: '111111111111111111' }] }), CASS)).toBe(false);
+    expect(messageMentionsMneme(msg({ id: 'm1', content: `<@${CASS}>` }), CASS)).toBe(true);
   });
 });
 
 describe('evaluateEpisodePrefilter — each condition independently forces a review', () => {
   it('two human messages force a review even if both are tiny', () => {
     const e = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [msg({ id: 'm1', content: 'ok' }), msg({ id: 'm2', content: 'ya' })],
     });
     expect(e.skip).toBe(false);
@@ -145,7 +145,7 @@ describe('evaluateEpisodePrefilter — each condition independently forces a rev
 
   it('a decision-like phrase forces a review', () => {
     const e = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [msg({ id: 'm1', content: 'we decided' })],
     });
     expect(e.skip).toBe(false);
@@ -154,7 +154,7 @@ describe('evaluateEpisodePrefilter — each condition independently forces a rev
 
   it('a reaction burst forces a review', () => {
     const e = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [msg({ id: 'm1', content: 'ok', reactionCounts: [{ count: 3 }] })],
     });
     expect(e.skip).toBe(false);
@@ -163,7 +163,7 @@ describe('evaluateEpisodePrefilter — each condition independently forces a rev
 
   it('a link to an existing memory forces a review', () => {
     const e = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [msg({ id: 'm1', content: 'ok' })],
       options: { memoryLinkedMessageIds: new Set(['m1']) },
     });
@@ -173,7 +173,7 @@ describe('evaluateEpisodePrefilter — each condition independently forces a rev
 
   it('a single long human message is above the information threshold and is reviewed', () => {
     const e = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [msg({ id: 'm1', content: 'x'.repeat(DEFAULT_MIN_INFORMATION_CHARS + 1) })],
     });
     expect(e.skip).toBe(false);
@@ -184,12 +184,12 @@ describe('evaluateEpisodePrefilter — each condition independently forces a rev
 describe('evaluateEpisodePrefilter — borderline boundaries', () => {
   it('reaction burst threshold: count = threshold-1 is not a burst, = threshold is', () => {
     const below = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [msg({ id: 'm1', content: 'ok', reactionCounts: [{ count: DEFAULT_REACTION_BURST_THRESHOLD - 1 }] })],
     });
     expect(below.conditions.noReactionBurst).toBe(true);
     const at = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [msg({ id: 'm1', content: 'ok', reactionCounts: [{ count: DEFAULT_REACTION_BURST_THRESHOLD }] })],
     });
     expect(at.conditions.noReactionBurst).toBe(false);
@@ -198,14 +198,14 @@ describe('evaluateEpisodePrefilter — borderline boundaries', () => {
   it('information threshold: chars = min-1 is below, = min is above', () => {
     const min = 5;
     const below = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [msg({ id: 'm1', content: 'abcd' })], // 4 < 5
       options: { minInformationChars: min },
     });
     expect(below.conditions.belowInformationThreshold).toBe(true);
     expect(below.skip).toBe(true);
     const at = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [msg({ id: 'm1', content: 'abcde' })], // 5 == min
       options: { minInformationChars: min },
     });
@@ -216,7 +216,7 @@ describe('evaluateEpisodePrefilter — borderline boundaries', () => {
   it('information threshold counts only human text (trimmed), ignoring bots', () => {
     const min = 5;
     const e = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [
         msg({ id: 'm1', content: 'ab' }), // human, 2 chars
         msg({ id: 'b1', content: 'yyyyyyyyyy', author: { id: 'bot', isBot: true } }), // bot, ignored
@@ -229,18 +229,18 @@ describe('evaluateEpisodePrefilter — borderline boundaries', () => {
   it('a custom decisionPhrases list overrides the default', () => {
     // 'decided' is in the default list but not in the override; 'ship it' is.
     const withDefault = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [msg({ id: 'm1', content: 'we decided' })],
     });
     expect(withDefault.conditions.noDecisionPhrase).toBe(false);
     const overridden = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [msg({ id: 'm1', content: 'we decided' })],
       options: { decisionPhrases: ['ship it'] },
     });
     expect(overridden.conditions.noDecisionPhrase).toBe(true); // 'decided' no longer matches
     const overriddenHit = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [msg({ id: 'm1', content: 'lets ship it now' })],
       options: { decisionPhrases: ['ship it'] },
     });
@@ -249,14 +249,14 @@ describe('evaluateEpisodePrefilter — borderline boundaries', () => {
 
   it('collects multiple blockers in a stable order', () => {
     const e = evaluateEpisodePrefilter({
-      cassandraId: CASS,
+      mnemeId: CASS,
       messages: [
         msg({ id: 'm1', content: 'we agreed', mentions: [{ id: CASS }] }),
         msg({ id: 'm2', content: 'second human message' }),
       ],
     });
     expect(e.skip).toBe(false);
-    expect(e.blockers).toEqual(['multiple_human_messages', 'cassandra_mention', 'decision_phrase']);
+    expect(e.blockers).toEqual(['multiple_human_messages', 'mneme_mention', 'decision_phrase']);
   });
 });
 
@@ -267,6 +267,6 @@ describe('evaluateEpisodePrefilterNormalized — accepts NormalizedMessage', () 
       CASS,
     );
     expect(e.skip).toBe(false);
-    expect(e.blockers).toContain('cassandra_mention');
+    expect(e.blockers).toContain('mneme_mention');
   });
 });

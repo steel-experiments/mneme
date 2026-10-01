@@ -24,7 +24,7 @@ import {
 } from '../../memory/attention-repository.js';
 import { insertProposal } from '../../db/repositories/proposals.js';
 import { sanitizeOutboundMessage } from '../../discord/message-safety.js';
-import { isCassandraTestSurface } from '../../discord/test-channels.js';
+import { isMnemeTestSurface } from '../../discord/test-channels.js';
 import type { PromptCompiler } from '../../agent/prompts.js';
 import {
   executeAgentRun,
@@ -154,8 +154,8 @@ export interface ReviewDueMemoriesHandlerDeps {
   promptCompiler: PromptCompiler | (() => PromptCompiler);
   /** `channel-policy.yml` source, included in the prompt version when present. */
   channelPolicyYml?: string | (() => string);
-  /** `cassandra.yml` source, included in the prompt version when present. */
-  cassandraYml?: string;
+  /** `mneme.yml` source, included in the prompt version when present. */
+  mnemeYml?: string;
   /** Rendered system prompt, or a renderer using this run's complete context. */
   systemPrompt: string | ((context: ScheduledReviewRenderContext) => string);
   /** Resolve the cohort retrieval grant, approval inbox, and prompt target metadata. */
@@ -198,8 +198,8 @@ export interface ReviewDueMemoriesHandlerDeps {
   attentionWindowMs?: number;
   /** Organization timezone captured with accepted deadline authority. */
   attentionTimezone?: string;
-  /** Discord application id; Cassandra's own messages are never triggers. */
-  cassandraId?: string;
+  /** Discord application id; Mneme's own messages are never triggers. */
+  mnemeId?: string;
   logger?: Pick<Logger, 'info' | 'warn'>;
 }
 
@@ -216,7 +216,7 @@ export interface ApplyArgs {
   minimumImportance?: number;
   attentionWindowMs?: number;
   attentionTimezone?: string;
-  cassandraId?: string;
+  mnemeId?: string;
   logger?: Pick<Logger, 'info' | 'warn'>;
 }
 
@@ -375,7 +375,7 @@ function prepareScheduledNotification(
       !current
       || current.guild_id !== guildId
       || current.deleted_at_ms !== null
-      || isCassandraTestSurface(db, current.channel_id)
+      || isMnemeTestSurface(db, current.channel_id)
       || !resolveRetrievableChannelScope(db, current.channel_id)
     ) {
       hasUnavailableEvidence = true;
@@ -538,7 +538,7 @@ export function createReviewDueMemoriesHandler(
       const compiler = typeof deps.promptCompiler === 'function' ? deps.promptCompiler() : deps.promptCompiler;
       promptText = compiler.render('scheduled-review', context);
       promptVersion = compiler.versionFor('scheduled-review', {
-        cassandraYml: deps.cassandraYml,
+        mnemeYml: deps.mnemeYml,
         channelPolicyYml: typeof deps.channelPolicyYml === 'function' ? deps.channelPolicyYml() : deps.channelPolicyYml,
       });
       renderedSystemPrompt = typeof deps.systemPrompt === 'function'
@@ -562,7 +562,7 @@ export function createReviewDueMemoriesHandler(
       model: a?.model ?? (undefined as unknown as ExecuteAgentRunDeps['model']),
       thinkingLevel: a?.thinkingLevel ?? 'minimal',
       streamFn: a?.streamFn ?? (undefined as unknown as ExecuteAgentRunDeps['streamFn']),
-      sessionId: deps.sessionId ?? 'cassandra:scheduled-review',
+      sessionId: deps.sessionId ?? 'mneme:scheduled-review',
       cacheProfile: 'scheduled',
       promptText,
       promptVersion,
@@ -652,7 +652,7 @@ export function createReviewDueMemoriesHandler(
         minimumImportance: deps.memoryMinimumImportance,
         attentionWindowMs: deps.attentionWindowMs,
         attentionTimezone: deps.attentionTimezone,
-        cassandraId: deps.cassandraId,
+        mnemeId: deps.mnemeId,
         logger: deps.logger,
       },
       memoryProposals,

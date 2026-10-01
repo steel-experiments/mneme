@@ -58,7 +58,7 @@ async function reachable(url) {
       method: 'GET',
       redirect: 'follow',
       signal: controller.signal,
-      headers: { 'user-agent': 'cassandra-docs-link-check/1.0' },
+      headers: { 'user-agent': 'mneme-docs-link-check/1.0' },
     });
     return response.status < 400 || [401, 403, 429].includes(response.status);
   } catch {

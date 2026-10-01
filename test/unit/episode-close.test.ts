@@ -29,10 +29,10 @@ import { JobWorker } from '../../src/jobs/worker.js';
 const GUILD = '100000000000000001';
 const CHANNEL = '100000000000000002'; // seeded
 const HUMAN = '100000000000000003';
-const CASSANDRA = '100000000000000010';
+const MNEME = '100000000000000010';
 const T0 = 1_700_000_001_000;
 
-const config: EpisodeBuilderConfig = { cassandraId: CASSANDRA };
+const config: EpisodeBuilderConfig = { mnemeId: MNEME };
 const SECOND = 1000;
 const MINUTE = 60_000;
 

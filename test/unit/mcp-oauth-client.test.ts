@@ -102,7 +102,7 @@ describe('registered redirect URI checks', () => {
     expect(checkRedirectUri('not a url')).toBe('not_absolute');
     // A registered redirect may not carry a fragment (RFC 6749 3.1.2).
     expect(checkRedirectUri('https://example.test/cb#frag')).toBe('has_fragment');
-    // Credentials would be carried into a redirect Cassandra emits.
+    // Credentials would be carried into a redirect Mneme emits.
     expect(checkRedirectUri('https://user:pw@example.test/cb')).toBe('has_credentials');
   });
 });

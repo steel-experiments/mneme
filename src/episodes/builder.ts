@@ -17,7 +17,7 @@ import {
  * Every permitted message is stored by the ingestion layer; this module decides
  * whether a stored message also opens or extends a conversation episode. The rule
  * (Section 11.2): open or extend when a non-bot human posts to an ingested channel
- * and the message is not only an ignored command or known noise event. Cassandra's
+ * and the message is not only an ignored command or known noise event. Mneme's
  * own messages are stored but never trigger; other bots are non-triggering unless
  * allowlisted as materially relevant, and even an allowlisted bot only extends an
  * already-open episode — only humans open one.
@@ -28,7 +28,7 @@ import {
  */
 
 export type MessageClass =
-  | 'cassandra'
+  | 'mneme'
   | 'allowlisted_bot'
   | 'other_bot'
   | 'human'
@@ -36,8 +36,8 @@ export type MessageClass =
   | 'noise';
 
 export interface EpisodeBuilderConfig {
-  /** Cassandra's own user id. Self-messages are stored but never trigger. */
-  cassandraId: string;
+  /** Mneme's own user id. Self-messages are stored but never trigger. */
+  mnemeId: string;
   /** Bot user ids deemed materially relevant (may extend an open episode). */
   allowlistedBotIds?: ReadonlySet<string>;
   /** True when content is purely an ignored command invocation. Overrides default. */
@@ -54,8 +54,8 @@ export interface EpisodeTriggerDecision {
   extendsEpisode: boolean;
   /** Counts toward the episode's human_message_count (human messages only). */
   isHuman: boolean;
-  /** Whether the message directly mentions Cassandra (Section 11.2 direct-answer). */
-  mentionsCassandra: boolean;
+  /** Whether the message directly mentions Mneme (Section 11.2 direct-answer). */
+  mentionsMneme: boolean;
   /** Short reason recorded as the episode trigger_reason when a new one opens. */
   reason: string;
 }
@@ -80,17 +80,17 @@ export function defaultIsKnownNoise(content: string, msg: NormalizedMessage): bo
   return content.trim().length === 0 && msg.attachments.length === 0 && msg.embeds.length === 0;
 }
 
-/** Whether a message directly mentions Cassandra by user id. */
-export function mentionsCassandra(msg: NormalizedMessage, cassandraId: string): boolean {
+/** Whether a message directly mentions Mneme by user id. */
+export function mentionsMneme(msg: NormalizedMessage, mnemeId: string): boolean {
   if (!msg.mentions || msg.mentions.length === 0) return false;
-  return msg.mentions.some((m) => m.id === cassandraId);
+  return msg.mentions.some((m) => m.id === mnemeId);
 }
 
 /**
  * Classify a stored message and decide whether it opens or extends an episode.
  * Pure: no database access, no side effects.
  *
- * Precedence for human authors: a direct Cassandra mention is always substantive
+ * Precedence for human authors: a direct Mneme mention is always substantive
  * (it both triggers the episode and signals a direct-answer); otherwise a purely
  * ignored command or known-noise message does not trigger.
  */
@@ -99,16 +99,16 @@ export function classifyEpisodeTrigger(
   config: EpisodeBuilderConfig,
 ): EpisodeTriggerDecision {
   const author = msg.author;
-  const mentioned = mentionsCassandra(msg, config.cassandraId);
+  const mentioned = mentionsMneme(msg, config.mnemeId);
 
-  // Cassandra's own messages: stored, never open or extend.
-  if (author.id === config.cassandraId) {
+  // Mneme's own messages: stored, never open or extend.
+  if (author.id === config.mnemeId) {
     return {
-      messageClass: 'cassandra',
+      messageClass: 'mneme',
       opensEpisode: false,
       extendsEpisode: false,
       isHuman: false,
-      mentionsCassandra: false,
+      mentionsMneme: false,
       reason: 'self',
     };
   }
@@ -124,12 +124,12 @@ export function classifyEpisodeTrigger(
       opensEpisode: false,
       extendsEpisode: allowlisted,
       isHuman: false,
-      mentionsCassandra: mentioned,
+      mentionsMneme: mentioned,
       reason: allowlisted ? 'allowlisted_bot' : 'other_bot',
     };
   }
 
-  // Human author. A Cassandra mention is always substantive and overrides the
+  // Human author. A Mneme mention is always substantive and overrides the
   // command/noise checks (Section 11.2: a direct mention remains part of the episode).
   const isCommand = !mentioned && (config.isIgnoredCommand ?? defaultIsIgnoredCommand)(msg.content, msg);
   const isNoise = !mentioned && (config.isKnownNoise ?? defaultIsKnownNoise)(msg.content, msg);
@@ -140,7 +140,7 @@ export function classifyEpisodeTrigger(
       opensEpisode: false,
       extendsEpisode: false,
       isHuman: false,
-      mentionsCassandra: mentioned,
+      mentionsMneme: mentioned,
       reason: 'ignored_command',
     };
   }
@@ -150,7 +150,7 @@ export function classifyEpisodeTrigger(
       opensEpisode: false,
       extendsEpisode: false,
       isHuman: false,
-      mentionsCassandra: mentioned,
+      mentionsMneme: mentioned,
       reason: 'noise',
     };
   }
@@ -160,7 +160,7 @@ export function classifyEpisodeTrigger(
     opensEpisode: true,
     extendsEpisode: true,
     isHuman: true,
-    mentionsCassandra: mentioned,
+    mentionsMneme: mentioned,
     reason: mentioned ? 'human_mention' : 'human',
   };
 }

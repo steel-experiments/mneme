@@ -5,10 +5,10 @@ import { prepareCached, toInt } from './util.js';
 /**
  * Channel access auditing (Sections 6.3, 7, 48 Ingestion).
  *
- * At discovery time Cassandra records, per channel, the five Discord capability
+ * At discovery time Mneme records, per channel, the five Discord capability
  * bits it actually holds: View Channel, Read Message History, Send Messages, Send
  * Messages in Threads, and Manage Threads. The audit row is the basis for the
- * "permission warnings" surfaced by `/cassandra channels` and the `list_channels`
+ * "permission warnings" surfaced by `/mneme channels` and the `list_channels`
  * MCP tool, and the permission fingerprint stored on the channel row lets a later
  * discovery detect that capabilities changed (Section 48: "Automated permission-
  * signature comparison based on Discord roles").

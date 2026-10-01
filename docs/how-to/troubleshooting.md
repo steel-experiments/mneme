@@ -1,7 +1,7 @@
 # Troubleshooting
 
 Work from the symptom to the cause. Most failures show in
-`/cassandra status`, `/cassandra channels`, or the structured logs, before
+`/mneme status`, `/mneme channels`, or the structured logs, before
 anyone needs shell access to the database.
 
 ## Quick checks first
@@ -9,17 +9,17 @@ anyone needs shell access to the database.
 Run these before anything else:
 
 ```text
-/cassandra status
-/cassandra channels
+/mneme status
+/mneme channels
 ```
 
 ```bash
-curl --fail http://cassandra.example.internal/livez
-curl --fail http://cassandra.example.internal/readyz
+curl --fail http://mneme.example.internal/livez
+curl --fail http://mneme.example.internal/readyz
 ```
 
-`/cassandra status` shows the gateway state, the model health, the latest
-backup age, and the backfill progress. `/cassandra channels` shows the live
+`/mneme status` shows the gateway state, the model health, the latest
+backup age, and the backfill progress. `/mneme channels` shows the live
 channel policy next to the real Discord permissions. A readiness failure with
 a healthy liveness means the process runs but a dependency is not ready.
 
@@ -30,18 +30,18 @@ Check each cause in order:
 - **Direct answers are disabled.** `DIRECT_ANSWER_ENABLED=false` removes
   replies to mentions. It defaults to `true`; the rollout guide sets it to
   `false` for a silent first phase.
-- **The mention form is wrong.** Cassandra answers explicit mentions in the
+- **The mention form is wrong.** Mneme answers explicit mentions in the
   server. It does not answer DMs; an inbound DM gets one fixed notice per
   sender per 24 hours.
 - **The model gate is holding work.** The status line shows the model as
   `degraded` when the provider fails repeatedly or the daily budget is spent.
   See the next two sections.
 - **The channel is a test console.** Any channel whose name contains
-  `cassandra` is treated as a console. Ordinary messages there are not
+  `mneme` is treated as a console. Ordinary messages there are not
   ingested. Questions still get answers, but only from already-ingested
   evidence in other channels.
 
-When a direct answer cannot complete, Cassandra sends a short fixed fallback
+When a direct answer cannot complete, Mneme sends a short fixed fallback
 message. That fallback is a signal to check the model health, not a bug in
 Discord delivery.
 
@@ -49,12 +49,12 @@ Discord delivery.
 
 - `FULL_HISTORY=false` starts memory from new messages onward. Nothing older
   is imported on first start.
-- `FULL_HISTORY=true` runs a historical backfill. `/cassandra status` shows
+- `FULL_HISTORY=true` runs a historical backfill. `/mneme status` shows
   the queue. Wait for it to drain before you judge coverage.
 - At least one id must be present across the two selection lists. Both empty
   is a startup error, quoted below.
   Check `ORG_VISIBLE_CHANNEL_IDS` and `RESTRICTED_CHANNEL_IDS` against
-  `/cassandra channels`.
+  `/mneme channels`.
 - Live ingestion problems show in the `discord.ingestion_outcome` log events;
   see [Investigate ingestion safely](#investigate-ingestion-safely).
 
@@ -62,14 +62,14 @@ Discord delivery.
 
 - **Message Content Intent is off.** The bot connects, sees events, and stores
   no text. Enable the intent in the Discord Developer Portal, then restart
-  Cassandra.
-- **No admin role is configured.** With an empty `CASSANDRA_ADMIN_ROLE_IDS`,
+  Mneme.
+- **No admin role is configured.** With an empty `MNEME_ADMIN_ROLE_IDS`,
   every administrative command is denied. Set at least one role ID.
 - **The asking member lacks the admin role.** Administrative commands check
   the role of the member who sends them.
-- **The bot role lacks Read Message History.** Cassandra can only ingest
+- **The bot role lacks Read Message History.** Mneme can only ingest
   channels where it holds both View Channel and Read Message History.
-  `/cassandra channels` reports the missing permissions per channel.
+  `/mneme channels` reports the missing permissions per channel.
 
 ## Invalid model or provider key
 
@@ -108,7 +108,7 @@ the model, so messages keep flowing during the stop.
 ## Sync is still pending
 
 Answers over a time window are incomplete until the channels in that window
-have synced. Check `/cassandra status` for backfill and reconciliation
+have synced. Check `/mneme status` for backfill and reconciliation
 progress. A catch-up that names a window wider than the synced history
 returns a partial report and says so.
 
@@ -124,9 +124,9 @@ returns a partial report and says so.
   `RESTRICTED_CHANNEL_IDS`. With both lists empty, startup fails with
   `channel policy: CHANNEL_POLICY_SOURCE=basic needs at least one id in ORG_VISIBLE_CHANNEL_IDS or RESTRICTED_CHANNEL_IDS; an existing channel-policy.yml needs CHANNEL_POLICY_SOURCE=file`.
   When you meant to use the YAML file, set `CHANNEL_POLICY_SOURCE=file`.
-- Compare the live result with `/cassandra channels`. Channels that should
+- Compare the live result with `/mneme channels`. Channels that should
   ingest must be reachable by policy and by Discord permissions.
-- In file mode, `/cassandra reload-policy` applies policy and prompt changes
+- In file mode, `/mneme reload-policy` applies policy and prompt changes
   without a restart. In basic mode, the selection lists are read at startup,
   so a change needs a restart.
 
@@ -146,7 +146,7 @@ returns a partial report and says so.
 
 ## Investigate ingestion safely
 
-Gateway receipt means Cassandra received an event. Persistence and recovery
+Gateway receipt means Mneme received an event. Persistence and recovery
 are separate: a receipt can be healthy while a policy skip, malformed
 payload, or missing dependency prevents storage. Use the content-free
 `discord.ingestion_outcome` log event and its `eventType`, `outcome`, and

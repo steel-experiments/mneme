@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, loadOperationalConfig, parseDotEnv, mcpEndpointUrl, ConfigError } from '../../src/config.js';
 
-const CASSANDRA_YML = fileURLToPath(new URL('../../config/cassandra.yml', import.meta.url));
+const MNEME_YML = fileURLToPath(new URL('../../config/mneme.yml', import.meta.url));
 const ENV_EXAMPLES = ['../../.env.example', '../../config/advanced.env.example'].map((rel) =>
   fileURLToPath(new URL(rel, import.meta.url)),
 );
@@ -20,7 +20,7 @@ let emptyCwd = '';
 
 beforeAll(() => {
   suiteCwd = process.cwd();
-  emptyCwd = mkdtempSync(join(tmpdir(), 'cassandra-config-test-'));
+  emptyCwd = mkdtempSync(join(tmpdir(), 'mneme-config-test-'));
   process.chdir(emptyCwd);
 });
 
@@ -70,8 +70,8 @@ function expectPinnedError(env: Record<string, string | undefined>, message: str
 describe('config', () => {
   it('requires explicit snowflake deletion approvers, independently of admin roles', () => {
     expect(loadConfig({ env: baseEnv() }).deletionApproverUserIds).toEqual([]);
-    expect(loadConfig({ env: { ...baseEnv(), CASSANDRA_DELETION_APPROVER_USER_IDS: '900000000000000001' } }).deletionApproverUserIds).toEqual(['900000000000000001']);
-    expectFail({ ...baseEnv(), CASSANDRA_DELETION_APPROVER_USER_IDS: 'niko' }, 'CASSANDRA_DELETION_APPROVER_USER_IDS');
+    expect(loadConfig({ env: { ...baseEnv(), MNEME_DELETION_APPROVER_USER_IDS: '900000000000000001' } }).deletionApproverUserIds).toEqual(['900000000000000001']);
+    expectFail({ ...baseEnv(), MNEME_DELETION_APPROVER_USER_IDS: 'niko' }, 'MNEME_DELETION_APPROVER_USER_IDS');
   });
   it('loads a minimal valid configuration', () => {
     const cfg = loadConfig({ env: baseEnv() });
@@ -182,13 +182,13 @@ describe('config', () => {
     // starts from the working directory instead.
     const cfg = loadConfig({ env: baseEnv(), yamlText: '' });
     expect(cfg.dataDir).toBe('./data');
-    expect(cfg.databasePath).toBe('./data/cassandra.sqlite');
+    expect(cfg.databasePath).toBe('./data/mneme.sqlite');
     // Derived from DATA_DIR. The contract allows the literal './data/backups'
     // and the path.join derivation, which drops the leading './'.
     expect(['./data/backups', 'data/backups']).toContain(cfg.backupDir);
     expect(cfg.promptDir).toBe('./prompts');
     expect(cfg.docsDir).toBe('./docs');
-    expect(cfg.cassandraConfigPath).toBe('./config/cassandra.yml');
+    expect(cfg.mnemeConfigPath).toBe('./config/mneme.yml');
     expect(cfg.channelPolicyPath).toBe('./config/channel-policy.yml');
   });
 
@@ -233,8 +233,8 @@ describe('config', () => {
     expectFail({ ...baseEnv(), EPISODE_SHADOW_MAX_RUNS: '0' }, 'EPISODE_SHADOW_MAX_RUNS');
   });
 
-  it('parses the shipped cassandra.yml into typed config', () => {
-    const yamlText = readFileSync(CASSANDRA_YML, 'utf8');
+  it('parses the shipped mneme.yml into typed config', () => {
+    const yamlText = readFileSync(MNEME_YML, 'utf8');
     // Drop env org overrides so the YAML values are exercised directly.
     const env = baseEnv();
     delete env.ORG_NAME;
@@ -242,7 +242,7 @@ describe('config', () => {
     const cfg = loadConfig({ env, yamlText });
     expect(cfg.organization.name).toBe('Your Company');
     expect(cfg.organization.timezone).toBe('UTC');
-    expect(cfg.agent.name).toBe('Cassandra');
+    expect(cfg.agent.name).toBe('Mneme');
     expect(cfg.intervention.threshold).toBeCloseTo(0.78);
     expect(cfg.intervention.globalDailyLimit).toBe(5);
     expect(cfg.intervention.attentionWindowDays).toBe(7);
@@ -258,8 +258,8 @@ describe('config', () => {
 
   it('defaults and overrides the documentation directory', () => {
     expect(loadConfig({ env: baseEnv(), yamlText: '' }).docsDir).toBe('./docs');
-    expect(loadConfig({ env: { ...baseEnv(), DOCS_DIR: '/srv/cassandra/docs' }, yamlText: '' }).docsDir).toBe(
-      '/srv/cassandra/docs',
+    expect(loadConfig({ env: { ...baseEnv(), DOCS_DIR: '/srv/mneme/docs' }, yamlText: '' }).docsDir).toBe(
+      '/srv/mneme/docs',
     );
   });
 
@@ -319,8 +319,8 @@ describe('config', () => {
   it('validates and normalizes the optional public documentation URL', () => {
     expect(loadConfig({ env: baseEnv() }).docsPublicUrl).toBeUndefined();
     expect(loadConfig({
-      env: { ...baseEnv(), DOCS_PUBLIC_URL: 'https://docs.example.com/cassandra' },
-    }).docsPublicUrl).toBe('https://docs.example.com/cassandra/');
+      env: { ...baseEnv(), DOCS_PUBLIC_URL: 'https://docs.example.com/mneme' },
+    }).docsPublicUrl).toBe('https://docs.example.com/mneme/');
 
     expectFail({ ...baseEnv(), DOCS_PUBLIC_URL: 'http://docs.example.com' }, 'DOCS_PUBLIC_URL');
     expectFail({ ...baseEnv(), DOCS_PUBLIC_URL: 'https://user@docs.example.com' }, 'DOCS_PUBLIC_URL');
@@ -350,9 +350,9 @@ describe('config', () => {
     expect(mcpEndpointUrl(local.mcp)).toBe('http://localhost:3100/mcp');
 
     const railway = loadConfig({
-      env: { ...baseEnv(), RAILWAY_PUBLIC_DOMAIN: 'cassandra.example.up.railway.app' },
+      env: { ...baseEnv(), RAILWAY_PUBLIC_DOMAIN: 'mneme.example.up.railway.app' },
     });
-    expect(mcpEndpointUrl(railway.mcp)).toBe('https://cassandra.example.up.railway.app/mcp');
+    expect(mcpEndpointUrl(railway.mcp)).toBe('https://mneme.example.up.railway.app/mcp');
 
     const explicit = loadConfig({
       env: {
@@ -387,7 +387,7 @@ describe('config', () => {
   });
 
   it('fails on an invalid autonomy mode', () => {
-    expectFail({ ...baseEnv(), CASSANDRA_MODE: 'YOLO' }, 'CASSANDRA_MODE');
+    expectFail({ ...baseEnv(), MNEME_MODE: 'YOLO' }, 'MNEME_MODE');
   });
 
   it('fails on an invalid LLM provider', () => {
@@ -466,14 +466,14 @@ describe('config', () => {
   });
 
   it('fails when review mode lacks a secure review channel', () => {
-    expectFail({ ...baseEnv(), CASSANDRA_MODE: 'review' }, 'CASSANDRA_REVIEW_CHANNEL_ID');
+    expectFail({ ...baseEnv(), MNEME_MODE: 'review' }, 'MNEME_REVIEW_CHANNEL_ID');
   });
 
   it('fails when env and channel-policy review channel ids disagree', () => {
     const env = {
       ...baseEnv(),
-      CASSANDRA_MODE: 'review',
-      CASSANDRA_REVIEW_CHANNEL_ID: '345678901234567890',
+      MNEME_MODE: 'review',
+      MNEME_REVIEW_CHANNEL_ID: '345678901234567890',
     };
     try {
       loadConfig({
@@ -483,15 +483,15 @@ describe('config', () => {
       throw new Error('expected throw');
     } catch (err) {
       expect(err).toBeInstanceOf(ConfigError);
-      expect((err as ConfigError).setting).toBe('CASSANDRA_REVIEW_CHANNEL_ID');
+      expect((err as ConfigError).setting).toBe('MNEME_REVIEW_CHANNEL_ID');
     }
   });
 
   it('accepts review mode with a secure review channel', () => {
     const env = {
       ...baseEnv(),
-      CASSANDRA_MODE: 'review',
-      CASSANDRA_REVIEW_CHANNEL_ID: '345678901234567890',
+      MNEME_MODE: 'review',
+      MNEME_REVIEW_CHANNEL_ID: '345678901234567890',
     };
     const cfg = loadConfig({ env, channelPolicyReview: { id: '345678901234567890', secure: true } });
     expect(cfg.mode).toBe('review');
@@ -516,12 +516,12 @@ describe('config', () => {
       MCP_OAUTH_CLIENT_ID: 'b7f3c1a9d24e40f8',
       DISCORD_OAUTH_CLIENT_ID: '987654321098765432',
       DISCORD_OAUTH_CLIENT_SECRET: 'discord-oauth-secret-value',
-      CASSANDRA_ADMIN_ROLE_IDS: '456789012345678901',
+      MNEME_ADMIN_ROLE_IDS: '456789012345678901',
     };
     expectFail({ ...oauthEnv, MCP_OAUTH_CLIENT_ID: undefined }, 'MCP_OAUTH_CLIENT_ID');
     expectFail({ ...oauthEnv, DISCORD_OAUTH_CLIENT_ID: undefined }, 'DISCORD_OAUTH_CLIENT_ID');
     expectFail({ ...oauthEnv, DISCORD_OAUTH_CLIENT_SECRET: undefined }, 'DISCORD_OAUTH_CLIENT_SECRET');
-    expectFail({ ...oauthEnv, CASSANDRA_ADMIN_ROLE_IDS: undefined }, 'CASSANDRA_ADMIN_ROLE_IDS');
+    expectFail({ ...oauthEnv, MNEME_ADMIN_ROLE_IDS: undefined }, 'MNEME_ADMIN_ROLE_IDS');
 
     const cfg = loadConfig({ env: oauthEnv });
     expect(cfg.mcp.oauthEnabled).toBe(true);
@@ -565,7 +565,7 @@ describe('config', () => {
      * explicit env plus the fixture directory.
      */
     function withEnvFile(lines: string[], fn: (dir: string) => void): void {
-      const dir = mkdtempSync(join(tmpdir(), 'cassandra-dotenv-'));
+      const dir = mkdtempSync(join(tmpdir(), 'mneme-dotenv-'));
       writeFileSync(join(dir, '.env'), `${lines.join('\n')}\n`, 'utf8');
       try {
         fn(dir);

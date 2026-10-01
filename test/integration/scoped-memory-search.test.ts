@@ -122,7 +122,7 @@ describe('scoped memory search', () => {
     expect(idsOf(r).has(id)).toBe(true);
   });
 
-  it('quarantines stale memories when evidence becomes a Cassandra test surface', () => {
+  it('quarantines stale memories when evidence becomes a Mneme test surface', () => {
     const testChannel = 'legacy-test-memory-source';
     seedChannel(testChannel, 'org');
     addMessage('e-legacy-test-memory', testChannel, 'legacy quarantine decision evidence');
@@ -136,7 +136,7 @@ describe('scoped memory search', () => {
       now: NOW,
     });
     env.db.prepare('UPDATE channels SET name = ? WHERE id = ?')
-      .run('cassandra-test-renamed', testChannel);
+      .run('mneme-test-renamed', testChannel);
 
     expect(idsOf(searchMemories(env.db, ORG_GRANT, { query: 'quarantine', now: NOW })).has(id))
       .toBe(false);

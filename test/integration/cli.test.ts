@@ -41,7 +41,7 @@ function harness(envExtra: Record<string, string | undefined> = {}): Harness {
   const backupDir = join(dir, 'backups');
   const env: Record<string, string | undefined> = {
     DATA_DIR: dir,
-    DATABASE_PATH: join(dir, 'cassandra.sqlite'),
+    DATABASE_PATH: join(dir, 'mneme.sqlite'),
     BACKUP_DIR: backupDir,
     ...envExtra,
   };
@@ -161,7 +161,7 @@ describe('failures return nonzero without printing secrets', async () => {
   const ADMIN_SECRET = 'admin-secret-abc-987';
 
   function harnessWithSecrets(): Harness {
-    return harness({ DISCORD_TOKEN: DISCORD_SECRET, CASSANDRA_HTTP_ADMIN_TOKEN: ADMIN_SECRET });
+    return harness({ DISCORD_TOKEN: DISCORD_SECRET, MNEME_HTTP_ADMIN_TOKEN: ADMIN_SECRET });
   }
 
   it('migrate returns nonzero when the database cannot be opened, and prints no secret', async () => {
@@ -227,7 +227,7 @@ describe('failures return nonzero without printing secrets', async () => {
 describe('database-only: no Discord token or model initialization required', async () => {
   it('migrate succeeds with no DISCORD_TOKEN and no provider key in the environment', async () => {
     // Deliberately do NOT set DISCORD_TOKEN or any LLM key.
-    const h = harness({ DISCORD_TOKEN: undefined, CASSANDRA_LLM_API_KEY: undefined });
+    const h = harness({ DISCORD_TOKEN: undefined, MNEME_LLM_API_KEY: undefined });
     const code = await runCli(['migrate'], h.deps);
     expect(code).toBe(CLI_OK);
     expect(text(h)).toContain('migrate: applied');

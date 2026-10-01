@@ -1,6 +1,6 @@
 # Safety and assurance
 
-Cassandra's safety case is based on enforced boundaries, not on the model reliably
+Mneme's safety case is based on enforced boundaries, not on the model reliably
 remembering instructions.
 
 ## Enforced properties

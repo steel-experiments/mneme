@@ -7,7 +7,7 @@
 > in `plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
-> **Drift check (run first)**: `git diff --stat 0065618..HEAD -- prompts/episode-review.hbs src/production-runtime.ts test/unit/prompt-templates.test.ts test/integration/episode-review.test.ts CASSANDRA_IMPLEMENTATION_SPEC.md contributor-docs/acceptance-checklist.md docs/explanation/speaking-and-review.md`
+> **Drift check (run first)**: `git diff --stat 0065618..HEAD -- prompts/episode-review.hbs src/production-runtime.ts test/unit/prompt-templates.test.ts test/integration/episode-review.test.ts MNEME_IMPLEMENTATION_SPEC.md contributor-docs/acceptance-checklist.md docs/explanation/speaking-and-review.md`
 > If any in-scope file changed since this plan was written, compare the
 > "Current state" excerpts against the live code before proceeding; on a
 > mismatch, treat it as a STOP condition.
@@ -23,7 +23,7 @@
 
 ## Why this matters
 
-Episode intervention cards currently put each citation on its own line after the proposed message and label every link `source`. Two citations therefore add several visually empty lines and do not tell a reviewer which record supports which claim. Cassandra already has a safe inline-citation renderer for direct answers and scheduled notifications; episode interventions should use the same host-built links, show the exact deliverable text in the approval card, and keep one compact fallback line for a markerless legacy proposal.
+Episode intervention cards currently put each citation on its own line after the proposed message and label every link `source`. Two citations therefore add several visually empty lines and do not tell a reviewer which record supports which claim. Mneme already has a safe inline-citation renderer for direct answers and scheduled notifications; episode interventions should use the same host-built links, show the exact deliverable text in the approval card, and keep one compact fallback line for a markerless legacy proposal.
 
 ## Current state
 
@@ -74,7 +74,7 @@ Episode intervention cards currently put each citation on its own line after the
   ```
 
 - `src/production-runtime.ts:664-687` is the review-card consistency exemplar. `buildScheduledReviewPresentation` passes the fully rendered delivery in `proposedMessage` and passes `sources: []`, so the card quotes exactly what approval will queue.
-- `CASSANDRA_IMPLEMENTATION_SPEC.md:3149-3157` currently promises inline links only for direct answers and scheduled notifications. Section 25 at lines 3163–3178 illustrates a separate multi-line `Sources:` block. The normative spec and implementation must change together, per `AGENTS.md` and `CONTRIBUTING.md`.
+- `MNEME_IMPLEMENTATION_SPEC.md:3149-3157` currently promises inline links only for direct answers and scheduled notifications. Section 25 at lines 3163–3178 illustrates a separate multi-line `Sources:` block. The normative spec and implementation must change together, per `AGENTS.md` and `CONTRIBUTING.md`.
 - Tests use Vitest. `test/unit/message-safety.test.ts:368-384` demonstrates the expected inline substitution and descriptive label. `test/integration/scheduled-review.test.ts:533-546` demonstrates the single-line fallback form. `test/integration/episode-review.test.ts` already calls `routeEpisodeIntervention` directly with seeded messages and proposals; extend that harness rather than creating a second routing fixture.
 - This repository uses TypeScript ESM, Node 24, two-space indentation, single quotes, and conventional commit messages. Recent examples include `fix(...)`, `feat(attention): ...`, and `docs: ...`.
 
@@ -96,7 +96,7 @@ Episode intervention cards currently put each citation on its own line after the
 - `src/production-runtime.ts`
 - `test/unit/prompt-templates.test.ts`
 - `test/integration/episode-review.test.ts`
-- `CASSANDRA_IMPLEMENTATION_SPEC.md`
+- `MNEME_IMPLEMENTATION_SPEC.md`
 - `contributor-docs/acceptance-checklist.md`
 - `docs/explanation/speaking-and-review.md`
 - `plans/README.md` (status update only)
@@ -131,7 +131,7 @@ In `src/production-runtime.ts`, import and use `renderInlineCitations` from `src
 
 Make the episode source-link context supply both resolvers:
 
-- `resolveChannelId` continues to use `resolveCurrentEvidenceMessage` so excluded, deleted, foreign-guild, and Cassandra test-surface messages cannot produce links.
+- `resolveChannelId` continues to use `resolveCurrentEvidenceMessage` so excluded, deleted, foreign-guild, and Mneme test-surface messages cannot produce links.
 - `resolveLabel` uses the resolved stored message, `getChannel`, and `created_at_ms` to return `#channel · YYYY-MM-DD`; if a channel has no name, use `Discord · YYYY-MM-DD`. Match the date and label behavior in `src/memory/scheduled-delivery.ts:64-70`. The label remains host-owned.
 
 Create one local, pure assembly helper in `src/production-runtime.ts` (export it only if a focused test needs direct access). Its contract must be explicit:
@@ -174,7 +174,7 @@ Keep existing source-link unit tests intact. They already verify host ownership 
 
 ### Step 5: Align the normative spec and operator documentation
 
-Update `CASSANDRA_IMPLEMENTATION_SPEC.md` in the same change:
+Update `MNEME_IMPLEMENTATION_SPEC.md` in the same change:
 
 - Section 24.5 must include episode interventions among messages that place validated host-built links inline beside supported claims.
 - Section 25's review-card example must show a proposed message with an inline descriptive source link. State that the card quotes the exact assembled outbound text; markerless validated citations use one compact `Sources:` line for compatibility. Remove the example that presents each generic context link as a separate bullet.

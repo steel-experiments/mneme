@@ -63,7 +63,7 @@ describe('durable new-channel policy review', () => {
     t.db.prepare('UPDATE schema_migrations SET applied_at_ms=? WHERE version=22').run(NOW - 1);
     t.db.prepare('UPDATE channels SET discovered_at_ms=?,updated_at_ms=? WHERE id=?')
       .run(NOW, NOW, CHANNEL);
-    insertChannel(t, REVIEW_CHANNEL, 'cassandra-review');
+    insertChannel(t, REVIEW_CHANNEL, 'mneme-review');
     return t;
   }
 
@@ -307,7 +307,7 @@ describe('basic-mode policy source and classification reviews', () => {
     t.db.prepare('UPDATE schema_migrations SET applied_at_ms=? WHERE version=22').run(NOW - 1);
     t.db.prepare('UPDATE channels SET discovered_at_ms=?,updated_at_ms=? WHERE id=?')
       .run(NOW, NOW, CHANNEL);
-    insertChannel(t, REVIEW_CHANNEL, 'cassandra-review');
+    insertChannel(t, REVIEW_CHANNEL, 'mneme-review');
     return t;
   }
 
@@ -315,8 +315,8 @@ describe('basic-mode policy source and classification reviews', () => {
   function basicPolicy() {
     return parseChannelPolicy(basicChannelPolicySourceText({
       ORG_VISIBLE_CHANNEL_IDS: '100000000000000042',
-      CASSANDRA_REVIEW_CHANNEL_ID: REVIEW_CHANNEL,
-      CASSANDRA_REVIEW_CHANNEL_SECURE: 'true',
+      MNEME_REVIEW_CHANNEL_ID: REVIEW_CHANNEL,
+      MNEME_REVIEW_CHANNEL_SECURE: 'true',
     }));
   }
 

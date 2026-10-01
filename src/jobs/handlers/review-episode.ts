@@ -52,7 +52,7 @@ import { unavailablePolicyDecision } from '../../agent/policy-audit.js';
 import type { JobHandler } from '../worker.js';
 import type { JobRow } from '../types.js';
 import { DeferJobError, TransientJobError } from '../errors.js';
-import { isCassandraTestSurface } from '../../discord/test-channels.js';
+import { isMnemeTestSurface } from '../../discord/test-channels.js';
 import {
   resolveScheduledFeedback,
   type ScheduledFeedbackAssociation,
@@ -94,7 +94,7 @@ export interface ChannelScope {
   target: { label: string; visibility: string };
 }
 
-/** Recent Cassandra post counts fed to the prompt's runtime context (Section 23). */
+/** Recent Mneme post counts fed to the prompt's runtime context (Section 23). */
 export interface EpisodeReviewRuntimeCounters {
   recentChannelPosts: number;
   globalPostsToday: number;
@@ -111,18 +111,18 @@ export interface EpisodeShadowOptions {
 export interface ReviewEpisodeHandlerDeps {
   db: DatabaseSync;
   guildId: string;
-  /** Cassandra's own Discord user id (so its own messages are not counted as human). */
-  cassandraId: string;
+  /** Mneme's own Discord user id (so its own messages are not counted as human). */
+  mnemeId: string;
   promptCompiler: PromptCompiler | (() => PromptCompiler);
   /** `channel-policy.yml` source, included in the prompt version when present. */
   channelPolicyYml?: string | (() => string);
-  /** `cassandra.yml` source, included in the prompt version when present. */
-  cassandraYml?: string;
+  /** `mneme.yml` source, included in the prompt version when present. */
+  mnemeYml?: string;
   /** Rendered system prompt, or a renderer using this run's complete context. */
   systemPrompt: string | ((context: Record<string, unknown>) => string);
   /** Resolve the retrieval grant and target metadata for the episode's conversation channel. */
   resolveChannelScope: (channelId: string) => ChannelScope;
-  /** Recent Cassandra post counts for the prompt's runtime context. */
+  /** Recent Mneme post counts for the prompt's runtime context. */
   runtimeCounters: (channelId: string, now: number) => EpisodeReviewRuntimeCounters;
   /** Deployment mode label rendered into the prompt (e.g. "passive"). */
   mode: string | (() => string);
@@ -250,18 +250,18 @@ export function prepareEpisodeReviewContext(
   episode: EpisodeRow,
   now: number,
 ): PreparedEpisodeReviewContext {
-  const transcript = loadEpisodeTranscript(deps.db, episode, deps.cassandraId);
+  const transcript = loadEpisodeTranscript(deps.db, episode, deps.mnemeId);
   const scheduledFeedback = resolveScheduledFeedback(deps.db, {
     guildId: deps.guildId,
     channelId: episode.conversation_channel_id,
     messageIds: transcript.payloadMessages.map((message) => message.id),
-    cassandraId: deps.cassandraId,
+    mnemeId: deps.mnemeId,
   });
   const followups = loadAsynchronousFollowups(
     deps.db,
     episode,
     transcript,
-    deps.cassandraId,
+    deps.mnemeId,
     now,
     {
       horizonDays: deps.memoryFollowupHorizonDays ?? 14,
@@ -269,7 +269,7 @@ export function prepareEpisodeReviewContext(
     },
   );
   const prefilter = evaluateEpisodePrefilter({
-    cassandraId: deps.cassandraId,
+    mnemeId: deps.mnemeId,
     messages: transcript.prefilterMessages,
     options: {
       memoryLinkedMessageIds: new Set([
@@ -293,7 +293,7 @@ export function prepareEpisodeReviewContext(
   const compiler = typeof deps.promptCompiler === 'function' ? deps.promptCompiler() : deps.promptCompiler;
   const promptText = compiler.render('episode-review', context);
   const promptVersion = compiler.versionFor('episode-review', {
-    cassandraYml: deps.cassandraYml,
+    mnemeYml: deps.mnemeYml,
     channelPolicyYml:
       typeof deps.channelPolicyYml === 'function' ? deps.channelPolicyYml() : deps.channelPolicyYml,
   });
@@ -322,7 +322,7 @@ export function createReviewEpisodeHandler(
     throw new Error('createReviewEpisodeHandler: either `agent` or `executeRun` must be provided');
   }
   const executeRun = deps.executeRun ?? executeAgentRun;
-  // Cassandra is one Node process, so serializing the count-and-run section is
+  // Mneme is one Node process, so serializing the count-and-run section is
   // sufficient to make the cumulative cap exact even when episode workers run
   // concurrently. Authoritative reviews remain concurrent; only shadows queue.
   let shadowQueue: Promise<void> = Promise.resolve();
@@ -370,7 +370,7 @@ export function createReviewEpisodeHandler(
       const shadowResult = await executeRun({
         ...runDeps,
         ...candidateAgent,
-        sessionId: `cassandra:episode-shadow:${episode.id}:${authoritative.runId}`,
+        sessionId: `mneme:episode-shadow:${episode.id}:${authoritative.runId}`,
         shadowOfRunId: authoritative.runId,
       });
       const shadowProposal = shadowResult.outcome === 'finalized' && shadowResult.finalProposal
@@ -453,12 +453,12 @@ export function createReviewEpisodeHandler(
     }
 
     // A queued episode can outlive channel discovery or a rename. Re-resolve
-    // the complete Cassandra test surface immediately before any transcript is
+    // the complete Mneme test surface immediately before any transcript is
     // loaded or sent to the provider so a normally named child thread cannot
     // become memory evidence after its parent becomes a test console.
-    if (isCassandraTestSurface(db, episode.conversation_channel_id)) {
+    if (isMnemeTestSurface(db, episode.conversation_channel_id)) {
       markSkipped(db, episodeId, now);
-      deps.logger?.info({ episodeId }, 'review_episode: skipped Cassandra test surface');
+      deps.logger?.info({ episodeId }, 'review_episode: skipped Mneme test surface');
       return { kind: 'skipped', episodeId, reason: 'test_surface' };
     }
 
@@ -470,7 +470,7 @@ export function createReviewEpisodeHandler(
     // before the episode is leased, so the episode stays `queued` and the job
     // defers without consuming a retry attempt.
     const settle = evaluateSettle({
-      lastHumanAtMs: lastHumanMessageAtMs(db, episode.conversation_channel_id, deps.cassandraId),
+      lastHumanAtMs: lastHumanMessageAtMs(db, episode.conversation_channel_id, deps.mnemeId),
       episodeClosedAtMs: episode.ended_at_ms ?? episode.last_activity_at_ms,
       now,
       config: deps.settle ?? DEFAULT_SETTLE_CONFIG,
@@ -495,14 +495,14 @@ export function createReviewEpisodeHandler(
       return { kind: 'not_queued', episodeId, status: 'reviewing' };
     }
 
-    const transcript = loadEpisodeTranscript(db, episode, deps.cassandraId);
+    const transcript = loadEpisodeTranscript(db, episode, deps.mnemeId);
     const scheduledFeedback = resolveScheduledFeedback(db, {
       guildId: deps.guildId,
       channelId: episode.conversation_channel_id,
       messageIds: transcript.payloadMessages.map((message) => message.id),
-      cassandraId: deps.cassandraId,
+      mnemeId: deps.mnemeId,
     });
-    const followups = loadAsynchronousFollowups(db, episode, transcript, deps.cassandraId, now, {
+    const followups = loadAsynchronousFollowups(db, episode, transcript, deps.mnemeId, now, {
       horizonDays: deps.memoryFollowupHorizonDays ?? 14,
       maxMessages: deps.memoryFollowupMaxMessages ?? 20,
     });
@@ -510,7 +510,7 @@ export function createReviewEpisodeHandler(
     // Conservative local pre-filter (Section 11.4): skip only unmistakably
     // trivial episodes. A skip is terminal and records no model usage.
     const evaluation = evaluateEpisodePrefilter({
-      cassandraId: deps.cassandraId,
+      mnemeId: deps.mnemeId,
       messages: transcript.prefilterMessages,
       options: {
         memoryLinkedMessageIds: new Set([
@@ -540,7 +540,7 @@ export function createReviewEpisodeHandler(
     const compiler = typeof deps.promptCompiler === 'function' ? deps.promptCompiler() : deps.promptCompiler;
     const promptText = compiler.render('episode-review', context);
     const promptVersion = compiler.versionFor('episode-review', {
-      cassandraYml: deps.cassandraYml,
+      mnemeYml: deps.mnemeYml,
       channelPolicyYml: typeof deps.channelPolicyYml === 'function' ? deps.channelPolicyYml() : deps.channelPolicyYml,
     });
 
@@ -560,7 +560,7 @@ export function createReviewEpisodeHandler(
       model: a?.model ?? (undefined as unknown as ExecuteAgentRunDeps['model']),
       thinkingLevel: a?.thinkingLevel ?? 'minimal',
       streamFn: a?.streamFn ?? (undefined as unknown as ExecuteAgentRunDeps['streamFn']),
-      sessionId: `cassandra:episode:${episodeId}`,
+      sessionId: `mneme:episode:${episodeId}`,
       cacheProfile: 'episode',
       promptText,
       promptVersion,
@@ -623,12 +623,12 @@ export function createReviewEpisodeHandler(
 
     // Discovery can rename the channel or its parent while the provider is in
     // flight. The content was eligible when the run began, but a newly current
-    // Cassandra test surface must never produce memories or interventions.
-    if (isCassandraTestSurface(db, episode.conversation_channel_id)) {
+    // Mneme test surface must never produce memories or interventions.
+    if (isMnemeTestSurface(db, episode.conversation_channel_id)) {
       markSkipped(db, episodeId, deps.now?.() ?? Date.now());
       deps.logger?.info(
         { episodeId, runId: result.runId },
-        'review_episode: discarded result after channel became a Cassandra test surface',
+        'review_episode: discarded result after channel became a Mneme test surface',
       );
       return { kind: 'skipped', episodeId, reason: 'test_surface' };
     }
@@ -636,11 +636,11 @@ export function createReviewEpisodeHandler(
     if (result.outcome === 'finalized' && result.finalProposal) {
       const proposal = result.finalProposal.proposal as EpisodeReviewProposalShape;
       await maybeRunShadow(episode, result, proposal, runDeps);
-      if (isCassandraTestSurface(db, episode.conversation_channel_id)) {
+      if (isMnemeTestSurface(db, episode.conversation_channel_id)) {
         markSkipped(db, episodeId, deps.now?.() ?? Date.now());
         deps.logger?.info(
           { episodeId, runId: result.runId },
-          'review_episode: discarded result after channel became a Cassandra test surface during shadow evaluation',
+          'review_episode: discarded result after channel became a Mneme test surface during shadow evaluation',
         );
         return { kind: 'skipped', episodeId, reason: 'test_surface' };
       }
@@ -673,7 +673,7 @@ export function createReviewEpisodeHandler(
           minimumImportance: deps.memoryMinimumImportance,
           attentionWindowMs: deps.attentionWindowMs,
           attentionTimezone: deps.attentionTimezone,
-          cassandraId: deps.cassandraId,
+          mnemeId: deps.mnemeId,
           logger: deps.logger,
         }, Array.isArray(proposal.memoryProposals) ? proposal.memoryProposals : []);
         interventionProposalId = await deps.routeIntervention?.({
@@ -835,7 +835,7 @@ export interface EpisodeReviewProposalShape {
 function loadEpisodeTranscript(
   db: DatabaseSync,
   episode: EpisodeRow,
-  cassandraId: string,
+  mnemeId: string,
 ): EpisodeTranscript {
   const rows = listEpisodeMessages(db, episode.id);
 
@@ -861,7 +861,7 @@ function loadEpisodeTranscript(
       author: {
         id: m.author_id,
         displayName: m.author_display_name,
-        isBot: m.author_id === cassandraId ? true : isBot,
+        isBot: m.author_id === mnemeId ? true : isBot,
       },
       content: m.content,
       createdAtIso: new Date(m.created_at_ms).toISOString(),
@@ -873,7 +873,7 @@ function loadEpisodeTranscript(
     prefilterMessages.push({
       id: m.id,
       content: m.content,
-      author: { id: m.author_id ?? '', isBot: m.author_id === cassandraId ? true : isBot },
+      author: { id: m.author_id ?? '', isBot: m.author_id === mnemeId ? true : isBot },
       mentions,
       reactionCounts: reactions,
     });
@@ -900,7 +900,7 @@ function loadAsynchronousFollowups(
   db: DatabaseSync,
   episode: EpisodeRow,
   transcript: EpisodeTranscript,
-  cassandraId: string,
+  mnemeId: string,
   now: number,
   options: FollowupOptions,
 ): EpisodeMessagePayload[] {
@@ -928,7 +928,7 @@ function loadAsynchronousFollowups(
     episode.conversation_channel_id,
     episode.ended_at_ms,
     upperBound,
-    cassandraId,
+    mnemeId,
     500,
   ) as Array<{ id: string; content: string; reply_to_message_id: string | null; created_at_ms: number }>;
 

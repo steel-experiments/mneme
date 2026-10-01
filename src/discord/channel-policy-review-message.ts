@@ -17,7 +17,7 @@ export type ChannelPolicyReviewAction = 'org' | 'restricted' | 'excluded';
 const PREFIX = 'cass';
 const VERSION = 'cp';
 const SIG_BYTES = 8;
-export const CHANNEL_POLICY_REVIEW_MARKER_PREFIX = 'Cassandra channel review ';
+export const CHANNEL_POLICY_REVIEW_MARKER_PREFIX = 'Mneme channel review ';
 
 function signature(action: ChannelPolicyReviewAction, reviewId: string, secret: string): string {
   return createHmac('sha256', secret)
@@ -71,7 +71,7 @@ export function buildChannelPolicyReviewCard(input: ChannelPolicyReviewCardInput
     : 'none';
   const embed = new EmbedBuilder()
     .setTitle('New channel needs classification')
-    .setDescription('Cassandra is tracking this channel privately until an administrator classifies it. Interventions remain off for runtime-reviewed channels.')
+    .setDescription('Mneme is tracking this channel privately until an administrator classifies it. Interventions remain off for runtime-reviewed channels.')
     .addFields(
       { name: 'Channel', value: `${channelLabel} · ${input.channelId}`, inline: false },
       { name: 'Type', value: String(input.channelType), inline: true },

@@ -10,7 +10,7 @@ import {
 } from '../../db/maintenance.js';
 
 /**
- * `/cassandra integrity-check` (Section 28).
+ * `/mneme integrity-check` (Section 28).
  *
  * An on-demand database health probe. The handler authorizes the caller first
  * (fail-closed, audited on both denial and success), then runs the canonical
@@ -52,7 +52,7 @@ export type IntegrityCheckOutcome =
   | { kind: 'done'; data: IntegrityCheckData };
 
 /**
- * Run `/cassandra integrity-check`. Authorize first (audited on both denial and
+ * Run `/mneme integrity-check`. Authorize first (audited on both denial and
  * success), then run the integrity checks and a passive WAL checkpoint, and
  * report the outcomes.
  */

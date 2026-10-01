@@ -10,7 +10,7 @@ import {
   ingestEpisodeActivity,
   defaultIsIgnoredCommand,
   defaultIsKnownNoise,
-  mentionsCassandra,
+  mentionsMneme,
   type EpisodeBuilderConfig,
 } from '../../src/episodes/builder.js';
 
@@ -24,7 +24,7 @@ import {
 const GUILD = '100000000000000001';
 const CHANNEL = '100000000000000002'; // seeded by seedIdentity
 const HUMAN = '100000000000000003'; // seeded user (alice)
-const CASSANDRA = '100000000000000010';
+const MNEME = '100000000000000010';
 const BOT = '100000000000000020';
 const ALLOWED_BOT = '100000000000000021';
 const NOW = 1_700_000_001_000;
@@ -55,7 +55,7 @@ function nm(over: Partial<NormalizedMessage> & { id: string }): NormalizedMessag
 }
 
 const config: EpisodeBuilderConfig = {
-  cassandraId: CASSANDRA,
+  mnemeId: MNEME,
   allowlistedBotIds: new Set([ALLOWED_BOT]),
 };
 
@@ -68,7 +68,7 @@ beforeEach(() => {
   seedIdentity(db);
   // Seed the bot authors so messages.author_id satisfies its FK.
   for (const [id, name] of [
-    [CASSANDRA, 'Cassandra'],
+    [MNEME, 'Mneme'],
     [BOT, 'groovy'],
     [ALLOWED_BOT, 'Deploy'],
   ] as const) {
@@ -106,9 +106,9 @@ function persist(msg: NormalizedMessage): void {
 }
 
 describe('classifyEpisodeTrigger — pure classification', () => {
-  it('flags Cassandra self-messages as non-triggering', () => {
-    const d = classifyEpisodeTrigger(nm({ id: 'm1', author: { id: CASSANDRA, username: 'cassandra', globalName: 'Cassandra', isBot: true } }), config);
-    expect(d.messageClass).toBe('cassandra');
+  it('flags Mneme self-messages as non-triggering', () => {
+    const d = classifyEpisodeTrigger(nm({ id: 'm1', author: { id: MNEME, username: 'mneme', globalName: 'Mneme', isBot: true } }), config);
+    expect(d.messageClass).toBe('mneme');
     expect(d.opensEpisode).toBe(false);
     expect(d.extendsEpisode).toBe(false);
     expect(d.isHuman).toBe(false);
@@ -137,7 +137,7 @@ describe('classifyEpisodeTrigger — pure classification', () => {
     expect(d.extendsEpisode).toBe(true);
     expect(d.isHuman).toBe(true);
     expect(d.reason).toBe('human');
-    expect(d.mentionsCassandra).toBe(false);
+    expect(d.mentionsMneme).toBe(false);
   });
 
   it('classifies a purely ignored command as non-triggering', () => {
@@ -154,17 +154,17 @@ describe('classifyEpisodeTrigger — pure classification', () => {
     expect(d.extendsEpisode).toBe(false);
   });
 
-  it('treats a direct Cassandra mention as substantive even when content is otherwise noise', () => {
-    const msg = nm({ id: 'm7', content: '', mentions: [{ id: CASSANDRA, username: 'cassandra', globalName: 'Cassandra' }] });
+  it('treats a direct Mneme mention as substantive even when content is otherwise noise', () => {
+    const msg = nm({ id: 'm7', content: '', mentions: [{ id: MNEME, username: 'mneme', globalName: 'Mneme' }] });
     const d = classifyEpisodeTrigger(msg, config);
     expect(d.messageClass).toBe('human');
     expect(d.opensEpisode).toBe(true);
-    expect(d.mentionsCassandra).toBe(true);
+    expect(d.mentionsMneme).toBe(true);
     expect(d.reason).toBe('human_mention');
   });
 
-  it('treats a Cassandra mention as substantive even when it looks like a command', () => {
-    const msg = nm({ id: 'm8', content: '!summarize', mentions: [{ id: CASSANDRA, username: 'cassandra', globalName: 'Cassandra' }] });
+  it('treats a Mneme mention as substantive even when it looks like a command', () => {
+    const msg = nm({ id: 'm8', content: '!summarize', mentions: [{ id: MNEME, username: 'mneme', globalName: 'Mneme' }] });
     const d = classifyEpisodeTrigger(msg, config);
     expect(d.messageClass).toBe('human');
     expect(d.opensEpisode).toBe(true);
@@ -172,7 +172,7 @@ describe('classifyEpisodeTrigger — pure classification', () => {
 
   it('honors injected command and noise detectors', () => {
     const cfg: EpisodeBuilderConfig = {
-      cassandraId: CASSANDRA,
+      mnemeId: MNEME,
       isIgnoredCommand: (c) => c.trim() === 'deploy',
       isKnownNoise: (c) => c.trim() === 'ack',
     };
@@ -200,10 +200,10 @@ describe('default detectors', () => {
     expect(defaultIsKnownNoise('ok', nm({ id: 'n5' }))).toBe(false);
   });
 
-  it('mentionsCassandra detects by id only', () => {
-    expect(mentionsCassandra(nm({ id: 'x', mentions: [{ id: CASSANDRA, username: 'c', globalName: 'C' }] }), CASSANDRA)).toBe(true);
-    expect(mentionsCassandra(nm({ id: 'x', mentions: [{ id: HUMAN, username: 'a', globalName: 'A' }] }), CASSANDRA)).toBe(false);
-    expect(mentionsCassandra(nm({ id: 'x' }), CASSANDRA)).toBe(false);
+  it('mentionsMneme detects by id only', () => {
+    expect(mentionsMneme(nm({ id: 'x', mentions: [{ id: MNEME, username: 'c', globalName: 'C' }] }), MNEME)).toBe(true);
+    expect(mentionsMneme(nm({ id: 'x', mentions: [{ id: HUMAN, username: 'a', globalName: 'A' }] }), MNEME)).toBe(false);
+    expect(mentionsMneme(nm({ id: 'x' }), MNEME)).toBe(false);
   });
 });
 
@@ -262,8 +262,8 @@ describe('ingestEpisodeActivity / applyEpisodeTrigger — DB effects', () => {
     expect(getOpenEpisode(db, CHANNEL)).toBeUndefined();
   });
 
-  it('never lets a Cassandra self-message open or extend an episode', () => {
-    const self = nm({ id: 'c1', author: { id: CASSANDRA, username: 'cassandra', globalName: 'Cassandra', isBot: true }, content: 'Noted.' });
+  it('never lets a Mneme self-message open or extend an episode', () => {
+    const self = nm({ id: 'c1', author: { id: MNEME, username: 'mneme', globalName: 'Mneme', isBot: true }, content: 'Noted.' });
     persist(self);
     const res = ingestEpisodeActivity(self, config, { db, guildId: GUILD, now: NOW });
     expect(res.linked).toBe(false);
@@ -320,8 +320,8 @@ describe('ingestEpisodeActivity / applyEpisodeTrigger — DB effects', () => {
     expect(ep.last_activity_at_ms).toBe(NOW); // not bumped by the duplicate
   });
 
-  it('records a Cassandra mention as a substantive opener with the mention reason', () => {
-    const msg = nm({ id: 'h1', content: '', mentions: [{ id: CASSANDRA, username: 'cassandra', globalName: 'Cassandra' }] });
+  it('records a Mneme mention as a substantive opener with the mention reason', () => {
+    const msg = nm({ id: 'h1', content: '', mentions: [{ id: MNEME, username: 'mneme', globalName: 'Mneme' }] });
     persist(msg);
     ingestEpisodeActivity(msg, config, { db, guildId: GUILD, now: NOW });
     const ep = getOpenEpisode(db, CHANNEL)!;

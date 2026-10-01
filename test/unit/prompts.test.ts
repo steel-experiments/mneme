@@ -27,7 +27,7 @@ const root = path.resolve(fileURLToPath(import.meta.url), '..', '..', '..');
 const promptDir = path.join(root, 'prompts');
 
 const baseCtx = {
-  agent: { name: 'Cassandra', role: 'organizational memory and constructive dissenter' },
+  agent: { name: 'Mneme', role: 'organizational memory and constructive dissenter' },
   organization: { name: 'Test Co', timezone: 'UTC' },
   runtime: {
     nowIso: '2026-08-11T09:00:00.000Z',
@@ -108,7 +108,7 @@ describe('allowlisted helpers only', () => {
 describe('renders every task shape', () => {
   it('renders the system prompt with identity, silence, STE, and tool rules', () => {
     const out = compiler().render('system', baseCtx);
-    expect(out).toContain('You are Cassandra, organizational memory and constructive dissenter for Test Co.');
+    expect(out).toContain('You are Mneme, organizational memory and constructive dissenter for Test Co.');
     expect(out).toContain('Your default action is silence.');
     expect(out).toContain('ASD-STE100 Simplified Technical English (STE)');
     expect(out).toContain('You must finish by calling the terminal tool specified for this task.');
@@ -246,7 +246,7 @@ describe('prompt version is deterministic (Section 15.2)', () => {
       system: 'S',
       taskTemplate: 'T',
       partials: ['P1', 'P2'],
-      cassandraYml: 'C',
+      mnemeYml: 'C',
       channelPolicyYml: 'CP',
     };
     const v = computePromptVersion(base);
@@ -254,7 +254,7 @@ describe('prompt version is deterministic (Section 15.2)', () => {
     expect(v).not.toBe(computePromptVersion({ ...base, system: 'S2' }));
     expect(v).not.toBe(computePromptVersion({ ...base, taskTemplate: 'T2' }));
     expect(v).not.toBe(computePromptVersion({ ...base, partials: ['P1', 'P3'] }));
-    expect(v).not.toBe(computePromptVersion({ ...base, cassandraYml: 'C2' }));
+    expect(v).not.toBe(computePromptVersion({ ...base, mnemeYml: 'C2' }));
   });
 
   it('distinguishes boundary-different inputs (NUL-separated sections)', () => {

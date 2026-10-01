@@ -407,7 +407,7 @@ describe('get_memory honors recomputed scope', () => {
     expect(text).toContain(memRa);
     expect(text).toContain('Restricted onboarding call.');
     expect((body.result as Record<string, unknown>)._meta).toEqual({
-      'io.cassandra/untrustedContent': { note: MCP_UNTRUSTED_CONTENT_NOTE },
+      'io.mneme/untrustedContent': { note: MCP_UNTRUSTED_CONTENT_NOTE },
     });
   });
 
@@ -469,7 +469,7 @@ describe('get_memory_evidence returns only permitted evidence', () => {
     expect(text).toContain('onboarding restricted evidence');
     expect(text).toContain(`https://discord.com/channels/${GUILD}/${RA}/e-ra`);
     expect((body.result as Record<string, unknown>)._meta).toEqual({
-      'io.cassandra/untrustedContent': { note: MCP_UNTRUSTED_CONTENT_NOTE },
+      'io.mneme/untrustedContent': { note: MCP_UNTRUSTED_CONTENT_NOTE },
     });
   });
 

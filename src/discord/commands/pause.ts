@@ -4,7 +4,7 @@ import { recordAdminEvent } from '../../db/repositories/admin-events.js';
 import { getPauseState, setPaused, type PauseState } from '../../runtime-state.js';
 
 /**
- * `/cassandra pause` and `/cassandra resume` (Sections 27, 47).
+ * `/mneme pause` and `/mneme resume` (Sections 27, 47).
  *
  * The pause is the global kill switch for new agent reviews and outbound sends;
  * ingestion and operational health continue, and the state is durable so it
@@ -33,7 +33,7 @@ export type PauseCommandOutcome =
   | { kind: 'done'; state: PauseState; already: boolean };
 
 /**
- * Run `/cassandra pause`. Authorization is checked first and recorded on denial;
+ * Run `/mneme pause`. Authorization is checked first and recorded on denial;
  * on success the durable pause is set (idempotent — pausing an already-paused
  * process is a no-op reported as `already`). The actor and timestamp are stamped
  * for auditability.
@@ -67,7 +67,7 @@ export function handlePauseCommand(
 }
 
 /**
- * Run `/cassandra resume`. Same authorization and audit shape as pause; on
+ * Run `/mneme resume`. Same authorization and audit shape as pause; on
  * success the durable pause is cleared, which lets the worker claim the review
  * and send work that accumulated while paused (Section 47).
  */
@@ -102,19 +102,19 @@ export function handleResumeCommand(
 /** Format an ephemeral pause reply. Contains no content or secrets. */
 export function formatPauseReply(outcome: PauseCommandOutcome): string {
   if (outcome.kind === 'not_authorized') {
-    return 'You are not authorized to pause Cassandra.';
+    return 'You are not authorized to pause Mneme.';
   }
   return outcome.already
-    ? 'Cassandra is already paused — reviews and sends are held; ingestion continues.'
-    : 'Cassandra paused. New reviews and outbound sends are held; ingestion continues. Use `/cassandra resume` to release them.';
+    ? 'Mneme is already paused — reviews and sends are held; ingestion continues.'
+    : 'Mneme paused. New reviews and outbound sends are held; ingestion continues. Use `/mneme resume` to release them.';
 }
 
 /** Format an ephemeral resume reply. Contains no content or secrets. */
 export function formatResumeReply(outcome: PauseCommandOutcome): string {
   if (outcome.kind === 'not_authorized') {
-    return 'You are not authorized to resume Cassandra.';
+    return 'You are not authorized to resume Mneme.';
   }
   return outcome.already
-    ? 'Cassandra is already running — reviews and sends are active.'
-    : 'Cassandra resumed. Queued reviews and sends are being released.';
+    ? 'Mneme is already running — reviews and sends are active.'
+    : 'Mneme resumed. Queued reviews and sends are being released.';
 }

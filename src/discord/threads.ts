@@ -64,7 +64,7 @@ export interface ThreadDiscoveryInput {
   activeThreads: DiscoveredChannelDescriptor[];
   /** Optional REST source for archived threads. Omit to skip archived discovery. */
   archiveSource?: ThreadArchiveSource;
-  /** Whether Cassandra holds Manage Threads (governs private-archived coverage). */
+  /** Whether Mneme holds Manage Threads (governs private-archived coverage). */
   canManageThreads?: boolean;
   /** Safety bound on pages per archive endpoint per parent (default 50). */
   maxPagesPerEndpoint?: number;

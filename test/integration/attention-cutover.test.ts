@@ -124,7 +124,7 @@ describe('attention cutover — Section 12.7', () => {
     const memoryId = makeMemory('Rollout moved.', [ev('modern')]);
     const subjectId = ensureSubjectForMember(env.db, { guildId: GUILD, memoryId, now: NOW });
     const evidence = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: 'bot', evidence: [{ messageId: 'modern', quote: 'changed the rollout' }],
+      guildId: GUILD, mnemeId: 'bot', evidence: [{ messageId: 'modern', quote: 'changed the rollout' }],
       now: NOW, windowMs: WINDOW,
     });
     if (!evidence.ok) throw new Error('expected valid evidence');
@@ -150,7 +150,7 @@ describe('attention cutover — Section 12.7', () => {
     const memoryId = makeMemory('The rollout moved.', [ev('re-registered')]);
     const subjectId = ensureSubjectForMember(env.db, { guildId: GUILD, memoryId, now: NOW });
     const validation = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: 'bot', evidence: [{ messageId: 're-registered', quote: 'already discussed' }],
+      guildId: GUILD, mnemeId: 'bot', evidence: [{ messageId: 're-registered', quote: 'already discussed' }],
       now: NOW, windowMs: WINDOW,
     });
     if (!validation.ok) throw new Error('expected valid evidence');
@@ -356,7 +356,7 @@ describe('forgetting purges attention state', () => {
     addMessage('m-trigger', 'the decision changed this week', NOW - 1000);
     const subjectId = ensureSubjectForMember(env.db, { guildId: GUILD, memoryId, now: NOW });
     const records = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: '100000000000000099',
+      guildId: GUILD, mnemeId: '100000000000000099',
       evidence: [{ messageId: 'm-trigger', quote: 'decision changed this week' }],
       now: NOW, windowMs: WINDOW,
     });

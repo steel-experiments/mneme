@@ -185,7 +185,7 @@ function issue(deps: TokenEndpointDeps, input: IssueInput): TokenOutcome {
 
   insertMcpToken(deps.db, {
     tokenHash: hashMcpTokenValue(accessToken),
-    // Names the person, not a purpose, so `/cassandra mcp-token list` reads
+    // Names the person, not a purpose, so `/mneme mcp-token list` reads
     // sensibly beside admin-issued tokens.
     name: `oauth:${input.subjectUserId}`,
     scopeType: input.scopeType,

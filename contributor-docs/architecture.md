@@ -3,12 +3,12 @@
 This is the map for contributors: what lives where, and how the pieces connect.
 The operator-level explanation is
 [docs/explanation/architecture.md](../docs/explanation/architecture.md). The
-normative depth is `CASSANDRA_IMPLEMENTATION_SPEC.md`; every section below names
+normative depth is `MNEME_IMPLEMENTATION_SPEC.md`; every section below names
 its spec area.
 
 ## One process
 
-Cassandra is one long-running Node.js process with three external boundaries:
+Mneme is one long-running Node.js process with three external boundaries:
 the Discord gateway, a model provider, and one HTTP server. There is no queue
 service, no cache, no sidecar, and no second writer. Recovery comes from durable
 state and reconciliation, not from replicas. A deployment runs exactly one
@@ -85,7 +85,7 @@ translates the two selection lists, `ORG_VISIBLE_CHANNEL_IDS` and
 `CHANNEL_POLICY_PATH`, which supports explicit thread overrides in both
 directions. Basic mode needs at least one id in the two lists and fails at
 startup when both are empty; it never consults stored review decisions. In
-file mode, `/cassandra reload-policy` applies changes live. In basic mode,
+file mode, `/mneme reload-policy` applies changes live. In basic mode,
 changes take effect after a restart. The host recomputes memory
 scopes from live policy on every read, so a reclassification tightens results
 immediately, without a maintenance job.

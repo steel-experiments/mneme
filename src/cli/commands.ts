@@ -167,7 +167,7 @@ async function runIntegrityCheckCommand(deps: CliDeps): Promise<number> {
 
 /** Print the supported commands. */
 function printUsage(deps: CliDeps): void {
-  out(deps, 'Usage: cassandra <command>');
+  out(deps, 'Usage: mneme <command>');
   out(deps, 'Commands:');
   out(deps, '  migrate          Apply pending database migrations.');
   out(deps, '  backup           Create an online SQLite backup in BACKUP_DIR.');

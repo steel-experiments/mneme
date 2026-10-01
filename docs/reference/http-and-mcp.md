@@ -1,6 +1,6 @@
 # HTTP and MCP reference
 
-Cassandra binds one HTTP server to `0.0.0.0:$PORT`.
+Mneme binds one HTTP server to `0.0.0.0:$PORT`.
 
 ## Routes
 
@@ -41,12 +41,12 @@ returns the same 404 body as an unknown route.
 1. Create a token in Discord:
 
    ```text
-   /cassandra inspector-token create admin-browser
+   /mneme inspector-token create admin-browser
    ```
 
    The reply shows the token value exactly once. The default lifetime is 30
    days; pass `expires-days` to change it, or revoke with
-   `/cassandra inspector-token revoke <id>`.
+   `/mneme inspector-token revoke <id>`.
 
 2. Open the surface.
 
@@ -59,7 +59,7 @@ returns the same 404 body as an unknown route.
 
    ```bash
    curl --fail \
-     -H "Authorization: Bearer $CASSANDRA_INSPECTOR_TOKEN" \
+     -H "Authorization: Bearer $MNEME_INSPECTOR_TOKEN" \
      http://localhost:3000/inspector
    ```
 
@@ -77,11 +77,11 @@ Pages: overview, `/memories` with full-text search, `/memories/:id` with
 evidence and lineage, `/episodes` and detail, `/runs` and detail with the
 context ledger, `/speech`, `/channels`, `/jobs`, `/audit`, and `/resolve/:id`
 as a jump box for any record id. The overview shows readiness, the effective
-mode (a `/cassandra mode` override wins over `CASSANDRA_MODE`), queue and
+mode (a `/mneme mode` override wins over `MNEME_MODE`), queue and
 spend counters, detailed-usage coverage, cache-read ratio, and the recent runs
 and proposals. Run pages show uncached input, cache reads and writes, reasoning
 tokens, provider totals, and categorized costs for runs recorded after migration
-034. Older rows and v1 turn traces say `breakdown not recorded`; Cassandra does
+034. Older rows and v1 turn traces say `breakdown not recorded`; Mneme does
 not infer zeros. Listings show 20 rows per page and paginate with cursor links.
 The context ledger is a character-based view of one run against its
 60,000-character budget. Tool arguments and results appear as character counts
@@ -117,7 +117,7 @@ The MCP endpoint implements the stateless streamable HTTP profile for protocol
 version `2026-07-28`. Each request is one JSON-RPC 2.0 message and receives one
 response. For compatibility with clients such as Codex that still start with the
 legacy lifecycle, it also supports `initialize`, `notifications/initialized`, and
-`ping` for initialize-capable versions through `2025-11-25`. Cassandra does not
+`ping` for initialize-capable versions through `2025-11-25`. Mneme does not
 issue a session ID or hold a stream open in either mode.
 
 Every request uses the finalized `2026-07-28` namespaced metadata keys. Successful
@@ -151,11 +151,11 @@ query uses literal full-text AND semantics. Clients should send one concise cano
 term or tight phrase per call, place synonyms in separate retries, and never pass the
 user's full conversational question. `list_memories` returns an exact permitted
 `totalMatching` count plus at most 50 ranked rows, with `returned` and `hasMore`; that cap
-is a page/context ceiling, not the number of memories Cassandra stores. The trimmed exact
+is a page/context ceiling, not the number of memories Mneme stores. The trimmed exact
 `search_memories` query `"*"` remains a compatibility alias for `list_memories`.
 
-Cassandra's MCP endpoint does not run an LLM. The connected Codex, Claude, or other
-agent interprets the user's request and chooses the appropriate tool. Cassandra then
+Mneme's MCP endpoint does not run an LLM. The connected Codex, Claude, or other
+agent interprets the user's request and chooses the appropriate tool. Mneme then
 applies the token's scope, result bounds, and evidence rules deterministically.
 
 Use `list_recent_messages` for recaps and explicit time windows that do not have a
@@ -176,13 +176,13 @@ require confirmation for consequential actions.
 ## OAuth sign-in for remote connectors
 
 A client that can set a header — `curl`, Codex, Claude Code, or MCP Inspector — can
-use an admin-issued token from `/cassandra mcp-token create`. Remote connector
+use an admin-issued token from `/mneme mcp-token create`. Remote connector
 surfaces that cannot accept a static header use the OAuth flow when the operator sets
 `MCP_OAUTH_ENABLED=true`.
 
-Cassandra is both the resource server and its own authorization server. Discord is the
+Mneme is both the resource server and its own authorization server. Discord is the
 identity provider, so signing in means proving Discord guild membership and holding a
-role in `CASSANDRA_ADMIN_ROLE_IDS` — the same gate as creating a token by hand. A
+role in `MNEME_ADMIN_ROLE_IDS` — the same gate as creating a token by hand. A
 successful sign-in receives `org` scope and no restricted channel.
 
 To configure a connector:
@@ -216,17 +216,17 @@ curl -i -X POST https://<public-domain>/mcp   # 401 with a resource_metadata poi
 ```
 
 Access tokens last one hour and are renewed by a rotating 90-day refresh token. They
-appear in `/cassandra mcp-token list` as `oauth:<discord-user-id>` and are revoked the
+appear in `/mneme mcp-token list` as `oauth:<discord-user-id>` and are revoked the
 same way as any other token. Presenting a rotated refresh token a second time revokes
 every token from that sign-in.
 
 ## MCP request example
 
-Create a token with `/cassandra mcp-token create`, then call discovery:
+Create a token with `/mneme mcp-token create`, then call discovery:
 
 ```bash
 curl --fail \
-  -H "Authorization: Bearer $CASSANDRA_MCP_TOKEN" \
+  -H "Authorization: Bearer $MNEME_MCP_TOKEN" \
   -H "Content-Type: application/json" \
   -H "MCP-Protocol-Version: 2026-07-28" \
   -H "Mcp-Method: server/discover" \
@@ -239,4 +239,4 @@ logs contain the token ID, method and tool name, outcome, result count, and
 duration. They do not contain the bearer token, parameters, queries, or results.
 
 For complete client setup and troubleshooting, see
-[Connect Codex Desktop and Claude Desktop to Cassandra](../how-to/connect-mcp-clients.md).
+[Connect Codex Desktop and Claude Desktop to Mneme](../how-to/connect-mcp-clients.md).

@@ -9,7 +9,7 @@ import {
 import { createInspectorToken, INSPECTOR_TOKEN_BYTES, hashInspectorTokenValue } from '../../http/inspector/tokens.js';
 
 /**
- * `/cassandra inspector-token create|list|revoke` (Sections 27, 32.6).
+ * `/mneme inspector-token create|list|revoke` (Sections 27, 32.6).
  *
  * The admin surface over inspector bearer tokens. `create` issues a token for
  * the Section 32.6 read-only web surface and returns the plaintext **exactly

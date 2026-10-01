@@ -7,10 +7,10 @@ import { validateClient, type OAuthClientConfig } from './client.js';
 /**
  * The authorization endpoint (Section 32.5.2, amended; OAuth 2.1 Section 4.1.1).
  *
- * A client sends a person here to be identified. Cassandra does not ask for a
+ * A client sends a person here to be identified. Mneme does not ask for a
  * password — it has none to check — and instead hands the person to Discord,
  * which already knows who they are and which roles they hold. Discord is the
- * identity provider; Cassandra is the authorization server that decides, after
+ * identity provider; Mneme is the authorization server that decides, after
  * Discord answers, whether that identity may read the memory store.
  *
  * The module is deliberately a decision function rather than a request handler.
@@ -23,7 +23,7 @@ import { validateClient, type OAuthClientConfig } from './client.js';
  * - If `client_id` or `redirect_uri` is unrecognized, the error is shown to the
  *   person and **never redirected**. A request whose redirect is untrusted has no
  *   safe place to send anything; redirecting would turn this endpoint into an
- *   open redirector that launders attacker URLs through Cassandra's domain.
+ *   open redirector that launders attacker URLs through Mneme's domain.
  * - Once the redirect is known to be registered, every other failure travels back
  *   to it as an `error` parameter, because the waiting client needs to hear about
  *   it and the destination is now trusted.
@@ -59,7 +59,7 @@ export interface AuthorizationContext {
   client: OAuthClientConfig;
   /** Canonical MCP endpoint URL; the only audience a token may be issued for. */
   resource: string;
-  /** Cassandra's public origin, used to build the Discord callback URL. */
+  /** Mneme's public origin, used to build the Discord callback URL. */
   publicBaseUrl: string;
   /** The Discord application's client id (public). */
   discordClientId: string;
@@ -136,7 +136,7 @@ export function planAuthorization(
     return fail('unsupported_response_type', 'response_type must be "code"');
   }
 
-  // PKCE is mandatory. OAuth 2.1 requires it for public clients, and Cassandra
+  // PKCE is mandatory. OAuth 2.1 requires it for public clients, and Mneme
   // issues to nothing else — there is no client secret to fall back on, so a
   // request without a challenge has no protection against code interception.
   if (typeof request.codeChallenge !== 'string' || request.codeChallenge.length === 0) {
@@ -148,7 +148,7 @@ export function planAuthorization(
     return fail('invalid_request', 'code_challenge_method must be "S256"');
   }
 
-  // RFC 8707: the client names the resource the token is for. Cassandra issues
+  // RFC 8707: the client names the resource the token is for. Mneme issues
   // for itself and nothing else, so a request naming another audience is refused
   // rather than quietly re-pointed at this server.
   if (typeof request.resource === 'string' && request.resource.length > 0) {

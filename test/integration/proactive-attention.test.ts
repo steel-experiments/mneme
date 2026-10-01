@@ -483,7 +483,7 @@ describe('scheduled dispatcher and cohort attention gating', () => {
       const memoryId = makeMemory(statement, [ev(messageId)]);
       const subjectId = ensureSubjectForMember(env.db, { guildId: GUILD, memoryId, now: NOW });
       const evidence = validateTriggerEvidence(env.db, {
-        guildId: GUILD, cassandraId: 'bot', evidence: [{ messageId, quote }], now: NOW, windowMs: WINDOW,
+        guildId: GUILD, mnemeId: 'bot', evidence: [{ messageId, quote }], now: NOW, windowMs: WINDOW,
       });
       if (!evidence.ok) throw new Error('expected valid evidence');
       return { memoryId, ...registerRevision(env.db, { subjectId, triggers: evidence.records, now: NOW }) };
@@ -523,7 +523,7 @@ describe('scheduled dispatcher and cohort attention gating', () => {
     addMessage('m-new', 'the canary moved to fifty percent', NOW - 1000);
     const subjectId = ensureSubjectForMember(env.db, { guildId: GUILD, memoryId, now: NOW });
     const records = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: '100000000000000099',
+      guildId: GUILD, mnemeId: '100000000000000099',
       evidence: [{ messageId: 'm-new', quote: 'moved to fifty percent' }],
       now: NOW, windowMs: WINDOW,
     });
@@ -953,7 +953,7 @@ describe('cohort handler end-to-end through the production payload', () => {
     const aliasMemory = makeMemory('Another record of the same canary rollout.', [ev('m-new')]);
     const aliasSubject = ensureSubjectForMember(env.db, { guildId: GUILD, memoryId: aliasMemory, now: NOW });
     const records = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: 'bot', evidence: [{ messageId: 'm-new', quote: 'moved to fifty percent' }],
+      guildId: GUILD, mnemeId: 'bot', evidence: [{ messageId: 'm-new', quote: 'moved to fifty percent' }],
       now: NOW, windowMs: WINDOW,
     });
     if (!records.ok) throw new Error('expected valid trigger');
@@ -1141,7 +1141,7 @@ describe('cohort handler end-to-end through the production payload', () => {
     addMessage('m-new', 'the canary moved to fifty percent', NOW - 1000);
     const subjectId = ensureSubjectForMember(env.db, { guildId: GUILD, memoryId, now: NOW });
     const records = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: '100000000000000099',
+      guildId: GUILD, mnemeId: '100000000000000099',
       evidence: [{ messageId: 'm-new', quote: 'moved to fifty percent' }],
       now: NOW, windowMs: WINDOW,
     });

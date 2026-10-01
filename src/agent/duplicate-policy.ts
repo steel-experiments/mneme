@@ -1,11 +1,11 @@
 /**
  * Recent-message duplicate detection (Sections 7.4 check 9, 24.2).
  *
- * Before a proposal is enqueued, the host compares its text against Cassandra's
+ * Before a proposal is enqueued, the host compares its text against Mneme's
  * recent messages in the target channel — both durable sends (outbox rows that
  * reached `sent`) and observed messages (the bot's own messages seen back through
  * the Gateway). An exact or bounded near-duplicate suppresses the new send so
- * Cassandra does not repeat itself; substantively different interventions stay
+ * Mneme does not repeat itself; substantively different interventions stay
  * eligible. This is content-level dedup, distinct from the outbox row-level
  * `dedupe_key` (Section 10.1) which only prevents the same proposal enqueueing
  * twice.
@@ -23,11 +23,11 @@ export const MAX_RECENT_COMPARE = 50;
 /** Maximum preview length returned for explanation (content is not dumped). */
 export const DUPLICATE_PREVIEW_CHARS = 80;
 
-/** Where a recent Cassandra message was seen. */
+/** Where a recent Mneme message was seen. */
 export type RecentMessageSource = 'outbox' | 'observed';
 
-/** A recent Cassandra message in the target channel to compare against. */
-export interface RecentCassandraMessage {
+/** A recent Mneme message in the target channel to compare against. */
+export interface RecentMnemeMessage {
   content: string;
   /** When the message was sent (epoch ms). */
   sentAtMs: number;
@@ -37,8 +37,8 @@ export interface RecentCassandraMessage {
 export interface DuplicateCheckInput {
   /** Proposed outbound text. */
   content: string;
-  /** Recent Cassandra messages in the target channel (any order). */
-  recentMessages: readonly RecentCassandraMessage[];
+  /** Recent Mneme messages in the target channel (any order). */
+  recentMessages: readonly RecentMnemeMessage[];
   now: number;
   /** Override the recent window (default {@link DEFAULT_RECENT_WINDOW_MS}). */
   windowMs?: number;
@@ -139,7 +139,7 @@ function preview(text: string): string {
 
 /**
  * Detect whether the proposed content is an exact or bounded near-duplicate of a
- * recent Cassandra message in the target channel (Section 7.4 check 9). Returns
+ * recent Mneme message in the target channel (Section 7.4 check 9). Returns
  * the best (most similar, exact preferred) match within the recent window, or a
  * no-match. A match suppresses the new send; substantively different text stays
  * eligible.

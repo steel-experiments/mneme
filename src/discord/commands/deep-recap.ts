@@ -264,7 +264,7 @@ export function formatDeepRecapReply(outcome: DeepRecapCommandOutcome): string {
   if (outcome.kind === 'invalid') return outcome.reason;
   if (outcome.kind === 'not_found') return 'No unique deep recap matched that id.';
   if (outcome.kind === 'started') {
-    return `Deep recap ${outcome.request.id.slice(0, 8)} queued. ${progress(outcome.request)}. The budget is a ceiling, not a cost forecast; planning may use up to 30 analysis calls plus synthesis. The final report will be posted in this channel; use \`/cassandra recap status\` to follow it.`;
+    return `Deep recap ${outcome.request.id.slice(0, 8)} queued. ${progress(outcome.request)}. The budget is a ceiling, not a cost forecast; planning may use up to 30 analysis calls plus synthesis. The final report will be posted in this channel; use \`/mneme recap status\` to follow it.`;
   }
   if (outcome.kind === 'retried') {
     return `Deep recap ${outcome.request.id.slice(0, 8)} queued for synthesis from ${outcome.originalRequestId.slice(0, 8)}. Completed summaries and the existing spend ceiling were reused; message history will not be analyzed again. ${progress(outcome.request)}.`;

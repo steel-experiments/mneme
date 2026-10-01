@@ -28,7 +28,7 @@ import { createDiscordReviewResolver } from './interactions.js';
 import { handleHistoricalCommand, formatHistoricalReply, type HistoricalSubcommand } from './commands/historical.js';
 import { handleDeepRecapCommand, formatDeepRecapReply, type DeepRecapSubcommand } from './commands/deep-recap.js';
 import { resolveCurrentChannelScope, resolveRetrievableChannelScope } from '../db/repositories/channels.js';
-import { CASSANDRA_SUBCOMMANDS, CASSANDRA_SUBCOMMAND_GROUPS } from './commands.js';
+import { MNEME_SUBCOMMANDS, MNEME_SUBCOMMAND_GROUPS } from './commands.js';
 
 export interface CommandDispatcherDeps {
   ctx: BootstrapContext;
@@ -46,13 +46,13 @@ async function reply(interaction: ChatInputCommandInteraction, content: string):
   else await interaction.reply({ ...payload, ephemeral: true });
 }
 
-/** Register the complete `/cassandra` admin command dispatcher. */
+/** Register the complete `/mneme` admin command dispatcher. */
 export function registerCommandDispatcher(deps: CommandDispatcherDeps): void {
   const { ctx, discord } = deps;
   const client = discord.client as Client | undefined;
   if (!client) return;
   client.on(Events.InteractionCreate, async (raw) => {
-    if (!raw.isChatInputCommand() || raw.commandName !== 'cassandra') return;
+    if (!raw.isChatInputCommand() || raw.commandName !== 'mneme') return;
     const interaction = raw;
     try {
       await interaction.deferReply({ ephemeral: true });
@@ -60,7 +60,7 @@ export function registerCommandDispatcher(deps: CommandDispatcherDeps): void {
     } catch (err) {
       ctx.logger.warn({ event: 'discord.command_failed', command: safeSubcommand(interaction),
         err: err instanceof Error ? err.message : String(err) }, 'admin command failed');
-      await reply(interaction, 'Cassandra could not complete that command. The failure was logged without message content.');
+      await reply(interaction, 'Mneme could not complete that command. The failure was logged without message content.');
     }
   });
 }
@@ -69,14 +69,14 @@ function safeSubcommand(i: ChatInputCommandInteraction): string {
   try { return i.options.getSubcommand(false) ?? 'unknown'; } catch { return 'unknown'; }
 }
 
-/** Identity inputs shared by every `/cassandra` subcommand route. */
+/** Identity inputs shared by every `/mneme` subcommand route. */
 interface RouteBase {
   actorUserId: string;
   guildId: string;
   memberRoleIds: readonly string[] | null;
 }
 
-/** Context inputs shared by every `/cassandra` subcommand route. */
+/** Context inputs shared by every `/mneme` subcommand route. */
 interface RouteCommon {
   db: BootstrapContext['db'];
   adminRoleIds: BootstrapContext['config']['adminRoleIds'];
@@ -105,7 +105,7 @@ function completeRouteMap(
   const duplicateCount = entries.length - routes.size;
   if (missing.length > 0 || extra.length > 0 || duplicateCount > 0) {
     throw new Error(
-      `Cassandra ${label} route table mismatch: missing=${missing.join(',') || 'none'}; `
+      `Mneme ${label} route table mismatch: missing=${missing.join(',') || 'none'}; `
       + `extra=${extra.join(',') || 'none'}; duplicates=${duplicateCount}`,
     );
   }
@@ -287,7 +287,7 @@ function routeBackup({ deps, base, common }: RouteArgs): string {
   });
   return result.enqueued
     ? `Online backup queued (job ${result.id.slice(0, 8)}). I’ll send you a DM when it completes.`
-    : 'A backup is already queued or running. Check `/cassandra status` for its state.';
+    : 'A backup is already queued or running. Check `/mneme status` for its state.';
 }
 
 function deletionDeps({ deps, common }: RouteArgs) {
@@ -299,7 +299,7 @@ function deletionDeps({ deps, common }: RouteArgs) {
     reviewChannelId: safeReview ? ctx.config.reviewChannelId : undefined };
 }
 
-const groupRoutes = completeRouteMap(CASSANDRA_SUBCOMMAND_GROUPS.map((group) => group.name), [
+const groupRoutes = completeRouteMap(MNEME_SUBCOMMAND_GROUPS.map((group) => group.name), [
   ['deletion', (args) => handleDeletionCommand({ ...args.base, invocationChannelId: args.i.channelId,
     subcommand: args.i.options.getSubcommand() as DeletionSubcommand, requestId: args.i.options.getString('id'),
     confirmation: args.i.options.getString('confirmation') }, deletionDeps(args))],
@@ -309,7 +309,7 @@ const groupRoutes = completeRouteMap(CASSANDRA_SUBCOMMAND_GROUPS.map((group) => 
   ['inspector-token', routeInspectorToken],
 ], 'group');
 
-const commandRoutes = completeRouteMap(CASSANDRA_SUBCOMMANDS.map((command) => command.name), [
+const commandRoutes = completeRouteMap(MNEME_SUBCOMMANDS.map((command) => command.name), [
   ['status', routeStatus],
   ['mode', routeMode],
   ['channels', ({ base, common }) => formatChannelsReply(handleChannelsCommand(base, common))],
@@ -355,6 +355,6 @@ async function dispatch(i: ChatInputCommandInteraction, deps: CommandDispatcherD
   const group = i.options.getSubcommandGroup(false);
   const route = (group !== null ? groupRoutes.get(group) : undefined)
     ?? commandRoutes.get(command)
-    ?? (() => 'Unknown Cassandra command.');
+    ?? (() => 'Unknown Mneme command.');
   await reply(i, await route({ i, deps, base, common }));
 }

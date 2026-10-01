@@ -1,13 +1,13 @@
-# Set up Cassandra with an AI coding agent
+# Set up Mneme with an AI coding agent
 
 This is the installation runbook for an AI coding agent helping a person set up
-Cassandra for Discord. Follow it in order. Stay with the person until Cassandra
+Mneme for Discord. Follow it in order. Stay with the person until Mneme
 is deployed, connected to Discord, and verified, or until you can name the exact
 external action that blocks progress.
 
 The canonical repository is
-<https://github.com/steel-experiments/cassandra-discord>. The default install
-uses the published [Railway template](https://railway.com/template/cassandra-for-discord)
+<https://github.com/steel-experiments/mneme>. The default install
+uses the published [Railway template](https://railway.com/template/mneme)
 and its released, digest-pinned container image. Use a source deployment or a
 different host only when the person asks for one.
 
@@ -15,17 +15,17 @@ different host only when the person asks for one.
 
 Do not call the installation complete until all of these are true:
 
-- one Cassandra process is running, with no second replica using its database
+- one Mneme process is running, with no second replica using its database
   or bot token;
 - its data directory is persistent (`/app/data` for a container deployment);
 - the hosting platform reports the `/readyz` health check as ready;
 - on Railway, the deployment being verified has reached `SUCCESS`, not merely
   `QUEUED` or `DEPLOYING`;
-- Cassandra appears online in the intended Discord server;
-- `/cassandra status` and `/cassandra channels` work for a member with the
+- Mneme appears online in the intended Discord server;
+- `/mneme status` and `/mneme channels` work for a member with the
   configured admin role;
 - the reported channel selection matches the person's choices;
-- Cassandra is in `observe` mode;
+- Mneme is in `observe` mode;
 - the person knows whether historical backfill is complete or still running;
 - the member privacy notice has been published before the installation is
   treated as live.
@@ -40,12 +40,12 @@ Do not call the installation complete until all of these are true:
    ignored by Git and must remain local.
 3. Ask for human input in small, related groups. Explain where to find an ID
    before asking for it. Discord IDs are not secrets; tokens and API keys are.
-4. Keep `CASSANDRA_MODE=observe` for the first installation. Do not enable
+4. Keep `MNEME_MODE=observe` for the first installation. Do not enable
    review or autonomous posting during setup.
 5. Fail closed on channel selection. If the person is unsure whether a channel
    should be organization-visible, classify it as restricted or leave it out.
 6. Do not add a database, Redis, object storage, a second service, a pre-deploy
-   migration, or another replica. Cassandra is one process with SQLite on one
+   migration, or another replica. Mneme is one process with SQLite on one
    persistent volume.
 7. Do not change application code to work around a setup error. Diagnose the
    deployment, permissions, or variables first.
@@ -61,8 +61,8 @@ If the current working directory is already this repository, verify the remote
 and continue. Otherwise clone it into a new directory:
 
 ```bash
-git clone https://github.com/steel-experiments/cassandra-discord.git
-cd cassandra-discord
+git clone https://github.com/steel-experiments/mneme.git
+cd mneme
 ```
 
 Confirm that `origin` is the canonical repository and note the checked-out
@@ -107,7 +107,7 @@ after the person enables Developer Mode under User Settings → Advanced.
 | Organization | `ORG_NAME` and an IANA `ORG_TIMEZONE`, such as `Europe/Zagreb` |
 | Discord server | Server ID for `DISCORD_GUILD_ID` |
 | Discord application | Application ID for `DISCORD_APPLICATION_ID` |
-| Admin role | A role ID for `CASSANDRA_ADMIN_ROLE_IDS` |
+| Admin role | A role ID for `MNEME_ADMIN_ROLE_IDS` |
 | Organization-visible sources | Channel or category IDs whose contents may support answers in other organization-visible channels |
 | Restricted sources | Channel or category IDs whose contents must stay inside that channel family |
 | Initial history | `FULL_HISTORY=true` to import reachable history, or `false` to start with new messages |
@@ -115,7 +115,7 @@ after the person enables Developer Mode under User Settings → Advanced.
 At least one ID must be present across `ORG_VISIBLE_CHANNEL_IDS` and
 `RESTRICTED_CHANNEL_IDS`. An ID must not appear in both lists. Channels omitted
 from both lists are not ingested in basic mode. Leave any channel whose name
-contains `cassandra`, including `cassandra-test`, out of both lists.
+contains `mneme`, including `mneme-test`, out of both lists.
 
 Make the `FULL_HISTORY` tradeoff explicit. A large server can take time and
 model spend to process after a full import; starting from new messages is faster
@@ -132,13 +132,13 @@ Have the person complete these browser-only steps in the
 3. Enable **Message Content Intent**.
 4. Create an install URL with the `bot` and `applications.commands` scopes and
    add the bot to the intended server.
-5. Give a dedicated Cassandra role these permissions: View Channel, Read
+5. Give a dedicated Mneme role these permissions: View Channel, Read
    Message History, Send Messages, Send Messages in Threads, Embed Links, and
    Use Application Commands. Do not grant Administrator.
 6. Explicitly deny that role on excluded or sensitive categories.
 7. Create or choose a separate human admin role whose ID will be placed in
-   `CASSANDRA_ADMIN_ROLE_IDS`.
-8. Create a text channel named `cassandra-test` for the final direct-reply
+   `MNEME_ADMIN_ROLE_IDS`.
+8. Create a text channel named `mneme-test` for the final direct-reply
    check. Keep it out of both channel-selection lists.
 
 Pause only for browser authentication, MFA, consent, or secret entry that the
@@ -146,7 +146,7 @@ person must perform. Resume the setup as soon as that action is complete.
 
 ## 4. Deploy the Railway template
 
-Open <https://railway.com/template/cassandra-for-discord>. The template should
+Open <https://railway.com/template/mneme>. The template should
 create one service from the released image and one volume mounted at
 `/app/data`.
 
@@ -162,7 +162,7 @@ DISCORD_APPLICATION_ID
 DISCORD_GUILD_ID
 ORG_NAME
 ORG_TIMEZONE
-CASSANDRA_ADMIN_ROLE_IDS
+MNEME_ADMIN_ROLE_IDS
 ORG_VISIBLE_CHANNEL_IDS
 RESTRICTED_CHANNEL_IDS
 FULL_HISTORY
@@ -170,7 +170,7 @@ LLM_DAILY_BUDGET_USD=2
 ```
 
 Leave an empty restricted list unset if Railway rejects an empty value. Do not
-set `CASSANDRA_MODE`; its default is `observe`. Do not add a pre-deploy command.
+set `MNEME_MODE`; its default is `observe`. Do not add a pre-deploy command.
 
 Before deploying, inspect the template summary with the person and confirm:
 
@@ -212,7 +212,7 @@ person complete the browser flow. On a genuinely headless machine, immediately
 show the person the device-code URL and code while the command remains running;
 the code expires, so never wait silently for the command to finish.
 
-From the Cassandra checkout, inspect any existing Railway link before changing
+From the Mneme checkout, inspect any existing Railway link before changing
 it:
 
 ```bash
@@ -220,7 +220,7 @@ railway status --json
 ```
 
 If the checkout is unlinked, run `railway link` and select the
-template-created project, production environment, and Cassandra service. If it
+template-created project, production environment, and Mneme service. If it
 is already linked to a different project, preserve that state: use a fresh
 checkout for this installation or pass explicit project, environment, and
 service IDs. Do not silently relink somebody's working directory. Run
@@ -242,7 +242,7 @@ railway deployment list --limit 5 --json
 railway logs <deployment-id> --lines 100 --json
 ```
 
-Confirm that the volume is attached to the Cassandra service at `/app/data` and
+Confirm that the volume is attached to the Mneme service at `/app/data` and
 the exact deployment ID created by the template reaches `SUCCESS`. If it is
 still building or deploying, keep polling that deployment. If it fails or
 crashes, inspect that deployment's build and runtime logs, correct the named
@@ -259,23 +259,23 @@ curl --fail https://<railway-domain>/readyz
 In Discord, have a member with the configured admin role run:
 
 ```text
-/cassandra status
-/cassandra channels
+/mneme status
+/mneme channels
 ```
 
 Verify that the Gateway and model are healthy, the mode is `observe`, and only
 the intended channels are ingesting. Missing permissions must be fixed before
-continuing. If `FULL_HISTORY=true`, `/cassandra status` may show a backfill in
+continuing. If `FULL_HISTORY=true`, `/mneme status` may show a backfill in
 progress; record that clearly rather than presenting partial coverage as final.
 
-In `#cassandra-test`, mention the bot with `@Cassandra hi`. After some content
+In `#mneme-test`, mention the bot with `@Mneme hi`. After some content
 has been ingested, ask the next questions from a selected organization-visible
 channel. If the installation has only restricted sources, ask from one of those
 restricted channels and expect answers to stay within that channel family.
 
 ```text
-@Cassandra bring me up to speed on the last two days
-@Cassandra what do you remember?
+@Mneme bring me up to speed on the last two days
+@Mneme what do you remember?
 ```
 
 “No matching permitted activity” is valid when there is no ingested matching
@@ -287,7 +287,7 @@ successful setup.
 Guide the person through
 [the member privacy notice](docs/how-to/publish-privacy-notice.md) before the
 installation is treated as live. Confirm that Railway volume backups are
-enabled when the person's plan supports them, and explain that `/cassandra
+enabled when the person's plan supports them, and explain that `/mneme
 backup` writes a backup to the same volume rather than creating an off-host
 copy.
 
@@ -311,7 +311,7 @@ Never include secret values in the handoff.
 | `CHANNEL_POLICY_SOURCE=basic needs at least one id` | Add at least one channel or category to one selection list. |
 | `An invalid token was provided` | Have the person reset and replace `DISCORD_TOKEN` directly in Railway. |
 | Bot is offline | Check the deployment state, runtime logs, token, and Message Content Intent. |
-| Slash commands deny access | Confirm the caller has a role listed in `CASSANDRA_ADMIN_ROLE_IDS`. |
+| Slash commands deny access | Confirm the caller has a role listed in `MNEME_ADMIN_ROLE_IDS`. |
 | A channel is absent | Check its selection list and the bot's View Channel and Read Message History permissions. |
 | Answers find nothing | Check sync progress, channel scope, requested time window, and whether matching content exists. |
 | Data disappears after a redeploy | Stop and verify that the volume is still mounted at `/app/data` before doing anything else. |

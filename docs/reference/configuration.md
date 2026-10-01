@@ -1,16 +1,16 @@
 # Configuration reference
 
-Cassandra reads operational settings from environment variables and product
+Mneme reads operational settings from environment variables and product
 behavior from two YAML files:
 
-- `config/cassandra.yml` contains organization, agent voice, intervention, and
+- `config/mneme.yml` contains organization, agent voice, intervention, and
   memory defaults.
 - `config/channel-policy.yml` classifies Discord channels and categories. A
   synthetic sample ships at this path. Edit it, or mount your reviewed policy
   over it.
 
 A first run needs neither file. Set the short environment list below and
-`CHANNEL_POLICY_SOURCE=basic`, and Cassandra builds the channel policy from
+`CHANNEL_POLICY_SOURCE=basic`, and Mneme builds the channel policy from
 the environment. Set `CHANNEL_POLICY_SOURCE=file` to use the YAML files
 instead. Both paths feed the same validated policy engine.
 
@@ -27,16 +27,16 @@ for:
 | --- | --- |
 | `DISCORD_TOKEN` | Bot token. Secret. |
 | `DISCORD_APPLICATION_ID` | Discord application snowflake. |
-| `DISCORD_GUILD_ID` | The one guild Cassandra may join. |
+| `DISCORD_GUILD_ID` | The one guild Mneme may join. |
 | `OPENAI_API_KEY` | API key for the selected provider. Secret. Use `ANTHROPIC_API_KEY` or `GOOGLE_API_KEY` for the other providers. |
 | `ORG_NAME` | Organization name rendered in prompts. |
 | `ORG_TIMEZONE` | Valid IANA time zone used for daily limits. `UTC` when unset. |
-| `CASSANDRA_ADMIN_ROLE_IDS` | Comma-separated Discord role IDs. Empty is valid; see the warning under Mode and administration. |
+| `MNEME_ADMIN_ROLE_IDS` | Comma-separated Discord role IDs. Empty is valid; see the warning under Mode and administration. |
 | `CHANNEL_POLICY_SOURCE` | `basic` (default) or `file`. See Channel policy below. |
 | `ORG_VISIBLE_CHANNEL_IDS` | Basic mode. Channels or categories selected for org visibility. |
 | `RESTRICTED_CHANNEL_IDS` | Basic mode. Channels or categories selected as restricted. |
-| `CASSANDRA_REVIEW_CHANNEL_ID` | Basic mode. Secure review channel. Requires the audience assertion described below. |
-| `CASSANDRA_REVIEW_CHANNEL_SECURE` | Must be exactly `true` when a review channel id is set. |
+| `MNEME_REVIEW_CHANNEL_ID` | Basic mode. Secure review channel. Requires the audience assertion described below. |
+| `MNEME_REVIEW_CHANNEL_SECURE` | Must be exactly `true` when a review channel id is set. |
 | `FULL_HISTORY` | Initial import scope. Must be set explicitly. See Ingestion. |
 
 Everything else has a default:
@@ -49,7 +49,7 @@ Everything else has a default:
 | `DEEP_RECAP_ENABLED` | `false` | The admin-only durable recap command group stays off until enabled. |
 
 `config/advanced.env.example` is the complete maintained reference for every
-supported setting. Discord IDs must be 17 to 20 decimal digits. Cassandra exits
+supported setting. Discord IDs must be 17 to 20 decimal digits. Mneme exits
 before connecting if required configuration is missing or invalid.
 
 ## Environment file loading
@@ -62,7 +62,7 @@ applied, so a real environment value always wins. The parser reads `KEY=VALUE`
 lines, trims them, and skips blank lines and `#` comment lines. It also accepts
 an `export ` prefix, removes matching surrounding single or double quotes from a
 value without escape processing, removes an inline ` # comment` from an unquoted
-value, and ignores a UTF-8 byte order mark. Cassandra never writes to this file.
+value, and ignores a UTF-8 byte order mark. Mneme never writes to this file.
 
 Containers are not affected by this loader. Docker Compose passes the same
 `.env` file through `env_file`, and host platforms inject variables directly.
@@ -74,18 +74,18 @@ Containers are not affected by this loader. Docker Compose passes the same
 | `NODE_ENV` | `production` | `production`, `development`, or `test`. |
 | `PORT` | `3000` | HTTP port, from 1 through 65535. |
 | `DATA_DIR` | `./data` native, `/app/data` container | Mutable application data. |
-| `DATABASE_PATH` | `./data/cassandra.sqlite` native, `/app/data/cassandra.sqlite` container | SQLite database path. |
+| `DATABASE_PATH` | `./data/mneme.sqlite` native, `/app/data/mneme.sqlite` container | SQLite database path. |
 | `BACKUP_DIR` | `$DATA_DIR/backups` | Online backup destination. |
 | `LOG_LEVEL` | `info` | Pino level: `fatal` through `trace`, or `silent`. |
 | `PROMPT_DIR` | `./prompts` native, `/app/prompts` container | Handlebars prompt directory. |
-| `DOCS_DIR` | `./docs` native, `/app/docs` container | Public Markdown documentation. Cassandra indexes only this tree for self-knowledge. |
+| `DOCS_DIR` | `./docs` native, `/app/docs` container | Public Markdown documentation. Mneme indexes only this tree for self-knowledge. |
 | `DOCS_PUBLIC_URL` | unset | Optional canonical HTTPS base for host-built documentation links. |
-| `CASSANDRA_CONFIG_PATH` | `./config/cassandra.yml` native, `/app/config/cassandra.yml` container | Product configuration YAML. |
+| `MNEME_CONFIG_PATH` | `./config/mneme.yml` native, `/app/config/mneme.yml` container | Product configuration YAML. |
 | `CHANNEL_POLICY_PATH` | `./config/channel-policy.yml` native, `/app/config/channel-policy.yml` container | Channel policy YAML. Read only when `CHANNEL_POLICY_SOURCE=file`. A synthetic sample ships at this path. |
 | `ORG_NAME` | YAML value or `Your Company` | Organization name rendered in prompts. |
 | `ORG_TIMEZONE` | YAML value or `UTC` | Valid IANA time zone used for daily limits. |
-| `CASSANDRA_SOURCE_REVISION` | unset | Optional hexadecimal source revision for deployments that do not provide trusted Git metadata. |
-| `CASSANDRA_BUILD_ID` | unset | Optional provider-neutral build identifier, shown only when no Railway deployment ID is available. |
+| `MNEME_SOURCE_REVISION` | unset | Optional hexadecimal source revision for deployments that do not provide trusted Git metadata. |
+| `MNEME_BUILD_ID` | unset | Optional provider-neutral build identifier, shown only when no Railway deployment ID is available. |
 
 Native defaults are relative to the process working directory. The Docker
 image bakes the absolute `/app` values, so a container starts with the same
@@ -95,7 +95,7 @@ Configured paths may be absolute or relative, but may not contain a `..` path
 segment.
 
 The application version comes from the built package and cannot be overridden by
-the environment. At runtime Cassandra also recognizes Railway's
+the environment. At runtime Mneme also recognizes Railway's
 `RAILWAY_DEPLOYMENT_ID` and `RAILWAY_GIT_COMMIT_SHA`, plus the standard
 `GITHUB_SHA` and GitLab `CI_COMMIT_SHA` revision variables. Railway supplies Git
 metadata only for a Git-triggered deployment, so a CLI upload normally shows its
@@ -108,21 +108,21 @@ contain secrets.
 
 | Variable | Default | Notes |
 | --- | --- | --- |
-| `CASSANDRA_MODE` | `observe` | `observe`, `review`, or `autonomous`. |
-| `CASSANDRA_REVIEW_CHANNEL_ID` | unset | Required in review and autonomous modes. Must match the review channel in the active channel policy. |
-| `CASSANDRA_ADMIN_ROLE_IDS` | empty | Comma-separated Discord role IDs. An empty list authorizes nobody. |
-| `CASSANDRA_DELETION_APPROVER_USER_IDS` | empty | Comma-separated Discord **user** IDs allowed to approve another admin’s deletion request. Approvers also need an admin role. Empty disables new deletion requests and approvals; removal revokes uncompleted purges at their next batch. Restart to apply changes. |
+| `MNEME_MODE` | `observe` | `observe`, `review`, or `autonomous`. |
+| `MNEME_REVIEW_CHANNEL_ID` | unset | Required in review and autonomous modes. Must match the review channel in the active channel policy. |
+| `MNEME_ADMIN_ROLE_IDS` | empty | Comma-separated Discord role IDs. An empty list authorizes nobody. |
+| `MNEME_DELETION_APPROVER_USER_IDS` | empty | Comma-separated Discord **user** IDs allowed to approve another admin’s deletion request. Approvers also need an admin role. Empty disables new deletion requests and approvals; removal revokes uncompleted purges at their next batch. Restart to apply changes. |
 | `HTTP_ADMIN_TOKEN` | unset | Enables bearer-protected `GET /status`. Secret. |
-| `DIRECT_ANSWER_ENABLED` | `true` | Allows replies when Cassandra is explicitly mentioned. |
+| `DIRECT_ANSWER_ENABLED` | `true` | Allows replies when Mneme is explicitly mentioned. |
 
-An empty `CASSANDRA_ADMIN_ROLE_IDS` is valid. Cassandra logs a startup warning
+An empty `MNEME_ADMIN_ROLE_IDS` is valid. Mneme logs a startup warning
 in that case, and admin operations stay denied until the list is set. The
 denial itself is fail closed; the warning is never an error.
 
 Review and autonomous modes require a secure review channel in the active
 channel policy. In file mode this is a `review_channel` entry marked
-`secure: true`. In basic mode it is the `CASSANDRA_REVIEW_CHANNEL_ID` and
-`CASSANDRA_REVIEW_CHANNEL_SECURE` pair described under Channel policy.
+`secure: true`. In basic mode it is the `MNEME_REVIEW_CHANNEL_ID` and
+`MNEME_REVIEW_CHANNEL_SECURE` pair described under Channel policy.
 Startup also confirms that the bot can access that channel.
 
 Direct answers are distinct from unsolicited interventions. A direct answer is
@@ -155,7 +155,7 @@ current target and exact question reply anchor pass a separate outbound safety c
 Downloads enforce both the declared content length and the streamed byte count.
 `metadata` stores attachment metadata without file bytes.
 
-`FULL_HISTORY` has no default. Cassandra exits before connecting when it is
+`FULL_HISTORY` has no default. Mneme exits before connecting when it is
 unset or blank, and names the explicit choice: `true` imports all reachable
 history for the selected channels; `false` starts with new messages onward.
 `FULL_HISTORY=false` is a starting point, not a hard historical boundary; some
@@ -201,21 +201,21 @@ sync paths may still touch older rows.
 
 The daily model budget is hydrated from persisted `agent_runs`, so restarting
 the process does not reset the current day's spend. `LLM_DAILY_BUDGET_USD` is
-an admission control inside Cassandra, not a billing ceiling at the provider:
+an admission control inside Mneme, not a billing ceiling at the provider:
 the provider bills the hosting account separately, and an already-admitted call
 can finish. When the provider is down or the budget is exhausted, model jobs
 are deferred without consuming retry attempts. Ingestion continues.
 
 Historical reconstruction uses a separate persisted budget and low-priority
 queue. It never processes restricted/test channels and never sends an
-intervention from an old episode. Its progress appears on `/cassandra status`
+intervention from an old episode. Its progress appears on `/mneme status`
 as `historical: channels=… complete=… scanned=… episodes=… pending_reviews=…`.
 
 A bounded campaign freezes its channel list, time window, direction, provider,
 model, and reasoning level under `HISTORICAL_MEMORY_CAMPAIGN_ID`. Only its daily
 and total budgets may be raised on a later deployment. The builder rotates among
 eligible channels and walks newest-to-oldest inside each channel; messages inside
-an episode remain chronological. Use `/cassandra historical pause|resume|status`
+an episode remain chronological. Use `/mneme historical pause|resume|status`
 for a campaign-specific kill switch that does not interrupt live answers.
 On startup, a running campaign makes only its own queued, budget-deferred reviews
 eligible again. This lets a raised budget take effect immediately after deployment
@@ -244,7 +244,7 @@ has already blocked.
 | `MIN_INTERVENTION_CONFIDENCE` | `0.65` |
 | `CHANNEL_COOLDOWN_MINUTES` | `180` |
 | `GLOBAL_AUTONOMOUS_POST_LIMIT_PER_DAY` | `5` |
-| `CASSANDRA_MAX_MESSAGE_CHARACTERS` | `1800` |
+| `MNEME_MAX_MESSAGE_CHARACTERS` | `1800` |
 | `INTERVENTION_ATTENTION_WINDOW_DAYS` | `7` |
 | `MEMORY_MINIMUM_CONFIDENCE` | `0.55` |
 | `MEMORY_MINIMUM_IMPORTANCE` | `0.60` |
@@ -269,7 +269,7 @@ model. Historical campaigns additionally cap look-ahead at their immutable end t
 This allows an answer or completion posted hours or days later to resolve an open
 question or commitment without turning the entire channel into one episode.
 
-`INTERVENTION_ATTENTION_WINDOW_DAYS` sets the proactive attention window. Cassandra
+`INTERVENTION_ATTENTION_WINDOW_DAYS` sets the proactive attention window. Mneme
 proposes unsolicited speech only when a meaningful human message about the subject was
 created within this many days, or when an explicit human-stated deadline on an
 unconsumed subject revision becomes due. One material human development earns at most
@@ -314,7 +314,7 @@ semantic lifecycle states.
 | --- | --- | --- |
 | `MCP_ENABLED` | `false` | Mount the stateless MCP endpoint. |
 | `MCP_PATH` | `/mcp` | Must start with `/`. |
-| `MCP_PUBLIC_URL` | Railway domain, else `http://localhost:PORT` | Public origin external clients reach, for example `https://cassandra.example.com`. Joined with `MCP_PATH` and shown in the `/cassandra mcp-token create` reply. |
+| `MCP_PUBLIC_URL` | Railway domain, else `http://localhost:PORT` | Public origin external clients reach, for example `https://mneme.example.com`. Joined with `MCP_PATH` and shown in the `/mneme mcp-token create` reply. |
 | `MCP_RATE_LIMIT_PER_MINUTE` | `60` | Per-token limit. |
 | `MCP_UNAUTH_RATE_LIMIT_PER_MINUTE` | `30` | Shared budget of failed authentications per minute; excess returns `429`. |
 | `MCP_TOOL_LIST_TTL_MS` | `300000` | Tool-list cache hint. |
@@ -336,7 +336,7 @@ MCP tokens are created through Discord admin commands. They are separate from
 | `INSPECTOR_RATE_LIMIT_PER_MINUTE` | `120` | Per-token limit for authenticated page views. |
 | `INSPECTOR_UNAUTH_RATE_LIMIT_PER_MINUTE` | `30` | Shared budget of failed authentications per minute; excess returns `429`. |
 
-The surface origin for the `/cassandra inspector-token create` reply follows
+The surface origin for the `/mneme inspector-token create` reply follows
 `MCP_PUBLIC_URL`, the Railway domain, or `http://localhost:PORT`, in that
 order. Inspector tokens are issued through Discord admin commands and are
 separate from MCP tokens and `HTTP_ADMIN_TOKEN`.
@@ -361,7 +361,7 @@ Newly discovered channels are evaluated against the active policy before live
 messages are stored. Losing View Channel or Read Message History disables
 ingestion on the next discovery pass.
 
-Changes in either mode take effect after a restart. Cassandra never swaps a
+Changes in either mode take effect after a restart. Mneme never swaps a
 channel policy while it runs, except through the file-mode reload command
 described below.
 
@@ -412,16 +412,16 @@ names is simply not read.
 The review channel is declared with two variables, not with YAML:
 
 ```dotenv
-CASSANDRA_REVIEW_CHANNEL_ID=<review-channel-id>
-CASSANDRA_REVIEW_CHANNEL_SECURE=true
+MNEME_REVIEW_CHANNEL_ID=<review-channel-id>
+MNEME_REVIEW_CHANNEL_SECURE=true
 ```
 
-`CASSANDRA_REVIEW_CHANNEL_SECURE=true` is an audience assertion by the
-operator: you confirm that only the review group and Cassandra can read the
-channel. Verify the channel audience before you enable it. Cassandra cannot
+`MNEME_REVIEW_CHANNEL_SECURE=true` is an audience assertion by the
+operator: you confirm that only the review group and Mneme can read the
+channel. Verify the channel audience before you enable it. Mneme cannot
 check the member list for you.
 
-Startup fails when an id is set without `CASSANDRA_REVIEW_CHANNEL_SECURE=true`,
+Startup fails when an id is set without `MNEME_REVIEW_CHANNEL_SECURE=true`,
 or when the flag is set without an id. When both are set, the review channel
 accepts the `org`, `restricted`, and `review_only` scopes. This is the same
 scope set the shipped sample policy declares, and basic mode offers no way to
@@ -463,14 +463,14 @@ review_channel:
 The shipped sample policy declares the `org`, `restricted`, and `review_only`
 scopes. This is the same set basic mode writes for its review channel.
 
-A new top-level channel that no rule names is held restricted, and Cassandra
+A new top-level channel that no rule names is held restricted, and Mneme
 posts one classification review card to the review channel so an administrator
 can classify it. Channels with an explicit rule and threads never produce a
 card.
 
 ### Live reload
 
-Use `/cassandra reload-policy` after changing the mounted policy or prompt
+Use `/mneme reload-policy` after changing the mounted policy or prompt
 files. The command validates the full candidate first. A rejected reload
 leaves the previous snapshot active.
 

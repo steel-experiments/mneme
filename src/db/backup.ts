@@ -23,8 +23,8 @@ import { basename, join, resolve, sep } from 'node:path';
  * open it later.
  */
 
-/** Filename prefix and extension for Cassandra-owned backups (Section 42.1). */
-export const BACKUP_FILE_PREFIX = 'cassandra-';
+/** Filename prefix and extension for Mneme-owned backups (Section 42.1). */
+export const BACKUP_FILE_PREFIX = 'mneme-';
 export const BACKUP_FILE_SUFFIX = '.sqlite';
 /** Appended to a backup filename to name its manifest. */
 export const MANIFEST_SUFFIX = '.manifest.json';
@@ -272,8 +272,8 @@ export async function createBackup(options: CreateBackupOptions): Promise<Create
 const regexEscape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
- * Matches a Cassandra-owned backup *file* name: the canonical
- * `cassandra-YYYYMMDD-HHMMSS.sqlite` plus the `‑N` disambiguator used when two
+ * Matches a Mneme-owned backup *file* name: the canonical
+ * `mneme-YYYYMMDD-HHMMSS.sqlite` plus the `‑N` disambiguator used when two
  * backups share a second. Capture group 1 is the UTC `YYYYMMDD-HHMMSS` stem, so
  * the backup instant can be recovered from the filename alone (independent of
  * mtime drift from copies or restores). Basenames only — no path separators.
@@ -340,7 +340,7 @@ export interface RotateBackupsResult {
 }
 
 /**
- * Enumerate the Cassandra-owned backup pairs directly inside `backupsDir` (no
+ * Enumerate the Mneme-owned backup pairs directly inside `backupsDir` (no
  * recursion). Used by rotation and by maintenance tooling; never lists nested
  * directories or files outside the directory.
  */
@@ -370,7 +370,7 @@ export function listOwnedBackups(backupsDir: string): OwnedBackup[] {
   return out;
 }
 
-/** Summarize completed Cassandra-owned backups without opening their contents. */
+/** Summarize completed Mneme-owned backups without opening their contents. */
 export function backupInventory(backupsDir: string): BackupInventory {
   // The manifest is written only after the online copy and integrity check
   // succeed. Ignore an unpaired file left by an interrupted/failed attempt.
@@ -383,7 +383,7 @@ export function backupInventory(backupsDir: string): BackupInventory {
 }
 
 /**
- * Delete expired Cassandra-created local backups and their manifests
+ * Delete expired Mneme-created local backups and their manifests
  * (Section 42.1 step 5). Only direct children of `backupsDir` whose basenames
  * match the owned pattern are considered; the newest backups are always retained
  * (`keepMinimum`, default 1) even when older than the retention window, so

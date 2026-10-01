@@ -32,7 +32,7 @@ import {
  * files, and post-vacuum FTS results remain complete."
  *
  * These tests exercise the maintenance operations and the `maintenance` job
- * handler against a real migrated SQLite file, and the `/cassandra
+ * handler against a real migrated SQLite file, and the `/mneme
  * integrity-check` command handler end to end.
  */
 
@@ -49,7 +49,7 @@ const ORG = 'org-channel-maint';
 const ORG_GRANT: RetrievalGrant = { includeOrgMessages: true, includeOrgMemories: true, includeReviewOnly: false, channelIds: [] };
 
 /** A phrase unlikely to collide with FTS tokenizer quirks (no hyphens). */
-const MESSAGE_PHRASE = 'cassandra vacuum sentinel content';
+const MESSAGE_PHRASE = 'mneme vacuum sentinel content';
 const MEMORY_PHRASE = 'adopt the vacuum rebuild protocol decision';
 
 let env: TestDb;
@@ -348,7 +348,7 @@ describe('post-vacuum FTS results remain complete', () => {
   });
 });
 
-describe('/cassandra integrity-check command', () => {
+describe('/mneme integrity-check command', () => {
   const adminInput = (memberRoleIds: readonly string[] | null, actor = ADMIN) => ({
     actorUserId: actor,
     guildId: GUILD,

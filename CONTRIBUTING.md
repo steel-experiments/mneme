@@ -1,8 +1,8 @@
-# Contributing to Cassandra
+# Contributing to Mneme
 
-Cassandra is small on purpose: one Node.js process, one SQLite database, one
+Mneme is small on purpose: one Node.js process, one SQLite database, one
 Docker image. Keep it that way. Before you change code, read [AGENTS.md](AGENTS.md)
-and the parts of [CASSANDRA_IMPLEMENTATION_SPEC.md](CASSANDRA_IMPLEMENTATION_SPEC.md)
+and the parts of [MNEME_IMPLEMENTATION_SPEC.md](MNEME_IMPLEMENTATION_SPEC.md)
 that cover your change. The specification is the authority. When code and
 specification disagree, fix one of them explicitly. Never let them drift apart
 silently.
@@ -13,8 +13,8 @@ You need Node.js 24 or later. You do not need a Discord server to build and
 test the repository.
 
 ```bash
-git clone https://github.com/steel-experiments/cassandra-discord.git
-cd cassandra-discord
+git clone https://github.com/steel-experiments/mneme.git
+cd mneme
 npm ci --ignore-scripts
 npm run verify
 ```
@@ -82,7 +82,7 @@ operator-level explanation lives in
 
 ## The specification is the authority
 
-`CASSANDRA_IMPLEMENTATION_SPEC.md` describes what Cassandra is. Code and
+`MNEME_IMPLEMENTATION_SPEC.md` describes what Mneme is. Code and
 specification change together:
 
 1. If the specification is wrong or incomplete, amend it in the same pull

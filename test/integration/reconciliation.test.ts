@@ -231,7 +231,7 @@ describe('reconcileChannel — overlap walk', () => {
       channelId: THREAD_CHANNEL,
       fetcher: {
         async fetchMessages() {
-          db.prepare("UPDATE channels SET name='cassandra-project-test' WHERE id=?").run(THREAD_PARENT);
+          db.prepare("UPDATE channels SET name='mneme-project-test' WHERE id=?").run(THREAD_PARENT);
           return [];
         },
       },
@@ -307,7 +307,7 @@ describe('createReconcileChannelHandler', () => {
     );
   });
 
-  it('completes without ingest when a thread parent becomes a Cassandra test surface during fetch', async () => {
+  it('completes without ingest when a thread parent becomes a Mneme test surface during fetch', async () => {
     seedThread(db);
     let announceFetchStarted!: () => void;
     let releaseFetch!: () => void;
@@ -344,7 +344,7 @@ describe('createReconcileChannelHandler', () => {
     expect(worker.dispatch()).toBe(1);
     await fetchStarted;
 
-    db.prepare("UPDATE channels SET name='cassandra-project-test' WHERE id=?").run(THREAD_PARENT);
+    db.prepare("UPDATE channels SET name='mneme-project-test' WHERE id=?").run(THREAD_PARENT);
     releaseFetch();
     await worker.settle();
 

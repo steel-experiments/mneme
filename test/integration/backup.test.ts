@@ -230,7 +230,7 @@ describe('online SQLite backup', { timeout: 15_000 }, () => {
     expect(backupCount(backupPath)).toBeGreaterThanOrEqual(seeded);
   });
 
-  it('names the file cassandra-YYYYMMDD-HHMMSS.sqlite (UTC) and pairs the manifest', async () => {
+  it('names the file mneme-YYYYMMDD-HHMMSS.sqlite (UTC) and pairs the manifest', async () => {
     const NOW = 1_701_234_567_000; // 2023-11-29T05:17:47.000Z
     const { backupPath, manifestPath } = await createBackup({
       db: env.db,
@@ -286,7 +286,7 @@ describe('online SQLite backup', { timeout: 15_000 }, () => {
   });
 
   it('does not report an incomplete backup file without its verified manifest', () => {
-    writeFileSync(join(backupsDir, 'cassandra-20231114-221320.sqlite'), 'partial');
+    writeFileSync(join(backupsDir, 'mneme-20231114-221320.sqlite'), 'partial');
     expect(backupInventory(backupsDir)).toEqual({ lastBackupAtMs: null, count: 0 });
   });
 
@@ -336,7 +336,7 @@ describe('online SQLite backup', { timeout: 15_000 }, () => {
     expect(warn).not.toHaveBeenCalled();
     expect(notifyCompleted).toHaveBeenCalledWith(expect.objectContaining({
       requesterUserId: USER,
-      file: 'cassandra-20231114-221340.sqlite',
+      file: 'mneme-20231114-221340.sqlite',
       timestampMs: 1_700_000_020_000,
     }));
   });

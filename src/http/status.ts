@@ -19,7 +19,7 @@ import {
  * `/status` operational snapshot (Section 32.3).
  *
  * The database-side fields are aggregated by the shared collector
- * {@link collectStatusReport} — the same function the `/cassandra status` slash
+ * {@link collectStatusReport} — the same function the `/mneme status` slash
  * command uses, so there is one source of truth for channel, sync, queue,
  * proposal, outbox, and database-size counts. This module is the HTTP adapter:
  * it assembles the host-supplied {@link StatusRuntimeInputs} (Gateway state, model

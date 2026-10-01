@@ -1,13 +1,13 @@
 # Security model
 
-Cassandra stores workplace conversations and sends selected excerpts to a model
+Mneme stores workplace conversations and sends selected excerpts to a model
 provider. Its security model assumes that Discord content and model output are
 both untrusted.
 
 ## Trust boundaries
 
 Discord messages can contain prompt injection, false claims, malicious links,
-or text that resembles commands. Cassandra passes message content as marked
+or text that resembles commands. Mneme passes message content as marked
 conversation data, not as host instructions.
 
 The model can retrieve only through a host-built grant. Its tools are read-only
@@ -32,14 +32,14 @@ The system fails closed when:
 - approval-time policy is uncertain or has changed
 
 Reply targets and evidence sources use different current-state checks. The exact
-question stored for an explicit mention in a Cassandra test console may anchor the reply
+question stored for an explicit mention in a Mneme test console may anchor the reply
 in that console. It does not make the console or threads below it searchable: every other
 exposed source must still be an undeleted message in an ingestion-enabled channel with an
-available thread parent. At initial prompt render and each tool exposure, Cassandra stores
+available thread parent. At initial prompt render and each tool exposure, Mneme stores
 the exact exposed ID and a content-free SHA-256 fingerprint rather than duplicating the
 message or memory body in provenance. The fingerprint covers every model-visible durable
 field plus joined channel, parent, author, aggregate-reaction, and memory-evidence
-relationship metadata. Immediately before send, Cassandra re-fetches every exposed
+relationship metadata. Immediately before send, Mneme re-fetches every exposed
 message—not only citations—recomputes every exposed memory from current evidence, and
 requires the complete ID-to-fingerprint maps to match. If any source disappears, changes,
 or tightens while a model run is in flight, final validation suppresses the output. Secure
@@ -57,10 +57,10 @@ Ambiguity expires or suppresses the message; it never selects `#general` or a th
 
 Memory scope is also recomputed from current evidence at read time. If an evidence
 message is missing or deleted, its channel is missing, deleted, or ingestion-disabled,
-or its thread parent is no longer available, Cassandra quarantines the entire memory as
+or its thread parent is no longer available, Mneme quarantines the entire memory as
 review-only. Org and MCP readers cannot see the memory statement. An administrator in
 the exact secure review channel may inspect the quarantined statement, but evidence
-retrieval does not return the inaccessible source content. A stale Cassandra-named test
+retrieval does not return the inaccessible source content. A stale Mneme-named test
 channel, or a child thread below one, is also unavailable evidence regardless of its
 persisted visibility flag.
 
@@ -69,14 +69,14 @@ thread class—including explicit overrides—while requiring a live parent and 
 parent ID only as the restricted-scope anchor.
 
 Test-surface isolation is a parent-aware boundary, not a retrieval-only name filter. The
-same predicate excludes a Cassandra-named channel and its child threads from live
+same predicate excludes a Mneme-named channel and its child threads from live
 ingestion, history and reconciliation, historical construction, startup repair, review,
 retrieval, and sync status. Review checks both before a provider call and before applying
 its result, so a rename skips queued work or discards an in-flight result before it can
 create memory or an intervention.
 
 That quarantine preserves the record for safe remediation; it is distinct from
-`/cassandra forget-message`. Both forget commands first create an auditable request
+`/mneme forget-message`. Both forget commands first create an auditable request
 for a fixed set of messages. A different admin explicitly allowlisted as a deletion
 approver must confirm it; a 24-hour cancellation window follows. Only then does the
 worker tombstone and purge source content, remove its evidence links, and invalidate
@@ -165,7 +165,7 @@ state is confined to `/app/data` and `/tmp`.
 
 ## Residual risks
 
-No prompt or policy can guarantee that a model will reason correctly. Cassandra
+No prompt or policy can guarantee that a model will reason correctly. Mneme
 reduces the consequence of a bad result by constraining tools and validating
 outputs, but operators still need to inspect memory quality and review proposed
 interventions before enabling autonomy.
@@ -188,7 +188,7 @@ npm run verify:sqlite
 npm run check
 npm test
 npm run build
-docker build -t cassandra:verify .
+docker build -t mneme:verify .
 ```
 
 For the stable public contract and verification entry points, see

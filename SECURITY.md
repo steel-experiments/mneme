@@ -19,7 +19,7 @@ Include what you can:
 
 ## What counts as a security issue
 
-Cassandra guards one thing above all: restricted content must never reach a
+Mneme guards one thing above all: restricted content must never reach a
 broader scope. Report these classes first:
 
 - **Visibility or scope bypass.** Restricted channel content returned to an
@@ -32,7 +32,7 @@ broader scope. Report these classes first:
 - **Auth bypass on the HTTP or MCP surfaces.** Flaws in bearer-token checks,
   token hashing, revocation, or expiry. Bypasses of the MCP or Inspector rate
   limits. Breaks in the OAuth sign-in or token exchange path.
-- **Injection into prompts.** Content that, once ingested, makes Cassandra act
+- **Injection into prompts.** Content that, once ingested, makes Mneme act
   outside the host gates: disclose out-of-scope material, bypass the proposal
   validation, or send something the host did not approve.
 
@@ -51,14 +51,14 @@ Fixes land on `main` and ship in the next release. There is no backport window.
 
 ## Trade-offs an operator must know
 
-- **The model provider sees message content.** Cassandra sends permitted
+- **The model provider sees message content.** Mneme sends permitted
   channel content and prompts to the configured cloud provider
   (`LLM_PROVIDER`, `openai/gpt-5.6-terra` by default). The provider and its
-  retention apply. Cassandra cannot hide from the provider the content it uses.
-- **The published HTTP port carries no host-level authentication.** Cassandra
+  retention apply. Mneme cannot hide from the provider the content it uses.
+- **The published HTTP port carries no host-level authentication.** Mneme
   binds one plain-HTTP server on `0.0.0.0:$PORT`. `/livez` and `/readyz` answer
   anyone. `/status` and the Inspector sit behind shared bearer tokens. These
-  are shared secrets, not per-user identity. Cassandra cannot see client
+  are shared secrets, not per-user identity. Mneme cannot see client
   identity behind a proxy, so MCP and Inspector rate limits are counted per
   token, not per client. Only the failed-authentication budget is shared by
   all callers. Keep the published port on loopback (`127.0.0.1`), or put an

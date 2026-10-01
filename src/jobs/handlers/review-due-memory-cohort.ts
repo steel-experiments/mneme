@@ -157,7 +157,7 @@ export function createReviewDueMemoryCohortHandler(
         );
         return route?.kind === 'working' && route.targetChannelId === payload.targetChannelId;
       },
-      sessionId: `cassandra:scheduled-review:${job.id}`,
+      sessionId: `mneme:scheduled-review:${job.id}`,
     });
     const outcome = await runner.runScheduledReview();
     if (outcome.kind === 'reviewed' && outcome.notification.routing.state === 'pending_review') {

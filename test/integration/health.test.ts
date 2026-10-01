@@ -80,7 +80,7 @@ describe('liveness endpoint', () => {
     e.cleanup();
 
     // Unknown error shapes collapse to the generic safe code.
-    expect(classifyDatabaseError(new Error('something /app/data/cassandra.sqlite'))).toBe(
+    expect(classifyDatabaseError(new Error('something /app/data/mneme.sqlite'))).toBe(
       'database_unhealthy',
     );
     expect(classifyDatabaseError('not even an error')).toBe('database_unhealthy');

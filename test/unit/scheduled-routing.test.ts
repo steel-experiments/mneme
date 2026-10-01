@@ -52,7 +52,7 @@ const options = {
 beforeEach(() => {
   env = createTestDb();
   seedIdentity(env.db);
-  channel(REVIEW, 'cassandra-review', 'review_only', 0);
+  channel(REVIEW, 'mneme-review', 'review_only', 0);
   channel(WORKING, 'growth', 'org', 1);
 });
 afterEach(() => env.cleanup());
@@ -89,14 +89,14 @@ describe('scheduled memory routing', () => {
     });
   });
 
-  it('does not route to an intervention-disabled or Cassandra control target', () => {
+  it('does not route to an intervention-disabled or Mneme control target', () => {
     message('m-disabled', WORKING);
     memory('memory-disabled', 'org', null, ['m-disabled']);
     env.db.prepare('UPDATE channels SET allow_interventions=0 WHERE id=?').run(WORKING);
     expect(resolveScheduledMemoryRoute(env.db, 'memory-disabled', options)).toMatchObject({
       kind: 'secure_maintenance', reason: 'interventions_disabled',
     });
-    env.db.prepare("UPDATE channels SET allow_interventions=1,name='cassandra-sandbox' WHERE id=?").run(WORKING);
+    env.db.prepare("UPDATE channels SET allow_interventions=1,name='mneme-sandbox' WHERE id=?").run(WORKING);
     expect(resolveScheduledMemoryRoute(env.db, 'memory-disabled', options)).toMatchObject({
       kind: 'secure_maintenance', reason: 'control_surface',
     });
@@ -135,7 +135,7 @@ describe('scheduled memory routing', () => {
     const { ensureSubjectForMember, registerRevision, validateTriggerEvidence } = attentionRepository;
     const subjectId = ensureSubjectForMember(env.db, { guildId: GUILD, memoryId: 'memory-dispatch', now: NOW });
     const records = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: 'cassandra-app',
+      guildId: GUILD, mnemeId: 'mneme-app',
       evidence: [{ messageId: 'm-dispatch', quote: 'evidence m-dispatch' }],
       now: NOW, windowMs: 7 * 86_400_000,
     });

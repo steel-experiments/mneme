@@ -1,6 +1,6 @@
 # Memory quality and asynchronous conversations
 
-Cassandra deliberately closes episodes quickly: after 90 seconds of quiet, 40
+Mneme deliberately closes episodes quickly: after 90 seconds of quiet, 40
 messages, or 10 minutes by default. Those boundaries control model cost and keep each
 review coherent, but they are not treated as proof that the conversation is finished.
 Discord work is asynchronous. A request can be answered after a meeting, a sleep cycle,
@@ -9,7 +9,7 @@ or another time zone starts work.
 ## Identity observations
 
 Discord reaction events identify a user but do not include an authoritative profile or
-membership record. Cassandra may create an ID-only placeholder so the reaction remains
+membership record. Mneme may create an ID-only placeholder so the reaction remains
 referentially valid. A later reaction never erases a known username, bot classification,
 display name, or role set. Full Discord profile and membership events remain the source
 for changes to those fields.

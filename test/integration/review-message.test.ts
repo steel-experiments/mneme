@@ -46,7 +46,7 @@ describe('buildReviewMessage — embed content and controls', () => {
     const { embeds, components } = buildReviewMessage(basicInput(), SECRET);
     expect(embeds).toHaveLength(1);
     const embed = embeds[0]!.data;
-    expect(embed.title).toBe(`Cassandra proposal ${PROPOSAL_ID.slice(0, 8)}`);
+    expect(embed.title).toBe(`Mneme proposal ${PROPOSAL_ID.slice(0, 8)}`);
     expect(embed.description).toContain('Proposed message:');
     expect(embed.description).toContain('Heads up: the onboarding trial was superseded.');
     expect(embed.description).toContain('Sources:');
@@ -148,7 +148,7 @@ describe('buildReviewMessage — embed content and controls', () => {
 
   it('uses a custom short id in the title when provided', () => {
     const { embeds } = buildReviewMessage(basicInput({ shortId: 'cass-42' }), SECRET);
-    expect(embeds[0]!.data.title).toBe('Cassandra proposal cass-42');
+    expect(embeds[0]!.data.title).toBe('Mneme proposal cass-42');
   });
 });
 

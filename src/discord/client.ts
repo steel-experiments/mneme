@@ -22,8 +22,8 @@ import type { IngestionObserver, IngestionOutcome, IngestionReason } from '../ob
  * a Discord connection; the factory wires discord.js lifecycle events to them.
  */
 
-/** The only gateway intents Cassandra requests (Section 6.2). */
-export const CASSANDRA_INTENTS = [
+/** The only gateway intents Mneme requests (Section 6.2). */
+export const MNEME_INTENTS = [
   GatewayIntentBits.Guilds,
   GatewayIntentBits.GuildMessages,
   GatewayIntentBits.GuildMessageReactions,
@@ -33,7 +33,7 @@ export const CASSANDRA_INTENTS = [
 
 /** Fixed, content-free response for unsupported conversational DMs. */
 export const DIRECT_MESSAGE_NOTICE =
-  'Cassandra doesn\'t answer DMs. Ask me in the Discord server by mentioning @Cassandra in a channel I can access.';
+  'Mneme doesn\'t answer DMs. Ask me in the Discord server by mentioning @Mneme in a channel I can access.';
 
 /** One notice per sender per rolling 24 hours prevents repeated replies to a DM burst. */
 export const DIRECT_MESSAGE_NOTICE_COOLDOWN_MS = 24 * 60 * 60 * 1_000;
@@ -108,7 +108,7 @@ export function createDirectMessageNoticeHandler(
  * deletes and reactions on old messages, and channel/thread events the client
  * has not seen this session.
  */
-export const CASSANDRA_PARTIALS = [
+export const MNEME_PARTIALS = [
   Partials.Channel,
   Partials.Message,
   Partials.Reaction,
@@ -339,7 +339,7 @@ export interface DiscordClientHandle {
 }
 
 /**
- * Instantiate the discord.js client with Cassandra's intents and partials, and
+ * Instantiate the discord.js client with Mneme's intents and partials, and
  * wire the gateway lifecycle events to the health tracker. The returned client
  * is not yet connected — the caller logs in (Section 5.1 bootstrap). Guild
  * identity is checked on `ready`; a mismatch is logged and recorded but does not
@@ -349,8 +349,8 @@ export function createDiscordClient(options: CreateDiscordClientOptions): Discor
   const clock = options.clock ?? Date.now;
   const tracker = new ClientHealthTracker(clock);
   const client = new Client({
-    intents: [...CASSANDRA_INTENTS],
-    partials: [...CASSANDRA_PARTIALS],
+    intents: [...MNEME_INTENTS],
+    partials: [...MNEME_PARTIALS],
   });
   const handleDirectMessage = createDirectMessageNoticeHandler({
     clock,
@@ -694,7 +694,7 @@ export function registerIngestionHandlers(client: Client, deps: IngestionHandler
     run('messageCreate', () => {
       const raw = rawMessageFromJs(message as unknown as JsMessageLike);
       // Discord's autocomplete can select the managed bot role instead of the
-      // bot user when both are named Cassandra. Treat a parsed mention of a role
+      // bot user when both are named Mneme. Treat a parsed mention of a role
       // actually assigned to this bot as a direct bot mention; lookalike text
       // and unrelated role mentions remain inert.
       const botRoles = (message as unknown as JsMessageLike).guild?.members?.me?.roles?.cache;

@@ -9,7 +9,7 @@ import {
 } from '../../config-reload.js';
 
 /**
- * `/cassandra reload-policy` handler (Sections 7.2, 8, 15, 27).
+ * `/mneme reload-policy` handler (Sections 7.2, 8, 15, 27).
  *
  * Thin command layer over {@link reloadConfig}: authorize the caller (fail
  * closed, audited on denial), then validate and atomically activate the

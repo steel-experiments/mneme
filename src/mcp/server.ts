@@ -44,7 +44,7 @@ export {
  * implements the legacy `initialize` lifecycle used by clients that have not yet
  * adopted 2026-07-28 discovery. Neither profile requires `Mcp-Session-Id` or a
  * held-open stream;
- * `Mcp-Method` / `Mcp-Name` routing headers are tolerated and ignored (Cassandra
+ * `Mcp-Method` / `Mcp-Name` routing headers are tolerated and ignored (Mneme
  * sits behind at most one reverse proxy). When `MCP_ENABLED` is false the HTTP
  * layer returns `404` before this handler is ever called, so a disabled endpoint
  * is indistinguishable from an absent route.

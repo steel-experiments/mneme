@@ -133,7 +133,7 @@ describe('lastHumanMessageAtMs — Section 11.8', () => {
   });
   afterEach(() => env.cleanup());
 
-  it('ignores Cassandra, other bots, deleted, and empty messages', () => {
+  it('ignores Mneme, other bots, deleted, and empty messages', () => {
     insert('m-human', ALICE, NOW - 10 * MINUTE);
     insert('m-bot', BOT, NOW - 2 * MINUTE);
     insert('m-cass', CASS, NOW - MINUTE);

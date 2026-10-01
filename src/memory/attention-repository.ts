@@ -553,8 +553,8 @@ export function getSubjectConsumedFrontier(db: DatabaseSync, subjectId: string):
 
 export interface TriggerEvidenceInput {
   guildId: string;
-  /** Discord application id, so Cassandra's own messages are never triggers. */
-  cassandraId: string;
+  /** Discord application id, so Mneme's own messages are never triggers. */
+  mnemeId: string;
   evidence: ReadonlyArray<{ messageId: string; quote: string }>;
   now: number;
   windowMs: number;
@@ -567,7 +567,7 @@ export type TriggerEvidenceResult =
 /**
  * Host validation of proposed trigger evidence. Every cited message must
  * exist, be undeleted, belong to the guild, be retrievable in current channel
- * scope, be authored by a known human (never Cassandra or another bot), carry
+ * scope, be authored by a known human (never Mneme or another bot), carry
  * a verbatim quote, and have been created inside the attention window by
  * original creation time — future timestamps fail closed.
  */
@@ -595,7 +595,7 @@ export function validateTriggerEvidence(
       ? undefined
       : prepareCached(db, 'attention.author', 'SELECT is_bot FROM users WHERE id = ?')
           .get(message.author_id) as { is_bot: number } | undefined;
-    if (!author || author.is_bot === 1 || message.author_id === input.cassandraId) {
+    if (!author || author.is_bot === 1 || message.author_id === input.mnemeId) {
       return { ok: false, reason: 'no_recent_human_trigger', detail: `trigger message ${item.messageId} is not human-authored` };
     }
     if (message.created_at_ms > input.now) {

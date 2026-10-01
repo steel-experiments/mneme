@@ -48,7 +48,7 @@ const NOW = 1_700_000_001_000;
 const PROMPT_VERSION = 'pv-abc';
 const ORG_GRANT: RetrievalGrant = { includeOrgMessages: true, includeOrgMemories: true, includeReviewOnly: false, channelIds: [] };
 const DOCS = new DocsIndex([
-  { path: 'index.md', title: 'Cassandra documentation', summary: 'Start here.', content: '# Cassandra documentation\n' },
+  { path: 'index.md', title: 'Mneme documentation', summary: 'Start here.', content: '# Mneme documentation\n' },
 ]);
 
 const dims = {
@@ -233,7 +233,7 @@ function baseDeps(
     model: faux.model,
     thinkingLevel: 'minimal',
     streamFn: faux.streamFn,
-    sessionId: 'cassandra:episode:e1',
+    sessionId: 'mneme:episode:e1',
     cacheProfile: 'episode',
     promptText: 'Please review this episode.',
     promptVersion: PROMPT_VERSION,
@@ -1010,7 +1010,7 @@ describe('executeAgentRun', () => {
 
   it('preserves unique session identity while sharing safe-surface cache affinity', async () => {
     const seen: ObservedRequest[] = [];
-    for (const [runId, sessionId] of [['cache-run-a', 'cassandra:episode:sentinel-a'], ['cache-run-b', 'cassandra:episode:sentinel-b']]) {
+    for (const [runId, sessionId] of [['cache-run-a', 'mneme:episode:sentinel-a'], ['cache-run-b', 'mneme:episode:sentinel-b']]) {
       faux.handle.setResponses([
         fauxAssistantMessage([fauxToolCall('finalize_episode_review', episodeReview())], { stopReason: 'toolUse' }),
       ]);
@@ -1021,7 +1021,7 @@ describe('executeAgentRun', () => {
       }));
     }
     expect(seen.map((request) => request.sessionId)).toEqual([
-      'cassandra:episode:sentinel-a', 'cassandra:episode:sentinel-b',
+      'mneme:episode:sentinel-a', 'mneme:episode:sentinel-b',
     ]);
     expect(seen[0]!.cacheKey).toBe(seen[1]!.cacheKey);
     expect(seen[0]!.cacheKey).toMatch(/^cas:v1:episode:[0-9a-f]{40}$/);

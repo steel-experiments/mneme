@@ -1,6 +1,6 @@
 # VM requirements
 
-Cassandra is a single, stateful Node.js service. It does not run a model on the
+Mneme is a single, stateful Node.js service. It does not run a model on the
 VM, so it needs no GPU. Model inference happens through the configured provider
 API.
 
@@ -11,22 +11,22 @@ figures below are starting points, not enforced limits.
 
 - one 64-bit Linux VM
 - Docker Engine with the Docker Compose plugin, or Node.js 24 or newer
-- one Cassandra process or container for the guild and database
+- one Mneme process or container for the guild and database
 - persistent local storage mounted at `/app/data`
 - outbound DNS, HTTPS, and secure WebSocket access
-- enough shutdown time for Cassandra to drain work and checkpoint SQLite
+- enough shutdown time for Mneme to drain work and checkpoint SQLite
 - separate off-host storage for backups
 
 The supplied image is based on `node:24.21-bookworm-slim`. The tag pins the Node minor version, so a rebuild on another day gets the same `node:sqlite` behavior. The upstream Node image
 supports AMD64 and ARM64, among other Linux architectures.
 
-Use SSD-backed storage for `/app/data`. Cassandra uses SQLite in WAL mode and
+Use SSD-backed storage for `/app/data`. Mneme uses SQLite in WAL mode and
 performs FTS indexing, so slow or unreliable network filesystems are a poor fit.
-Never mount the same database volume into two active Cassandra containers.
+Never mount the same database volume into two active Mneme containers.
 
 ## Network access
 
-Cassandra opens an outbound Discord Gateway WebSocket and uses Discord's HTTPS
+Mneme opens an outbound Discord Gateway WebSocket and uses Discord's HTTPS
 API. It also connects to the selected model provider. Attachment archival needs
 outbound access to the attachment URLs supplied by Discord.
 
@@ -90,7 +90,7 @@ Copy completed backups off the VM.
 allows 45 seconds before the container is killed. If you increase the drain
 timeout, increase the platform stop grace period as well.
 
-Keep the VM clock synchronized. Cassandra uses timestamps for job leases,
+Keep the VM clock synchronized. Mneme uses timestamps for job leases,
 cooldowns, daily budgets, retention, token expiry, and audit records.
 
 ## Recommended baseline
@@ -101,7 +101,7 @@ For an ordinary deployment, use:
 - 2 vCPU
 - 4 GB memory
 - 40 GB SSD storage
-- one Cassandra container
+- one Mneme container
 - persistent `/app/data`
 - daily off-host backups
 - synchronized system time
@@ -111,7 +111,7 @@ resize from observed data rather than relying on the starting estimate.
 
 ## Related documentation
 
-- [Deploy Cassandra](../how-to/deploy.md)
+- [Deploy Mneme](../how-to/deploy.md)
 - [Configuration reference](configuration.md)
 - [Back up and restore SQLite](../how-to/backup-and-restore.md)
 - [Docker Compose installation](https://docs.docker.com/compose/install/linux/)

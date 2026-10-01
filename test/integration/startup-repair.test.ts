@@ -37,7 +37,7 @@ describe('durable startup repair', () => {
       .run(ids.channelId, NOW, NOW);
     env.db.prepare(`INSERT INTO attachment_file_purges
       (id,local_path,status,attempts,created_at_ms,updated_at_ms)
-      VALUES ('purge-repair','/tmp/cassandra-repair-test','queued',0,?,?)`).run(NOW, NOW);
+      VALUES ('purge-repair','/tmp/mneme-repair-test','queued',0,?,?)`).run(NOW, NOW);
 
     const first = repairDurableWork(env.db, { now: NOW + 1, quietSeconds: 90 });
     expect(first.reviewsReset).toBe(1);
@@ -135,7 +135,7 @@ describe('durable startup repair', () => {
     const reviewChannelId = '100000000000000099';
     upsertChannel(env.db, {
       id: reviewChannelId, guildId: ids.guildId, parentId: null, type: 0,
-      name: 'cassandra-review', topic: null, position: null, isThread: false,
+      name: 'mneme-review', topic: null, position: null, isThread: false,
       isArchived: false, isLocked: false, ingestEnabled: true,
       visibilityClass: 'review_only', allowInterventions: false,
       permissionFingerprint: null, lastMessageId: null, discoveredAtMs: NOW,
@@ -554,7 +554,7 @@ describe('durable startup repair', () => {
     ]);
   });
 
-  it('does not repair reviews or backfills for a thread below a Cassandra test parent', () => {
+  it('does not repair reviews or backfills for a thread below a Mneme test parent', () => {
     const parentId = '100000000000000020';
     const threadId = '100000000000000021';
     const channel = (id: string, name: string, parentIdValue: string | null, isThread: boolean) => ({
@@ -577,7 +577,7 @@ describe('durable startup repair', () => {
       updatedAtMs: NOW,
       rawJson: null,
     });
-    upsertChannel(env.db, channel(parentId, 'cassandra-repair-tests', null, false));
+    upsertChannel(env.db, channel(parentId, 'mneme-repair-tests', null, false));
     upsertChannel(env.db, channel(threadId, 'release-planning', parentId, true));
     env.db.prepare(`INSERT INTO episodes
       (id,guild_id,conversation_channel_id,status,started_at_ms,last_activity_at_ms,created_at_ms,updated_at_ms)

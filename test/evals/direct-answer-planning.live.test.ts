@@ -155,7 +155,7 @@ live('live direct-answer semantic planning', () => {
       const createdAtMs = 1_786_622_400_000 + index * 100;
       if (entry.expectedUnqualifiedScope) {
         testDb.db
-          .prepare("UPDATE channels SET name='cassandra-test', ingest_enabled=0 WHERE id=?")
+          .prepare("UPDATE channels SET name='mneme-test', ingest_enabled=0 WHERE id=?")
           .run(identity.channelId);
         const activityChannelId = `direct-answer-eval-activity-${index}`;
         upsertChannel(testDb.db, {
@@ -254,7 +254,7 @@ live('live direct-answer semantic planning', () => {
       const initial = buildDirectAnswerPromptContext(testDb.db, grant, question);
 
       const context = {
-        agent: { name: 'Cassandra', role: 'organizational memory and constructive dissenter' },
+        agent: { name: 'Mneme', role: 'organizational memory and constructive dissenter' },
         organization: { name: 'Evaluation Org', timezone: 'UTC' },
         runtime: { nowIso: '2026-08-13T12:00:00.000Z', mode: 'observe' },
         target: { label: identity.channelId, visibility: 'org' },
@@ -271,7 +271,7 @@ live('live direct-answer semantic planning', () => {
           path: 'how-to/connect-mcp-clients.md',
           title: 'Connect MCP clients',
           summary: 'Configure Codex and Claude Desktop.',
-          content: '# Connect MCP clients\nUse the Cassandra endpoint and bearer token.',
+          content: '# Connect MCP clients\nUse the Mneme endpoint and bearer token.',
         },
       ]);
       const capturedToolCalls: CapturedToolCall[] = [];
@@ -283,7 +283,7 @@ live('live direct-answer semantic planning', () => {
         model: resolved.primary.model,
         thinkingLevel: resolved.primary.thinkingLevel,
         streamFn,
-        sessionId: `cassandra:eval:direct-answer:${entry.id}`,
+        sessionId: `mneme:eval:direct-answer:${entry.id}`,
         cacheProfile: 'direct',
         promptText: promptCompiler.render('direct-answer', context),
         promptVersion: promptCompiler.versionFor('direct-answer'),

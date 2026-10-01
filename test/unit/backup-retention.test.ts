@@ -40,7 +40,7 @@ function exists(name: string): boolean {
 
 describe('backup retention rotation', () => {
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'cassandra-retain-'));
+    dir = mkdtempSync(join(tmpdir(), 'mneme-retain-'));
   });
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true });
@@ -48,9 +48,9 @@ describe('backup retention rotation', () => {
 
   it('parses and round-trips the owned backup filename timestamp', () => {
     expect(parseBackupTimestampMs(backupName(NEW))).toBe(NEW);
-    expect(parseBackupTimestampMs('cassandra-20230101-000000-7.sqlite')).toBe(OLD);
+    expect(parseBackupTimestampMs('mneme-20230101-000000-7.sqlite')).toBe(OLD);
     expect(parseBackupTimestampMs('not-a-backup.sqlite')).toBeNull();
-    expect(parseBackupTimestampMs('cassandra-20230101-000000.sqlite-wal')).toBeNull();
+    expect(parseBackupTimestampMs('mneme-20230101-000000.sqlite-wal')).toBeNull();
   });
 
   it('deletes only pairs older than the retention window and keeps the rest', () => {
@@ -97,20 +97,20 @@ describe('backup retention rotation', () => {
   it('never touches unrelated files regardless of name or extension', () => {
     writePair(OLD);
     writeRaw('other.sqlite');
-    writeRaw('cassandra.txt');
+    writeRaw('mneme.txt');
     writeRaw('README.md');
     writeRaw('cascade-20230101-000000.sqlite'); // wrong prefix
-    writeRaw('cassandra-20230101-000000.sqlite-wal'); // sidecar, not a backup pair
+    writeRaw('mneme-20230101-000000.sqlite-wal'); // sidecar, not a backup pair
 
     const res = rotateBackups({ backupsDir: dir, retentionDays: 7, now: NOW, keepMinimum: 0 });
 
     expect(res.scanned).toBe(1);
     expect(exists(backupName(OLD))).toBe(false);
     expect(exists('other.sqlite')).toBe(true);
-    expect(exists('cassandra.txt')).toBe(true);
+    expect(exists('mneme.txt')).toBe(true);
     expect(exists('README.md')).toBe(true);
     expect(exists('cascade-20230101-000000.sqlite')).toBe(true);
-    expect(exists('cassandra-20230101-000000.sqlite-wal')).toBe(true);
+    expect(exists('mneme-20230101-000000.sqlite-wal')).toBe(true);
   });
 
   it('is non-recursive: ignores nested directories and never follows them', () => {
