@@ -293,7 +293,7 @@ describe('runStartupSync — backfill enqueue', () => {
   it('does not re-enqueue a channel whose history is already complete', async () => {
     // Persist the text channel + a complete cursor so step 8 skips it.
     db.prepare(
-      `INSERT INTO channels (id, guild_id, parent_id, type, name, is_thread, is_archived, is_locked,
+      `INSERT INTO channels (id, workspace_id, parent_id, type, name, is_thread, is_archived, is_locked,
          ingest_enabled, visibility_class, allow_interventions, discovered_at_ms, updated_at_ms)
        VALUES (?, ?, NULL, 0, 'pre', 0, 0, 0, 1, 'restricted', 0, ?, ?)`,
     ).run(TEXT, GUILD, NOW - 1000, NOW - 1000);

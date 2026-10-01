@@ -31,7 +31,7 @@ export type { ProposalDeliveryReport, ProposalDeliveryReporter } from './proposa
  * recovery reconciles — it never produces a duplicate post.
  *
  * Outcomes:
- *   - success                  → row `sent` (+ `discord_message_id`), proposal `sent`.
+ *   - success                  → row `sent` (+ `platform_message_id`), proposal `sent`.
  *   - transient failure        → row back to `queued` with backoff + audit error,
  *                                handler throws `TransientJobError` so the job
  *                                queue re-drives it with capped backoff.
@@ -103,7 +103,7 @@ export function createSendOutboxHandler(
       }
     }
 
-    let discordMessageId: string;
+    let platformMessageId: string;
     try {
       const result = await deps.sender.send({
         channelId: row.channelId,
@@ -111,7 +111,7 @@ export function createSendOutboxHandler(
         replyToMessageId: row.replyToMessageId,
         dedupeMarker: row.dedupeMarker,
       });
-      discordMessageId = result.discordMessageId;
+      platformMessageId = result.platformMessageId;
     } catch (err) {
       const classification = classifyError(err);
       const exhausted = row.attempts >= job.max_attempts;
@@ -161,7 +161,7 @@ export function createSendOutboxHandler(
     // Success: record the Discord id, mark sent, and mirror the outcome onto the
     // originating proposal.
     transaction(db, () => {
-      markOutboxSent(db, row.id, discordMessageId, now);
+      markOutboxSent(db, row.id, platformMessageId, now);
       if (row.proposalId) {
         setProposalStatus(db, row.proposalId, 'sent', now);
         enqueueProposalDeliverySync(db, row.proposalId, now);
@@ -172,11 +172,11 @@ export function createSendOutboxHandler(
         status: 'sent',
         proposalId: row.proposalId,
         outboxId: row.id,
-        discordMessageId,
+        platformMessageId,
       });
     }
     deps.logger?.info(
-      { outboxId: row.id, discordMessageId, proposalId: row.proposalId },
+      { outboxId: row.id, platformMessageId, proposalId: row.proposalId },
       'send_outbox: sent',
     );
   };

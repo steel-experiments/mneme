@@ -379,7 +379,7 @@ export function repairDurableWork(db: DatabaseSync, input: {
     const pendingDirect = db.prepare(`SELECT
         source_message_id AS sourceMessageId,
         job_id AS jobId,
-        guild_id AS guildId,
+        workspace_id AS guildId,
         target_channel_id AS targetChannelId,
         question_created_at_ms AS questionCreatedAtMs,
         deadline_at_ms AS deadlineAtMs,

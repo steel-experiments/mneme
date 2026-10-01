@@ -39,7 +39,7 @@ afterEach(() => env.cleanup());
 
 function seedChannel(id: string, cls: string, name: string, guild = GUILD): void {
   db.prepare(
-    `INSERT INTO channels (id, guild_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
+    `INSERT INTO channels (id, workspace_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
        ingest_enabled, visibility_class, allow_interventions, permission_fingerprint, last_message_id,
        discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json)
      VALUES (?, ?, NULL, 0, ?, NULL, NULL, 0, 0, 0, 1, ?, 0, NULL, NULL, ?, ?, NULL, NULL)`,
@@ -54,13 +54,13 @@ function seedThread(id: string, parentId: string, cls: string, name: string): vo
 
 function seedGuild(id: string, name = 'Other'): void {
   db.prepare(
-    'INSERT INTO guilds (id, name, owner_id, joined_at_ms, discovered_at_ms, updated_at_ms, raw_json) VALUES (?,?,?,?,?,?,NULL)',
+    'INSERT INTO workspaces (id, name, owner_id, joined_at_ms, discovered_at_ms, updated_at_ms, raw_json) VALUES (?,?,?,?,?,?,NULL)',
   ).run(id, name, null, NOW, NOW, NOW);
 }
 
 function seedEpisode(id: string, guild = GUILD, channel = CHANNEL): void {
   db.prepare(
-    `INSERT INTO episodes (id, guild_id, conversation_channel_id, status, started_at_ms, last_activity_at_ms, created_at_ms, updated_at_ms)
+    `INSERT INTO episodes (id, workspace_id, conversation_channel_id, status, started_at_ms, last_activity_at_ms, created_at_ms, updated_at_ms)
      VALUES (?,?,?,?,?,?,?,?)`,
   ).run(id, guild, channel, 'open', NOW, NOW, NOW, NOW);
 }

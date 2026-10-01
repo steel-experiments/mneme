@@ -20,8 +20,8 @@ export interface SendOutboxMessageInput {
 }
 
 export interface SendResult {
-  /** The Discord snowflake of the created message. */
-  discordMessageId: string;
+  /** The platform id of the created message. */
+  platformMessageId: string;
 }
 
 /** Deliver one outbox message to Discord. Throws on any delivery failure. */
@@ -58,7 +58,7 @@ export function createDiscordSender(client: Client): OutboxSender {
           ? { reply: { messageReference: input.replyToMessageId as Snowflake } }
           : {}),
       });
-      return { discordMessageId: message.id };
+      return { platformMessageId: message.id };
     },
   };
 }

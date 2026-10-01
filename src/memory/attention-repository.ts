@@ -71,7 +71,7 @@ export interface TriggerEvidenceRecord {
 function rowToSubject(row: Record<string, SQLOutputValue>): AttentionSubjectRow {
   return {
     id: String(row.id),
-    guildId: String(row.guild_id),
+    guildId: String(row.workspace_id),
     registrationState: String(row.registration_state) === 'complete' ? 'complete' : 'pending',
     createdAtMs: Number(row.created_at_ms),
   };
@@ -81,7 +81,7 @@ export function getAttentionSubject(db: DatabaseSync, subjectId: string): Attent
   const row = prepareCached(
     db,
     'attention.subject_get',
-    'SELECT id, guild_id, registration_state, created_at_ms FROM attention_subjects WHERE id = ?',
+    'SELECT id, workspace_id, registration_state, created_at_ms FROM attention_subjects WHERE id = ?',
   ).get(subjectId) as Record<string, SQLOutputValue> | undefined;
   return row ? rowToSubject(row) : null;
 }
@@ -138,7 +138,7 @@ export function ensureSubjectForMember(
   prepareCached(
     db,
     'attention.subject_insert',
-    `INSERT INTO attention_subjects (id, guild_id, registration_state, created_at_ms)
+    `INSERT INTO attention_subjects (id, workspace_id, registration_state, created_at_ms)
      VALUES (?, ?, 'pending', ?)`,
   ).run(subjectId, input.guildId, input.now);
   prepareCached(
@@ -472,7 +472,7 @@ export function validateRevisionEvidence(db: DatabaseSync, revisionId: string, n
   for (const item of evidence) {
     if (item.role === 'explicit_deadline' && revision.explicitDeadlineAtMs === null) continue;
     const source = getMessage(db, item.message_id);
-    if (!source || source.guild_id !== subject.guildId || source.deleted_at_ms !== null
+    if (!source || source.workspace_id !== subject.guildId || source.deleted_at_ms !== null
       || source.created_at_ms > now || !resolveRetrievableChannelScope(db, source.channel_id)
       || sourceContentDigest(source.content) !== item.source_content_digest
       || item.quote_start < 0 || item.quote_end <= item.quote_start
@@ -508,7 +508,7 @@ export function findConsumedTriggerMessageIds(
        JOIN attention_revisions r ON r.id = e.revision_id
        JOIN attention_subjects s ON s.id = r.subject_id
        JOIN proposal_attention_claims c ON c.revision_id = r.id
-      WHERE s.guild_id = ?
+      WHERE s.workspace_id = ?
         AND e.role = 'material_trigger'
         AND e.message_id IN (${placeholders})
       UNION
@@ -516,7 +516,7 @@ export function findConsumedTriggerMessageIds(
        FROM attention_revision_evidence e
        JOIN attention_revisions r ON r.id = e.revision_id
        JOIN attention_subjects s ON s.id = r.subject_id
-      WHERE s.guild_id = ?
+      WHERE s.workspace_id = ?
         AND e.role = 'material_trigger'
         AND r.state = 'legacy_consumed'
         AND e.message_id IN (${placeholders})`,
@@ -584,7 +584,7 @@ export function validateTriggerEvidence(
     if (seen.has(item.messageId)) continue;
     seen.add(item.messageId);
     const message: MessageRow | undefined = getMessage(db, item.messageId);
-    if (!message || message.deleted_at_ms !== null || message.guild_id !== input.guildId) {
+    if (!message || message.deleted_at_ms !== null || message.workspace_id !== input.guildId) {
       return { ok: false, reason: 'trigger_changed', detail: `trigger message ${item.messageId} is not current` };
     }
     const scope = resolveRetrievableChannelScope(db, message.channel_id);
@@ -653,7 +653,7 @@ export function selectEligibleRevisions(
   const rows = prepareCached(
     db,
     'attention.select_eligible',
-    `SELECT r.id AS revision_id, r.subject_id AS subject_id, s.guild_id AS guild_id,
+    `SELECT r.id AS revision_id, r.subject_id AS subject_id, s.workspace_id AS workspace_id,
             r.human_event_at_ms AS human_event_at_ms, r.explicit_deadline_at_ms AS explicit_deadline_at_ms,
             mem.id AS memory_id
        FROM attention_revisions r
@@ -699,7 +699,7 @@ export function selectEligibleRevisions(
     bySubject.set(subjectId, {
       revisionId: String(row.revision_id),
       subjectId,
-      guildId: String(row.guild_id),
+      guildId: String(row.workspace_id),
       memoryId: String(row.memory_id),
       humanEventAtMs,
       explicitDeadlineAtMs: deadlineAtMs,
@@ -780,7 +780,7 @@ function registrationCandidatesInWindow(
              AND cov.revision_id IN (
                    SELECT r.id FROM attention_revisions r WHERE r.subject_id = m.subject_id
                  )
-      WHERE mem.guild_id = @guildId
+      WHERE mem.workspace_id = @guildId
         AND mem.status = 'active'
         AND msg.created_at_ms > @from
         AND msg.created_at_ms <= @to
@@ -827,7 +827,7 @@ function registrationCandidatesWithDeadline(
        JOIN memory_evidence e ON e.memory_id = mem.id
        JOIN messages msg ON msg.id = e.message_id AND msg.deleted_at_ms IS NULL
        LEFT JOIN attention_subject_members m ON m.memory_id = mem.id
-      WHERE mem.guild_id = @guildId
+      WHERE mem.workspace_id = @guildId
         AND mem.status = 'active'
         AND msg.created_at_ms > @lookbackFrom
         AND msg.created_at_ms <= @to

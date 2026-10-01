@@ -119,7 +119,7 @@ function channel(id: string, visibility: 'org' | 'restricted' | 'review_only' | 
 
 function insertEpisode(db: DatabaseSync, id: string, channel: string, status: string, startedAtMs: number): void {
   db.prepare(
-    `INSERT INTO episodes (id, guild_id, conversation_channel_id, status, started_at_ms, last_activity_at_ms, created_at_ms, updated_at_ms)
+    `INSERT INTO episodes (id, workspace_id, conversation_channel_id, status, started_at_ms, last_activity_at_ms, created_at_ms, updated_at_ms)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(id, GUILD, channel, status, startedAtMs, startedAtMs, startedAtMs, startedAtMs);
 }
@@ -129,7 +129,7 @@ function insertAgentRun(
 ): void {
   const completed = status === 'completed';
   db.prepare(
-    `INSERT INTO agent_runs (id, guild_id, run_type, prompt_version, provider, model,
+    `INSERT INTO agent_runs (id, workspace_id, run_type, prompt_version, provider, model,
        status, started_at_ms, ended_at_ms, input_tokens, output_tokens, cost_usd,
        uncached_input_tokens, cache_read_tokens, cache_write_tokens, reasoning_tokens)
      VALUES (?, ?, 'episode', 'pv-1', 'openai', 'gpt-test', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,

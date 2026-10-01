@@ -45,13 +45,13 @@ function jobRow(maxAttempts = 10): JobRow {
 function seedThreadChannel(id: string, parentId: string, guild = GUILD): void {
   const now = NOW;
   db.prepare(
-    `INSERT INTO channels (id, guild_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
+    `INSERT INTO channels (id, workspace_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
        ingest_enabled, visibility_class, allow_interventions, permission_fingerprint, last_message_id,
        discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json)
      VALUES (?, ?, NULL, 15, ?, NULL, NULL, 0, 0, 0, 1, 'restricted', 0, NULL, NULL, ?, ?, NULL, NULL)`,
   ).run(parentId, guild, `${parentId}-name`, now, now);
   db.prepare(
-    `INSERT INTO channels (id, guild_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
+    `INSERT INTO channels (id, workspace_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
        ingest_enabled, visibility_class, allow_interventions, permission_fingerprint, last_message_id,
        discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json)
      VALUES (?, ?, ?, 11, ?, NULL, NULL, 1, 0, 0, 1, 'restricted', 0, NULL, NULL, ?, ?, NULL, NULL)`,
@@ -86,7 +86,7 @@ function countMessages(channelId: string): number {
 describe('Section 46.2 — rate-limit retry on outbox delivery (HTTP 429)', () => {
   it('classifies a 429 as transient, returns the row to queued, and a later attempt succeeds', async () => {
     db.prepare(
-      `INSERT INTO agent_runs (id, guild_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
+      `INSERT INTO agent_runs (id, workspace_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
        VALUES(?, ?, NULL, 'episode', 'pv', 'faux', 'faux-1', 'completed', ?)`,
     ).run('run-1', GUILD, NOW);
     const proposalId = insertProposal(db, {
@@ -136,7 +136,7 @@ describe('Section 46.2 — rate-limit retry on outbox delivery (HTTP 429)', () =
     const afterSuccess = getOutbox(db, outboxId)!;
     expect(afterSuccess.status).toBe('sent');
     expect(afterSuccess.attempts).toBe(2);
-    expect(afterSuccess.discordMessageId).toBeDefined();
+    expect(afterSuccess.platformMessageId).toBeDefined();
     expect(discord.sentMessages).toHaveLength(1);
     expect(discord.sentMessages[0]!.content).toBe('rate-limited heads up');
   });

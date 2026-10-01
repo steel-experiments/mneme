@@ -77,7 +77,7 @@ function clear(sourceMessageId: string): DeadlineChange {
 
 function claim(revisionId: string): void {
   env.db.prepare(`INSERT INTO agent_runs
-    (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+    (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
     VALUES ('run-claim', ?, 'episode', 'p', 'test', 'test', 'completed', ?)`)
     .run(GUILD, NOW);
   env.db.prepare(`INSERT INTO proposals

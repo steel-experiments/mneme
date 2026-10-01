@@ -3,7 +3,7 @@ import type { DatabaseSync } from '../db/database.js';
 export const DELETION_GRACE_MS = 24 * 60 * 60 * 1000;
 export interface DeletionRequest {
   id: string;
-  guild_id: string;
+  workspace_id: string;
   target_kind: 'user' | 'message';
   target_id: string;
   requester_user_id: string;
@@ -19,7 +19,7 @@ export interface DeletionRequest {
 }
 
 export function getDeletionRequest(db: DatabaseSync, id: string, guildId: string): DeletionRequest | undefined {
-  return db.prepare('SELECT * FROM deletion_requests WHERE id = ? AND guild_id = ?')
+  return db.prepare('SELECT * FROM deletion_requests WHERE id = ? AND workspace_id = ?')
     .get(id, guildId) as DeletionRequest | undefined;
 }
 

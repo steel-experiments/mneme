@@ -9,20 +9,20 @@ export interface IngestionRecoveryRow {
   reason: IngestionRecoveryReason; status: IngestionRecoveryStatus;
   firstObservedAtMs: number; lastObservedAtMs: number; completedAtMs: number | null;
 }
-const COLS = `id,guild_id AS guildId,channel_id AS channelId,message_id AS messageId,generation,
+const COLS = `id,workspace_id AS guildId,channel_id AS channelId,message_id AS messageId,generation,
  reason,status,first_observed_at_ms AS firstObservedAtMs,last_observed_at_ms AS lastObservedAtMs,
  completed_at_ms AS completedAtMs`;
 export function requestIngestionRecovery(db: DatabaseSync, input: {
   guildId: string; channelId: string; messageId: string; reason: IngestionRecoveryReason; now: number;
 }): IngestionRecoveryRow {
   prepareCached(db, 'ingestion-recovery.request', `INSERT INTO ingestion_recovery_requests
-    (id,guild_id,channel_id,message_id,generation,reason,status,first_observed_at_ms,last_observed_at_ms)
+    (id,workspace_id,channel_id,message_id,generation,reason,status,first_observed_at_ms,last_observed_at_ms)
     VALUES (@id,@guildId,@channelId,@messageId,1,@reason,'pending',@now,@now)
-    ON CONFLICT(guild_id,channel_id,message_id) DO UPDATE SET generation=generation+1,
+    ON CONFLICT(workspace_id,channel_id,message_id) DO UPDATE SET generation=generation+1,
       reason=excluded.reason,status='pending',last_observed_at_ms=excluded.last_observed_at_ms,completed_at_ms=NULL
   `).run({ ...input, id: randomUUID() });
   return prepareCached(db, 'ingestion-recovery.request-read', `SELECT ${COLS} FROM ingestion_recovery_requests
-    WHERE guild_id=? AND channel_id=? AND message_id=?`).get(input.guildId, input.channelId, input.messageId) as unknown as IngestionRecoveryRow;
+    WHERE workspace_id=? AND channel_id=? AND message_id=?`).get(input.guildId, input.channelId, input.messageId) as unknown as IngestionRecoveryRow;
 }
 export function getIngestionRecovery(db: DatabaseSync, id: string): IngestionRecoveryRow | null {
   return prepareCached(db, 'ingestion-recovery.get', `SELECT ${COLS} FROM ingestion_recovery_requests WHERE id=?`).get(id) as IngestionRecoveryRow | undefined ?? null;

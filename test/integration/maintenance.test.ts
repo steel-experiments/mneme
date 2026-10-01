@@ -237,7 +237,7 @@ describe('Section 10 — terminal job retention', () => {
     insertJob('old-answer-job', 'succeeded', old, old + 1_000);
     db.prepare(
       `INSERT INTO direct_answer_requests
-         (source_message_id, job_id, guild_id, target_channel_id, question_created_at_ms, deadline_at_ms,
+         (source_message_id, job_id, workspace_id, target_channel_id, question_created_at_ms, deadline_at_ms,
           response_intent_key, outcome_kind, reason_category, completed_at_ms, created_at_ms, updated_at_ms)
        VALUES ('q-1', 'old-answer-job', ?, ?, ?, ?, 'intent-q-1', 'suppressed', 'timeout', ?, ?, ?)`,
     ).run(GUILD, ORG, old, old + 60_000, old + 1_000, old, old + 1_000);

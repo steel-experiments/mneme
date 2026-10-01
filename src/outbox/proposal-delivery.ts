@@ -11,7 +11,7 @@ export type ProposalDeliveryReport =
       status: 'sent';
       proposalId: string;
       outboxId: string;
-      discordMessageId: string;
+      platformMessageId: string;
     }
   | {
       status: 'failed';
@@ -53,7 +53,7 @@ export function createProposalDeliverySyncHandler(deps: {
     const proposal = getProposal(deps.db, proposalId);
     if (!proposal?.reviewMessageId) return;
     const outbox = deps.db.prepare(
-      `SELECT id, status, discord_message_id
+      `SELECT id, status, platform_message_id
          FROM outbox
         WHERE proposal_id = ? AND status IN ('sent', 'failed', 'cancelled')
         ORDER BY updated_at_ms DESC, id DESC
@@ -61,7 +61,7 @@ export function createProposalDeliverySyncHandler(deps: {
     ).get(proposalId) as {
       id: string;
       status: 'sent' | 'failed' | 'cancelled';
-      discord_message_id: string | null;
+      platform_message_id: string | null;
     } | undefined;
     if (!outbox && proposal.status === 'expired') {
       await deps.reporter({ status: 'cancelled', proposalId, outboxId: null });
@@ -75,14 +75,14 @@ export function createProposalDeliverySyncHandler(deps: {
       return;
     }
     if (outbox.status === 'sent') {
-      if (!outbox.discord_message_id) {
+      if (!outbox.platform_message_id) {
         throw new PermanentJobError('sent proposal outbox has no Discord message id');
       }
       await deps.reporter({
         status: 'sent',
         proposalId,
         outboxId: outbox.id,
-        discordMessageId: outbox.discord_message_id,
+        platformMessageId: outbox.platform_message_id,
       });
       return;
     }

@@ -13,7 +13,7 @@ let env: TestDb;
 
 function channel(id: string, name: string, visibility = 'org', allow = 1, parent: string | null = null) {
   env.db.prepare(`INSERT INTO channels
-    (id,guild_id,parent_id,type,name,is_thread,is_archived,is_locked,ingest_enabled,
+    (id,workspace_id,parent_id,type,name,is_thread,is_archived,is_locked,ingest_enabled,
      visibility_class,allow_interventions,discovered_at_ms,updated_at_ms)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
       id, GUILD, parent, parent ? 11 : 0, name, parent ? 1 : 0, 0, 0, 1,
@@ -23,14 +23,14 @@ function channel(id: string, name: string, visibility = 'org', allow = 1, parent
 
 function message(id: string, channelId: string) {
   env.db.prepare(`INSERT INTO messages
-    (id,guild_id,channel_id,author_id,author_display_name,content,created_at_ms,
+    (id,workspace_id,channel_id,author_id,author_display_name,content,created_at_ms,
      ingested_at_ms,updated_at_ms) VALUES (?,?,?,?,?,?,?,?,?)`)
     .run(id, GUILD, channelId, USER, 'User', `evidence ${id}`, NOW, NOW, NOW);
 }
 
 function memory(id: string, scopeType: 'org' | 'channel', scopeKey: string | null, originIds: string[], parent?: string) {
   env.db.prepare(`INSERT INTO memories
-    (id,guild_id,scope_type,scope_key,type,statement,status,confidence,importance,
+    (id,workspace_id,scope_type,scope_key,type,statement,status,confidence,importance,
      review_after_ms,first_seen_at_ms,last_confirmed_at_ms,supersedes_memory_id,
      created_at_ms,updated_at_ms)
     VALUES (?,?,?,?,?,'A durable statement','active',.9,.9,?,?,?,?,?,?)`).run(

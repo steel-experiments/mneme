@@ -495,7 +495,7 @@ function insertRunningRun(
 ): void {
   db.prepare(
     `INSERT INTO agent_runs
-       (id, guild_id, episode_id, run_type, prompt_version, provider, model, status,
+       (id, workspace_id, episode_id, run_type, prompt_version, provider, model, status,
         started_at_ms, execution_started_at_ms, thinking_level, shadow_of_run_id,
         tool_calls_json, model_turns_json, retrieval_provenance_json)
      VALUES (?, ?, ?, ?, ?, ?, ?, 'running', ?, ?, ?, ?, '[]', '[]', '[]')`,

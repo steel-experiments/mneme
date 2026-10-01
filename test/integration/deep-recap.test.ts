@@ -59,7 +59,7 @@ describe('durable deep recap worker', () => {
       sequence += 1;
       const runId = deps.runId ?? `deep-run-${sequence}`;
       env.db.prepare(`INSERT INTO agent_runs
-        (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms,cost_usd)
+        (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms,cost_usd)
         VALUES (?,?,'direct_answer','deep','faux','faux','completed',?,0.01)`)
         .run(runId, ids.guildId, NOW);
       const initial = deps.initialProvenanceMessages ?? [];
@@ -744,7 +744,7 @@ describe('durable deep recap worker', () => {
       billedRunId = deps.runId ?? '';
       expect(billedRunId).not.toBe('');
       env.db.prepare(`INSERT INTO agent_runs
-        (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms,
+        (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms,
          ended_at_ms,cost_usd)
         VALUES (?,?,'direct_answer','deep','faux','faux','failed',?,?,.07)`)
         .run(billedRunId, ids.guildId, deps.now, deps.now + 1);
@@ -821,7 +821,7 @@ describe('durable deep recap worker', () => {
       now: NOW - 500,
     });
     env.db.prepare(`INSERT INTO agent_runs
-      (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms,
+      (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms,
        ended_at_ms,cost_usd)
       VALUES ('crash-after-agent-run',?,'direct_answer','deep','faux','faux',
               'failed',?,?,1)`).run(ids.guildId, NOW - 500, NOW - 400);

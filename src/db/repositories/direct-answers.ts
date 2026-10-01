@@ -101,7 +101,7 @@ interface DirectAnswerRequestDbRow {
   job_id: string | null;
   run_id: string | null;
   outbox_id: string | null;
-  guild_id: string;
+  workspace_id: string;
   target_channel_id: string;
   question_created_at_ms: number;
   deadline_at_ms: number;
@@ -127,7 +127,7 @@ interface DirectAnswerRequestDbRow {
   updated_at_ms: number;
 }
 
-const COLUMNS = `source_message_id, job_id, run_id, outbox_id, guild_id, target_channel_id,
+const COLUMNS = `source_message_id, job_id, run_id, outbox_id, workspace_id, target_channel_id,
   question_created_at_ms, deadline_at_ms, response_intent_key, outcome_kind, reason_category,
   coverage_complete, coverage_omitted, coverage_truncation_reason,
   coverage_matched_messages, coverage_included_messages,
@@ -163,7 +163,7 @@ export function ensureDirectAnswerRequest(
   const responseIntentKey = directAnswerResponseIntentKey(input.sourceMessageId);
   prepareCached(db, 'direct_answer.request.ensure', `
     INSERT INTO direct_answer_requests (
-      source_message_id, job_id, guild_id, target_channel_id, question_created_at_ms,
+      source_message_id, job_id, workspace_id, target_channel_id, question_created_at_ms,
       deadline_at_ms, response_intent_key, outcome_kind, reason_category,
       created_at_ms, started_at_ms, updated_at_ms
     ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 'none', ?, ?, ?)
@@ -404,7 +404,7 @@ function mapRow(row: DirectAnswerRequestDbRow): DirectAnswerRequestRow {
     jobId: row.job_id,
     runId: row.run_id,
     outboxId: row.outbox_id,
-    guildId: row.guild_id,
+    guildId: row.workspace_id,
     targetChannelId: row.target_channel_id,
     questionCreatedAtMs: row.question_created_at_ms,
     deadlineAtMs: row.deadline_at_ms,

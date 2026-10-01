@@ -22,7 +22,7 @@ let env: TestDb;
 function seedChannel(id: string): void {
   env.db
     .prepare(
-      `INSERT INTO channels (id, guild_id, parent_id, type, name, topic, position, is_thread,
+      `INSERT INTO channels (id, workspace_id, parent_id, type, name, topic, position, is_thread,
          is_archived, is_locked, ingest_enabled, visibility_class, allow_interventions,
          permission_fingerprint, last_message_id, discovered_at_ms, updated_at_ms, deleted_at_ms,
          raw_json)

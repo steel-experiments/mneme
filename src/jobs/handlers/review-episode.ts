@@ -867,7 +867,7 @@ function loadEpisodeTranscript(
       createdAtIso: new Date(m.created_at_ms).toISOString(),
       replyTo: m.reply_to_message_id,
       reactions,
-      link: discordMessageLink(episode.guild_id, m.channel_id, m.id),
+      link: discordMessageLink(episode.workspace_id, m.channel_id, m.id),
     });
 
     prefilterMessages.push({
@@ -960,7 +960,7 @@ function loadAsynchronousFollowups(
         emoji: reaction.emojiKey,
         count: reaction.count,
       })),
-      link: discordMessageLink(episode.guild_id, message.channel_id, message.id),
+      link: discordMessageLink(episode.workspace_id, message.channel_id, message.id),
     }];
   });
 }

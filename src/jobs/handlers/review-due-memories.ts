@@ -373,7 +373,7 @@ function prepareScheduledNotification(
     const current = getMessage(db, messageId);
     if (
       !current
-      || current.guild_id !== guildId
+      || current.workspace_id !== guildId
       || current.deleted_at_ms !== null
       || isMnemeTestSurface(db, current.channel_id)
       || !resolveRetrievableChannelScope(db, current.channel_id)

@@ -19,7 +19,7 @@ export type ChannelPolicyReviewSupersededReason =
 
 export interface ChannelPolicyReviewRow {
   id: string;
-  guild_id: string;
+  workspace_id: string;
   channel_id: string;
   observed_parent_id: string | null;
   status: ChannelPolicyReviewStatus;
@@ -105,7 +105,7 @@ export function reconcileChannelPolicyReview(
     db,
     'channel-policy-reviews.insert',
     `INSERT INTO channel_policy_reviews (
-       id,guild_id,channel_id,observed_parent_id,status,delivery_state,
+       id,workspace_id,channel_id,observed_parent_id,status,delivery_state,
        created_at_ms,updated_at_ms
      ) VALUES (?,?,?,?,'pending','queued',?,?)`,
   ).run(id, input.guildId, input.channelId, input.observedParentId, input.now, input.now);
@@ -133,7 +133,7 @@ export function markChannelPolicyReviewSending(
 export function markChannelPolicyReviewSent(
   db: DatabaseSync,
   reviewId: string,
-  discordMessageId: string,
+  platformMessageId: string,
   now: number,
 ): boolean {
   return Number(prepareCached(
@@ -142,7 +142,7 @@ export function markChannelPolicyReviewSent(
       `UPDATE channel_policy_reviews
         SET delivery_state='sent',review_message_id=?,updated_at_ms=?
       WHERE id=? AND status<>'superseded' AND delivery_state='sending'`,
-  ).run(discordMessageId, now, reviewId).changes) > 0;
+  ).run(platformMessageId, now, reviewId).changes) > 0;
 }
 
 export function markChannelPolicyReviewDeliveryFailed(
@@ -193,7 +193,7 @@ export function countPendingChannelPolicyReviews(db: DatabaseSync, guildId: stri
     db,
     'channel-policy-reviews.count-pending',
     `SELECT COUNT(*) AS count FROM channel_policy_reviews
-      WHERE guild_id=? AND status='pending'`,
+      WHERE workspace_id=? AND status='pending'`,
   ).get(guildId) as { count: number };
   return row.count;
 }
@@ -203,7 +203,7 @@ export function countFailedChannelPolicyReviewDeliveries(db: DatabaseSync, guild
     db,
     'channel-policy-reviews.count-failed-delivery',
     `SELECT COUNT(*) AS count FROM channel_policy_reviews
-      WHERE guild_id=? AND status='pending' AND delivery_state='failed'`,
+      WHERE workspace_id=? AND status='pending' AND delivery_state='failed'`,
   ).get(guildId) as { count: number };
   return row.count;
 }

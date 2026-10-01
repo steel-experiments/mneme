@@ -133,7 +133,7 @@ function resolveTargetChannels(
 ): { ok: true; channelIds: string[] } | { ok: false; outcome: Exclude<SyncOutcome, { kind: 'enqueued' | 'not_authorized' }> } {
   if (input.channelId) {
     const channel = getChannel(db, input.channelId);
-    if (!channel || channel.guild_id !== input.guildId || channel.deleted_at_ms !== null) {
+    if (!channel || channel.workspace_id !== input.guildId || channel.deleted_at_ms !== null) {
       return { ok: false, outcome: { kind: 'channel_not_found', channelId: input.channelId } };
     }
     if (channel.visibility_class === 'excluded' || isMnemeTestSurface(db, channel.id)) {
@@ -145,7 +145,7 @@ function resolveTargetChannels(
     db,
     'sync.target_channels',
     `SELECT id FROM channels
-      WHERE guild_id = ? AND deleted_at_ms IS NULL AND visibility_class != 'excluded'
+      WHERE workspace_id = ? AND deleted_at_ms IS NULL AND visibility_class != 'excluded'
       ORDER BY id`,
   ).all(input.guildId) as Array<{ id: string }>;
   return {
@@ -214,7 +214,7 @@ export function handleFlushEpisodesCommand(input: HandleFlushInput, deps: Handle
   }
 
   const episode = getEpisode(deps.db, input.episodeId);
-  if (!episode || episode.guild_id !== input.guildId) {
+  if (!episode || episode.workspace_id !== input.guildId) {
     recordAdminEvent(deps.db, {
       guildId: input.guildId,
       actorUserId: input.actorUserId,

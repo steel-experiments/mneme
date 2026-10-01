@@ -94,7 +94,7 @@ export function runAttentionCutover(
          FROM proposals p
          JOIN agent_runs ar ON ar.id = p.run_id
         WHERE ar.run_type IN ('episode', 'scheduled_review')
-          AND ar.guild_id = @guildId
+          AND ar.workspace_id = @guildId
           AND p.status IN ('pending_review', 'approved', 'sent', 'dismissed', 'expired', 'failed')
           AND NOT EXISTS (
             SELECT 1 FROM proposal_attention_claims c WHERE c.proposal_id = p.id
@@ -130,7 +130,7 @@ export function runAttentionCutover(
           evidenceIds = [];
         }
         evidenceIds = [...new Set(evidenceIds)].filter((id) =>
-          getMessage(db, id)?.guild_id === options.guildId);
+          getMessage(db, id)?.workspace_id === options.guildId);
         if (evidenceIds.length === 0) continue;
         const covered = findConsumedTriggerMessageIds(db, options.guildId, evidenceIds);
         if (evidenceIds.every((id) => covered.has(id))) continue;
@@ -165,7 +165,7 @@ export function runAttentionCutover(
           prepareCached(
             db,
             'attention.cutover.synthetic_subject',
-            `INSERT INTO attention_subjects (id, guild_id, registration_state, created_at_ms)
+            `INSERT INTO attention_subjects (id, workspace_id, registration_state, created_at_ms)
              VALUES (?, ?, 'complete', ?)`,
           ).run(syntheticSubject, options.guildId, options.now);
           registerLegacyConsumedRevision(db, {
@@ -283,7 +283,7 @@ export function runAttentionCutover(
 
     // 5. Version marker, atomically with the work above.
     db.prepare(
-      `INSERT INTO admin_events (id, guild_id, actor_user_id, action, target, details_json, created_at_ms)
+      `INSERT INTO admin_events (id, workspace_id, actor_user_id, action, target, details_json, created_at_ms)
        VALUES (?, ?, ?, 'attention_cutover_complete', NULL, ?, ?)`,
     ).run(
       markerId,

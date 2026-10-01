@@ -36,7 +36,7 @@ export interface OutboxRow {
   dedupeKey: string;
   dedupeMarker: string | null;
   status: OutboxStatus;
-  discordMessageId: string | null;
+  platformMessageId: string | null;
   attempts: number;
   nextAttemptAtMs: number;
   lastError: string | null;
@@ -82,7 +82,7 @@ interface OutboxDbRow {
   dedupe_key: string;
   dedupe_marker: string | null;
   status: OutboxStatus;
-  discord_message_id: string | null;
+  platform_message_id: string | null;
   attempts: number;
   next_attempt_at_ms: number;
   last_error: string | null;
@@ -92,7 +92,7 @@ interface OutboxDbRow {
 }
 
 const COLUMNS = `id, proposal_id, channel_id, reply_to_message_id, content, dedupe_key, dedupe_marker,
-  status, discord_message_id, attempts, next_attempt_at_ms, last_error, created_at_ms,
+  status, platform_message_id, attempts, next_attempt_at_ms, last_error, created_at_ms,
   sent_at_ms, updated_at_ms`;
 
 const ENQUEUE_SQL = `
@@ -253,7 +253,7 @@ export function claimOutboxForSending(
 
 const MARK_SENT_SQL = `
   UPDATE outbox
-     SET status = 'sent', discord_message_id = @discordMessageId,
+     SET status = 'sent', platform_message_id = @platformMessageId,
          sent_at_ms = @sentAtMs, updated_at_ms = @now
    WHERE id = @id AND status = 'sending'
 `;
@@ -266,14 +266,14 @@ const MARK_SENT_SQL = `
 export function markOutboxSent(
   db: DatabaseSync,
   id: string,
-  discordMessageId: string,
+  platformMessageId: string,
   now: number,
   sentAtMs = now,
 ): boolean {
   return Number(
     prepareCached(db, 'outbox.mark_sent', MARK_SENT_SQL).run({
       id,
-      discordMessageId,
+      platformMessageId,
       now,
       sentAtMs,
     }).changes,
@@ -386,7 +386,7 @@ function mapOutboxRow(row: OutboxDbRow): OutboxRow {
     dedupeKey: row.dedupe_key,
     dedupeMarker: row.dedupe_marker,
     status: row.status,
-    discordMessageId: row.discord_message_id,
+    platformMessageId: row.platform_message_id,
     attempts: row.attempts,
     nextAttemptAtMs: row.next_attempt_at_ms,
     lastError: row.last_error,

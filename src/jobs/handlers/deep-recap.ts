@@ -428,7 +428,7 @@ function validateStoredChunkSources(
     if (
       !message
       || message.deleted_at_ms !== null
-      || message.guild_id !== deps.guildId
+      || message.workspace_id !== deps.guildId
       || fingerprintExposedMessage(deps.db, messageId) !== fingerprint
     ) {
       throw new PermanentJobError('DEEP_RECAP_SOURCE_CHANGED');

@@ -236,11 +236,11 @@ function insertEvidence(
 }
 
 const INSERT_MEMORY_SQL = `
-  INSERT INTO memories (id, guild_id, scope_type, scope_key, type, statement, normalized_key,
+  INSERT INTO memories (id, workspace_id, scope_type, scope_key, type, statement, normalized_key,
       status, confidence, importance, owner_user_id, valid_from_ms, review_after_ms,
       resolved_at_ms, first_seen_at_ms, last_confirmed_at_ms, created_by_run_id,
       supersedes_memory_id, metadata_json, created_at_ms, updated_at_ms)
-  VALUES (@id, @guild_id, @scope_type, @scope_key, @type, @statement, @normalized_key,
+  VALUES (@id, @workspace_id, @scope_type, @scope_key, @type, @statement, @normalized_key,
       @status, @confidence, @importance, @owner_user_id, @valid_from_ms, @review_after_ms,
       NULL, @now, @now, @created_by_run_id, @supersedes_memory_id, @metadata_json, @now, @now)
 `;
@@ -266,7 +266,7 @@ function insertMemory(db: DatabaseSync, input: MemoryInsert): string {
   const id = randomUUID();
   prepareCached(db, 'memory.insert', INSERT_MEMORY_SQL).run({
     id,
-    guild_id: input.guildId,
+    workspace_id: input.guildId,
     scope_type: input.scope.scopeType,
     scope_key: input.scope.scopeKey,
     type: input.type,
@@ -288,7 +288,7 @@ function insertMemory(db: DatabaseSync, input: MemoryInsert): string {
 
 export interface MemoryRow {
   id: string;
-  guild_id: string;
+  workspace_id: string;
   scope_type: string;
   scope_key: string | null;
   type: MemoryType;
@@ -317,7 +317,7 @@ export function getMemory(db: DatabaseSync, id: string): MemoryRow | undefined {
   if (!row) return undefined;
   return {
     id: String(row.id),
-    guild_id: String(row.guild_id),
+    workspace_id: String(row.workspace_id),
     scope_type: String(row.scope_type),
     scope_key: row.scope_key === null ? null : String(row.scope_key),
     type: String(row.type) as MemoryType,

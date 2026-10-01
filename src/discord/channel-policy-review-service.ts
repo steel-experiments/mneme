@@ -188,7 +188,7 @@ export function reconcileStoredChannelPolicyReview(
 export function rowIdentity(row: ChannelRow): ObservedChannelIdentity {
   return {
     id: row.id,
-    guildId: row.guild_id,
+    guildId: row.workspace_id,
     parentId: row.parent_id,
     isThread: row.is_thread === 1,
     type: row.type,

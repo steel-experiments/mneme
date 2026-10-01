@@ -85,10 +85,10 @@ export interface FixtureModeOptions {
  */
 function seedFixture(db: DatabaseSync, now: number): void {
   db.prepare(
-    'INSERT INTO guilds (id, name, owner_id, joined_at_ms, discovered_at_ms, updated_at_ms, raw_json) VALUES (?,?,?,?,?,?,NULL)',
+    'INSERT INTO workspaces (id, name, owner_id, joined_at_ms, discovered_at_ms, updated_at_ms, raw_json) VALUES (?,?,?,?,?,?,NULL)',
   ).run(GUILD, 'Fixture Guild', null, now, now, now);
 
-  const channelSql = `INSERT INTO channels (id, guild_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
+  const channelSql = `INSERT INTO channels (id, workspace_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
       ingest_enabled, visibility_class, allow_interventions, permission_fingerprint, last_message_id,
       discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json)
     VALUES (?, ?, NULL, 0, ?, NULL, NULL, 0, 0, 0, 1, ?, 1, NULL, NULL, ?, ?, NULL, NULL)`;

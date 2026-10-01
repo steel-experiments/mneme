@@ -82,7 +82,7 @@ function ev(id: string): MemoryEvidenceInput {
 /** Claims reference real proposal rows; seed one with its agent run. */
 function seedProposal(proposalId: string): void {
   env.db.prepare(
-    `INSERT INTO agent_runs (id,guild_id,run_type,prompt_version,provider,model,status,started_at_ms)
+    `INSERT INTO agent_runs (id,workspace_id,run_type,prompt_version,provider,model,status,started_at_ms)
      VALUES (?, ?, 'episode', 'p', 'faux', 'faux', 'completed', ?)`,
   ).run(`run-${proposalId}`, GUILD, NOW);
   env.db.prepare(

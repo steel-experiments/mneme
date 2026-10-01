@@ -46,7 +46,7 @@ afterEach(() => {
 
 function seedChannel(d: DatabaseSync, id: string, visibility: string, guildId: string): void {
   d.prepare(
-    `INSERT INTO channels (id, guild_id, parent_id, type, name, is_thread, is_archived, is_locked,
+    `INSERT INTO channels (id, workspace_id, parent_id, type, name, is_thread, is_archived, is_locked,
        ingest_enabled, visibility_class, allow_interventions, discovered_at_ms, updated_at_ms)
      VALUES (?, ?, NULL, 0, ?, 0, 0, 0, 1, ?, 1, ?, ?)`,
   ).run(id, guildId, id, visibility, NOW, NOW);
@@ -61,7 +61,7 @@ function seedMessage(
   content: string,
 ): void {
   d.prepare(
-    `INSERT INTO messages (id, guild_id, channel_id, author_id, author_display_name, content,
+    `INSERT INTO messages (id, workspace_id, channel_id, author_id, author_display_name, content,
        created_at_ms, ingested_at_ms, updated_at_ms)
      VALUES (?, ?, ?, ?, 'Alice', ?, ?, ?, ?)`,
   ).run(id, guildId, channelId, authorId, content, NOW, NOW, NOW);
@@ -85,7 +85,7 @@ function seedMemory(
   status = 'active',
 ): void {
   d.prepare(
-    `INSERT INTO memories (id, guild_id, scope_type, scope_key, type, statement, status,
+    `INSERT INTO memories (id, workspace_id, scope_type, scope_key, type, statement, status,
        confidence, importance, first_seen_at_ms, last_confirmed_at_ms, created_at_ms, updated_at_ms)
      VALUES (?, ?, ?, ?, 'decision', ?, ?, 0.8, 0.7, ?, ?, ?, ?)`,
   ).run(id, guildId, scopeType, scopeKey, `memory ${id}`, status, NOW, NOW, NOW, NOW);

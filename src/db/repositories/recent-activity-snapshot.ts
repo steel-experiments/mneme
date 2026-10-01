@@ -148,7 +148,7 @@ function allocateChannelQuotas(
 
 const MESSAGE_COLUMNS = `
   m.id AS message_id,
-  m.guild_id,
+  m.workspace_id,
   m.channel_id,
   c.name AS channel_name,
   c.parent_id AS parent_channel_id,
@@ -165,7 +165,7 @@ function mapMessage(row: Record<string, SQLOutputValue>): RecentActivitySnapshot
   const channelId = String(row.channel_id);
   return {
     messageId: String(row.message_id),
-    guildId: String(row.guild_id),
+    guildId: String(row.workspace_id),
     channelId,
     channelName: row.channel_name === null ? channelId : String(row.channel_name),
     parentChannelId: row.parent_channel_id === null ? null : String(row.parent_channel_id),
@@ -301,7 +301,7 @@ export function getRecentActivitySnapshot(
                ) AS bucket_rank
           FROM bucketed
       )
-      SELECT message_id, guild_id, channel_id, channel_name, parent_channel_id,
+      SELECT message_id, workspace_id, channel_id, channel_name, parent_channel_id,
              is_thread, author_id, author_display_name, author_is_bot,
              created_at_ms, reply_to_message_id, content
         FROM ranked

@@ -27,7 +27,7 @@ beforeEach(() => {
 });
 afterEach(() => t.cleanup());
 function message(id: string, time = NOW): void {
-  t.db.prepare(`INSERT INTO messages (id,guild_id,channel_id,author_id,author_display_name,content,created_at_ms,ingested_at_ms,updated_at_ms)
+  t.db.prepare(`INSERT INTO messages (id,workspace_id,channel_id,author_id,author_display_name,content,created_at_ms,ingested_at_ms,updated_at_ms)
     VALUES (?,?,?,?,?,'uniquesecret',?,?,?)`).run(id, identity.guildId, identity.channelId, identity.userId, 'Niko', time, time, time);
 }
 function request(): DeletionRequest {
@@ -124,7 +124,7 @@ describe('safe deletion requests', () => {
     expect(read(row).status).toBe('cancelled');
   });
   it('purges content, FTS, evidence, memory support, and durably queues attachment removal', async () => {
-    t.db.prepare(`INSERT INTO memories (id,guild_id,scope_type,type,statement,status,confidence,importance,
+    t.db.prepare(`INSERT INTO memories (id,workspace_id,scope_type,type,statement,status,confidence,importance,
       first_seen_at_ms,last_confirmed_at_ms,created_at_ms,updated_at_ms)
       VALUES ('memory',?,'org','decision','derived statement','active',0.8,0.7,?,?,?,?)`).run(identity.guildId, NOW, NOW, NOW, NOW);
     t.db.prepare("INSERT INTO memory_evidence (memory_id,message_id,stance,weight,created_at_ms) VALUES ('memory',?,'origin',1,?)").run(MSG, NOW);

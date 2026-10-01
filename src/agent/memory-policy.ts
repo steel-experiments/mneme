@@ -685,7 +685,7 @@ function findCanonicalEvidenceMatch(
            (SELECT COUNT(*) FROM memory_evidence all_me WHERE all_me.memory_id=mem.id) AS evidence_count
       FROM memories mem
       JOIN memory_evidence me ON me.memory_id=mem.id
-     WHERE mem.guild_id=? AND mem.status='active' AND mem.type=?
+     WHERE mem.workspace_id=? AND mem.status='active' AND mem.type=?
        AND me.message_id IN (${placeholders})
      GROUP BY mem.id, mem.statement
   `).all(deps.guildId, proposal.type, ...evidenceIds) as Array<{
@@ -986,7 +986,7 @@ function validateTriggerEvidenceWithoutWindow(
   quote: string,
 ): { ok: true; record: TriggerEvidenceRecord } | { ok: false; reason: AttentionRejectionReason } {
   const message = getMessage(deps.db, messageId);
-  if (!message || message.deleted_at_ms !== null || message.guild_id !== deps.guildId) {
+  if (!message || message.deleted_at_ms !== null || message.workspace_id !== deps.guildId) {
     return { ok: false, reason: 'trigger_changed' };
   }
   if (!resolveRetrievableChannelScope(deps.db, message.channel_id)) {

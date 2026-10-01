@@ -217,7 +217,7 @@ function promptQuestion(question: MessageRow): DirectAnswerPromptMessage {
     createdAtMs: question.created_at_ms,
     createdAtIso: new Date(question.created_at_ms).toISOString(),
     replyToMessageId: question.reply_to_message_id,
-    discordLink: discordMessageLink(question.guild_id, question.channel_id, question.id),
+    discordLink: discordMessageLink(question.workspace_id, question.channel_id, question.id),
   };
 }
 
@@ -440,7 +440,7 @@ export function createDirectAnswerHandler(
       request = suppressRequest(db, request, 'question_deleted', now);
       return outcomeFromRequest(request, messageId, channelId);
     }
-    if (question.channel_id !== pinnedChannelId || question.guild_id !== deps.guildId) {
+    if (question.channel_id !== pinnedChannelId || question.workspace_id !== deps.guildId) {
       request = suppressRequest(db, request, 'target_invalid', now);
       return outcomeFromRequest(request, messageId, channelId);
     }
@@ -1022,7 +1022,7 @@ function validateSafeFallback(
   if (!question) return { allow: false, reasonCategory: 'missing_source' };
   if (question.deleted_at_ms !== null) return { allow: false, reasonCategory: 'question_deleted' };
   if (
-    question.guild_id !== deps.guildId
+    question.workspace_id !== deps.guildId
     || question.channel_id !== input.pinnedChannelId
   ) return { allow: false, reasonCategory: 'target_invalid' };
 
@@ -1030,7 +1030,7 @@ function validateSafeFallback(
   const currentScope = resolveCurrentChannelScope(deps.db, input.pinnedChannelId);
   if (
     !channel
-    || channel.guild_id !== deps.guildId
+    || channel.workspace_id !== deps.guildId
     || channel.deleted_at_ms !== null
     || !currentScope
   ) return { allow: false, reasonCategory: 'target_invalid' };
@@ -1183,7 +1183,7 @@ export function validateDirectAnswer(
   }> = [];
   for (const id of messageIds) {
     const message = getMessage(db, id);
-    if (!message || message.deleted_at_ms !== null || message.guild_id !== input.guildId) {
+    if (!message || message.deleted_at_ms !== null || message.workspace_id !== input.guildId) {
       reasons.push(`exposed message "${id}" is no longer available`);
       continue;
     }

@@ -56,8 +56,8 @@ export function createExecuteDeletionHandler(deps: {
       for (const row of rows) {
         // Manifest rows are guild-bound again at execution, even though the
         // request captured them inside the configured guild transactionally.
-        const source = deps.db.prepare('SELECT guild_id FROM messages WHERE id = ?').get(row.message_id);
-        if (source?.guild_id !== deps.guildId) throw new Error('Deletion manifest guild mismatch');
+        const source = deps.db.prepare('SELECT workspace_id FROM messages WHERE id = ?').get(row.message_id);
+        if (source?.workspace_id !== deps.guildId) throw new Error('Deletion manifest guild mismatch');
         forgetMessageInTransaction(deps.db, { messageId: row.message_id, guildId: deps.guildId,
           actorUserId: request.approver_user_id, nowMs: now });
         deps.db.prepare('DELETE FROM deletion_request_messages WHERE request_id = ? AND message_id = ?').run(request.id, row.message_id);

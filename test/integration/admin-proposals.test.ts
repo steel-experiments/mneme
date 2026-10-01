@@ -71,7 +71,7 @@ afterEach(() => env.cleanup());
 /** Seed an `agent_runs` row so proposals have a valid run FK (idempotent). */
 function seedRun(runId: string, guild = GUILD): void {
   db.prepare(
-    `INSERT OR IGNORE INTO agent_runs (id, guild_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
+    `INSERT OR IGNORE INTO agent_runs (id, workspace_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
      VALUES(?, ?, NULL, 'episode', 'pv', 'faux', 'faux-1', 'completed', ?)`,
   ).run(runId, guild, NOW);
 }
@@ -80,10 +80,10 @@ function seedRun(runId: string, guild = GUILD): void {
 function seedOtherGuild(): void {
   const now = NOW;
   db.prepare(
-    'INSERT INTO guilds (id, name, owner_id, joined_at_ms, discovered_at_ms, updated_at_ms, raw_json) VALUES (?,?,?,?,?,?,NULL)',
+    'INSERT INTO workspaces (id, name, owner_id, joined_at_ms, discovered_at_ms, updated_at_ms, raw_json) VALUES (?,?,?,?,?,?,NULL)',
   ).run(OTHER_GUILD, 'Other', null, now, now, now);
   db.prepare(
-    `INSERT INTO channels (id, guild_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
+    `INSERT INTO channels (id, workspace_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
        ingest_enabled, visibility_class, allow_interventions, permission_fingerprint, last_message_id,
        discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json)
      VALUES (?, ?, NULL, 0, 'other', NULL, NULL, 0, 0, 0, 1, 'restricted', 0, NULL, NULL, ?, ?, NULL, NULL)`,
@@ -553,7 +553,7 @@ describe('cross-guild isolation', () => {
       targetChannelId: OTHER_CHANNEL,
     });
     // Force the other-guild proposal's run to reference OTHER_GUILD for realism.
-    db.prepare('UPDATE agent_runs SET guild_id = ? WHERE id = ?').run(OTHER_GUILD, 'run-other');
+    db.prepare('UPDATE agent_runs SET workspace_id = ? WHERE id = ?').run(OTHER_GUILD, 'run-other');
     // A proposal in the actor's GUILD.
     const oursId = seedProposal({ runId: 'run-ours' });
 

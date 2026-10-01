@@ -36,7 +36,7 @@ afterEach(() => env.cleanup());
 function seedRun(id = 'run-1'): string {
   env.db
     .prepare(
-      `INSERT INTO agent_runs (id, guild_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
+      `INSERT INTO agent_runs (id, workspace_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
        VALUES (?,?,NULL,'episode','pv','faux','faux-1','completed',?)`,
     )
     .run(id, GUILD, NOW);
@@ -92,7 +92,7 @@ describe('reconcileOutboxSending — confirms a sent match', () => {
     const report = await reconcileOutboxSending(
       env.db,
       fakeLookup({ [CHANNEL]: [{
-        discordMessageId: 'discord-existing',
+        platformMessageId: 'discord-existing',
         content: 'we already posted this',
         dedupeMarker: marker,
         sentAtMs: NOW - 60_000,
@@ -103,7 +103,7 @@ describe('reconcileOutboxSending — confirms a sent match', () => {
     expect(report).toEqual({ examined: 1, confirmed: 1, requeued: 0, cancelled: 0, errored: 0 });
     const row = getOutbox(env.db, id)!;
     expect(row.status).toBe('sent');
-    expect(row.discordMessageId).toBe('discord-existing');
+    expect(row.platformMessageId).toBe('discord-existing');
     expect(row.sentAtMs).toBe(NOW - 60_000);
     expect(getProposal(env.db, proposalId)!.status).toBe('sent');
   });
@@ -117,7 +117,7 @@ describe('reconcileOutboxSending — confirms a sent match', () => {
       env.db,
       fakeLookup({
         [CHANNEL]: [{
-          discordMessageId: 'discord-recovered',
+          platformMessageId: 'discord-recovered',
           content: 'posted before the crash',
           dedupeMarker: marker,
         }],
@@ -136,7 +136,7 @@ describe('reconcileOutboxSending — confirms a sent match', () => {
       status: 'sent',
       proposalId,
       outboxId: id,
-      discordMessageId: 'discord-recovered',
+      platformMessageId: 'discord-recovered',
     }]);
   });
 
@@ -148,7 +148,7 @@ describe('reconcileOutboxSending — confirms a sent match', () => {
       env.db,
       fakeLookup({
         [CHANNEL]: [{
-          discordMessageId: 'discord-durable',
+          platformMessageId: 'discord-durable',
           content: 'durable recovery',
           dedupeMarker: marker,
         }],
@@ -167,7 +167,7 @@ describe('reconcileOutboxSending — confirms a sent match', () => {
     const { id } = sendingRow({ content: 'heads up' });
     await reconcileOutboxSending(
       env.db,
-      fakeLookup({ [CHANNEL]: [{ discordMessageId: 'd-1', content: '  Heads Up.  ' }] }),
+      fakeLookup({ [CHANNEL]: [{ platformMessageId: 'd-1', content: '  Heads Up.  ' }] }),
       { now: NOW },
     );
     expect(getOutbox(env.db, id)!.status).toBe('queued');
@@ -180,7 +180,7 @@ describe('reconcileOutboxSending — requeues only after a clean no-match', () =
 
     const report = await reconcileOutboxSending(
       env.db,
-      fakeLookup({ [CHANNEL]: [{ discordMessageId: 'd-other', content: 'a different message' }] }),
+      fakeLookup({ [CHANNEL]: [{ platformMessageId: 'd-other', content: 'a different message' }] }),
       { now: NOW },
     );
 
@@ -226,7 +226,7 @@ describe('reconcileOutboxSending — scope and batching', () => {
 
     const report = await reconcileOutboxSending(
       env.db,
-      fakeLookup({ [CHANNEL]: [{ discordMessageId: 'd-1', content: 'posted', dedupeMarker: matched.marker }] }),
+      fakeLookup({ [CHANNEL]: [{ platformMessageId: 'd-1', content: 'posted', dedupeMarker: matched.marker }] }),
       { now: NOW },
     );
 
@@ -253,12 +253,12 @@ describe('reconcileOutboxSending — scope and batching', () => {
     }).outboxId;
     claimOutboxForSending(env.db, sentId, NOW);
     env.db
-      .prepare("UPDATE outbox SET status='sent', discord_message_id='d-x' WHERE id=?")
+      .prepare("UPDATE outbox SET status='sent', platform_message_id='d-x' WHERE id=?")
       .run(sentId);
 
     const report = await reconcileOutboxSending(
       env.db,
-      fakeLookup({ [CHANNEL]: [{ discordMessageId: 'd-s', content: 'sending', dedupeMarker: sending.marker }] }),
+      fakeLookup({ [CHANNEL]: [{ platformMessageId: 'd-s', content: 'sending', dedupeMarker: sending.marker }] }),
       { now: NOW },
     );
 

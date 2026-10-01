@@ -260,7 +260,7 @@ export function overviewSnapshot(
         .get() as Record<string, unknown> | undefined)?.n,
     ) ?? 0,
     guildId: s(
-      (prepareCached(db, 'inspector.overview.guild', 'SELECT id AS g FROM guilds ORDER BY discovered_at_ms LIMIT 1')
+      (prepareCached(db, 'inspector.overview.guild', 'SELECT id AS g FROM workspaces ORDER BY discovered_at_ms LIMIT 1')
         .get() as Record<string, unknown> | undefined)?.g,
     ) || null,
   };
@@ -588,7 +588,7 @@ export function episodeDetailPage(
     db,
     `inspector.episode.messages:${pred.sql}:${afterOrdinal !== null ? 1 : 0}`,
     `SELECT em.message_id, em.ordinal, m.author_display_name, m.content, m.created_at_ms,
-            m.guild_id, m.channel_id, m.deleted_at_ms
+            m.workspace_id, m.channel_id, m.deleted_at_ms
        FROM episode_messages em
        JOIN messages m ON m.id = em.message_id
        JOIN channels c ON c.id = m.channel_id
@@ -604,8 +604,8 @@ export function episodeDetailPage(
       content: s(r.content),
       createdAtMs: n(r.created_at_ms) ?? 0,
       discordLink:
-        r.deleted_at_ms === null && r.guild_id !== null
-          ? `https://discord.com/channels/${s(r.guild_id)}/${s(r.channel_id)}/${s(r.message_id)}`
+        r.deleted_at_ms === null && r.workspace_id !== null
+          ? `https://discord.com/channels/${s(r.workspace_id)}/${s(r.channel_id)}/${s(r.message_id)}`
           : null,
     })),
     PAGE_SIZE,
@@ -762,7 +762,7 @@ export function runDetailPage(db: DatabaseSync, _grant: RetrievalGrant, runId: s
   const r = prepareCached(
     db,
     'inspector.run.get',
-    `SELECT id, guild_id, episode_id, run_type, prompt_version, provider, model, status,
+    `SELECT id, workspace_id, episode_id, run_type, prompt_version, provider, model, status,
             started_at_ms, execution_started_at_ms, ended_at_ms, input_tokens, uncached_input_tokens,
             cache_read_tokens, cache_write_tokens, cache_write_1h_tokens, output_tokens,
             reasoning_tokens, provider_total_tokens, cost_usd, uncached_input_cost_usd,
@@ -833,7 +833,7 @@ export function runDetailPage(db: DatabaseSync, _grant: RetrievalGrant, runId: s
   return {
     run: {
       id: s(r.id),
-      guildId: s(r.guild_id),
+      guildId: s(r.workspace_id),
       runType: s(r.run_type),
       status: s(r.status),
       model: s(r.model),
@@ -918,7 +918,7 @@ export function focusedExposurePage(
     const rows = prepareCached(
       db,
       `inspector.run.exposure.messages:${messageRefs.length}:${pred.sql}`,
-      `SELECT m.id, m.guild_id, m.channel_id, c.name AS channel_name, m.author_display_name,
+      `SELECT m.id, m.workspace_id, m.channel_id, c.name AS channel_name, m.author_display_name,
               m.content, m.created_at_ms
          FROM messages m JOIN channels c ON c.id = m.channel_id
         WHERE m.id IN (${placeholders}) AND m.deleted_at_ms IS NULL AND ${pred.sql}`,
@@ -936,7 +936,7 @@ export function focusedExposurePage(
         fingerprintStatus: !current || ref.fingerprint === 'conflicting-exposure' || ref.fingerprint === 'unavailable-at-exposure'
           ? 'historic_unavailable' : current === ref.fingerprint ? 'unchanged' : 'changed',
         content: s(row.content), secondary: `${s(row.author_display_name)} in #${s(row.channel_name)}`,
-        atMs: n(row.created_at_ms), discordLink: `https://discord.com/channels/${s(row.guild_id)}/${s(row.channel_id)}/${ref.id}` });
+        atMs: n(row.created_at_ms), discordLink: `https://discord.com/channels/${s(row.workspace_id)}/${s(row.channel_id)}/${ref.id}` });
     } else {
       const memory = getMemoryDetails(db, grant, ref.id);
       if (!memory) { unavailableCount += 1; continue; }
@@ -1405,7 +1405,7 @@ export function resolveEntity(db: DatabaseSync, grant: RetrievalGrant, input: st
   const msgPred = channelVisibilityPredicate(grant);
   const msg = lookup(
     'messages m',
-    'm.id AS id, m.channel_id, m.guild_id',
+    'm.id AS id, m.channel_id, m.workspace_id',
     `AND m.deleted_at_ms IS NULL AND EXISTS (SELECT 1 FROM channels c WHERE c.id = m.channel_id AND ${msgPred.sql})`,
     msgPred.params,
   );
@@ -1414,7 +1414,7 @@ export function resolveEntity(db: DatabaseSync, grant: RetrievalGrant, input: st
       kind: 'message',
       id: s(msg.id),
       channelId: s(msg.channel_id) || null,
-      guildId: s(msg.guild_id) || null,
+      guildId: s(msg.workspace_id) || null,
     };
   }
   return null;

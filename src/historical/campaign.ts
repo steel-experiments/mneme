@@ -20,7 +20,7 @@ export interface HistoricalCampaignDefinition {
 
 export interface HistoricalCampaignRow {
   id: string;
-  guild_id: string;
+  workspace_id: string;
   status: HistoricalCampaignStatus;
   direction: 'newest_first';
   from_at_ms: number;
@@ -54,7 +54,7 @@ export function ensureHistoricalCampaign(
   transactionImmediate(db, () => {
     db.prepare(`
       INSERT OR IGNORE INTO historical_memory_campaigns
-        (id,guild_id,status,direction,from_at_ms,to_at_ms,provider,model,thinking_level,
+        (id,workspace_id,status,direction,from_at_ms,to_at_ms,provider,model,thinking_level,
          channel_ids_json,daily_budget_usd,total_budget_usd,created_at_ms,updated_at_ms)
       VALUES (?,?,'running',?,?,?,?,?,?,?,?,?,?,?)
     `).run(
@@ -74,7 +74,7 @@ export function ensureHistoricalCampaign(
     );
     const row = getHistoricalCampaign(db, definition.id);
     if (!row) throw new Error(`historical campaign ${definition.id} was not created`);
-    const immutableMatches = row.guild_id === definition.guildId
+    const immutableMatches = row.workspace_id === definition.guildId
       && row.direction === definition.direction
       && row.from_at_ms === definition.fromAtMs
       && row.to_at_ms === definition.toAtMs

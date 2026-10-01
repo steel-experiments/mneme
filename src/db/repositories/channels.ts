@@ -36,7 +36,7 @@ export interface ChannelUpsertInput {
 
 export interface ChannelRow {
   id: string;
-  guild_id: string;
+  workspace_id: string;
   parent_id: string | null;
   type: number;
   name: string | null;
@@ -57,12 +57,12 @@ export interface ChannelRow {
 
 const UPSERT_SQL = `
   INSERT INTO channels (
-    id, guild_id, parent_id, type, name, topic, position,
+    id, workspace_id, parent_id, type, name, topic, position,
     is_thread, is_archived, is_locked, ingest_enabled, visibility_class,
     allow_interventions, permission_fingerprint, last_message_id,
     discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json
   ) VALUES (
-    @id, @guild_id, @parent_id, @type, @name, @topic, @position,
+    @id, @workspace_id, @parent_id, @type, @name, @topic, @position,
     @is_thread, @is_archived, @is_locked, @ingest_enabled, @visibility_class,
     @allow_interventions, @permission_fingerprint, @last_message_id,
     @discovered_at_ms, @updated_at_ms, NULL, @raw_json
@@ -106,7 +106,7 @@ export function upsertChannel(db: DatabaseSync, input: ChannelUpsertInput): numb
   const stmt = prepareCached(db, 'channels.upsert', UPSERT_SQL);
   const result = stmt.run({
     id: input.id,
-    guild_id: input.guildId,
+    workspace_id: input.guildId,
     parent_id: input.parentId,
     type: input.type,
     name: input.name,

@@ -53,13 +53,13 @@ export interface MessageContext {
 }
 
 const COLUMNS = `
-  m.id AS message_id, m.guild_id, m.channel_id, m.author_id,
+  m.id AS message_id, m.workspace_id, m.channel_id, m.author_id,
   m.author_display_name, m.content, m.created_at_ms, m.reply_to_message_id
 `;
 
 function toCompact(row: Record<string, SQLOutputValue>): CompactMessage {
   const messageId = String(row.message_id);
-  const guildId = String(row.guild_id);
+  const guildId = String(row.workspace_id);
   const channelId = String(row.channel_id);
   return {
     messageId,

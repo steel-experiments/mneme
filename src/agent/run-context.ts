@@ -157,7 +157,7 @@ export function fingerprintExposedMessage(
   });
   return sha256([
     message.id,
-    message.guild_id,
+    message.workspace_id,
     message.channel_id,
     message.author_id,
     message.author_display_name,
@@ -219,7 +219,7 @@ export function fingerprintExposedMemory(
   });
   return sha256([
     memory.id,
-    memory.guild_id,
+    memory.workspace_id,
     memory.scope_type,
     memory.scope_key,
     memory.type,

@@ -58,7 +58,7 @@ export function resolveScheduledFeedback(
   const currentTarget = resolveRetrievableChannelScope(db, input.channelId);
   const grant = targetGrant(db, input.channelId);
   const targetChannel = getChannel(db, input.channelId);
-  if (!currentTarget || !grant || !targetChannel || targetChannel.guild_id !== input.guildId) return [];
+  if (!currentTarget || !grant || !targetChannel || targetChannel.workspace_id !== input.guildId) return [];
 
   const maxAssociations = Math.min(input.maxAssociations ?? 10, 10);
   const maxSubjects = Math.min(input.maxSubjects ?? 20, 20);
@@ -69,7 +69,7 @@ export function resolveScheduledFeedback(
     const reply = db.prepare(
       `SELECT m.id,m.channel_id,m.reply_to_message_id,m.author_id,u.is_bot
          FROM messages m LEFT JOIN users u ON u.id=m.author_id
-        WHERE m.id=? AND m.guild_id=? AND m.deleted_at_ms IS NULL`,
+        WHERE m.id=? AND m.workspace_id=? AND m.deleted_at_ms IS NULL`,
     ).get(messageId, input.guildId) as {
       id: string; channel_id: string; reply_to_message_id: string | null;
       author_id: string | null; is_bot: number | null;
@@ -78,16 +78,16 @@ export function resolveScheduledFeedback(
       || reply.author_id === input.mnemeId || reply.is_bot !== 0) continue;
 
     const matches = db.prepare(
-      `SELECT o.id AS outbox_id,o.channel_id,o.content,o.status,o.discord_message_id,
+      `SELECT o.id AS outbox_id,o.channel_id,o.content,o.status,o.platform_message_id,
               p.id AS proposal_id,p.target_channel_id,p.message,p.status AS proposal_status,
               ar.retrieval_provenance_json
          FROM outbox o
          JOIN proposals p ON p.id=o.proposal_id
          JOIN agent_runs ar ON ar.id=p.run_id AND ar.run_type='scheduled_review'
-        WHERE o.discord_message_id=?`,
+        WHERE o.platform_message_id=?`,
     ).all(reply.reply_to_message_id) as Array<{
       outbox_id: string; channel_id: string; content: string; status: string;
-      discord_message_id: string; proposal_id: string; target_channel_id: string;
+      platform_message_id: string; proposal_id: string; target_channel_id: string;
       message: string | null; proposal_status: string; retrieval_provenance_json: string;
     }>;
     if (matches.length !== 1) continue;
@@ -159,7 +159,7 @@ export function resolveScheduledFeedback(
       replyMessageId: reply.id,
       proposalId: match.proposal_id,
       outboxId: match.outbox_id,
-      notificationMessageId: match.discord_message_id,
+      notificationMessageId: match.platform_message_id,
       notificationText: match.message,
       subjects,
       provenanceScopes: provenance.memoryScopes,
