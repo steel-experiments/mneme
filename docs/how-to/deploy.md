@@ -7,7 +7,9 @@ start with [Install with the released image](#install-with-the-released-image).
 The repository also includes source-build configuration for Docker Compose,
 Coolify, and Railway.
 
-> **Release status: v1.0.0 published 2026-09-16.** The release workflow
+> **Release status: v1.0.0 published 2026-09-16.** It was published as
+> `ghcr.io/steel-experiments/cassandra-discord`. Releases from v2.0.0 use
+> `ghcr.io/steel-experiments/mneme`. The release workflow
 > verified the image on both architectures before the push, published it with
 > its digest in the release notes, and the same image runs live on Railway.
 > The released-image sections below describe the intended release contract.

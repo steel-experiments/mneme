@@ -91,7 +91,7 @@ The v1.0.0 tag on 2026-09-16 exercised this process end to end:
   deployment 4e9bd17c) with an existing volume, and the Railway backup drill
   passed against it.
 - The Railway template publishes from that digest-pinned service:
-  <https://railway.com/template/mneme>.
+  <https://railway.com/template/cassandra-for-discord>.
 
 Treat older history below this section as procedure only. Items that remain
 unverified after v1.0.0: none known.
