@@ -153,7 +153,7 @@ function seedChannel(
     id,
     guildId: options.guildId ?? GUILD,
     parentId: options.parentId ?? null,
-    type: options.isThread ? 11 : 0,
+    kind: options.isThread ? 'thread' : 'text',
     name: options.name,
     topic: null,
     position: null,

@@ -1,17 +1,13 @@
 import { type DatabaseSync } from '../db/database.js';
 import {
   discoverChannels,
-  THREAD_TYPES,
-  GUILD_TEXT,
-  GUILD_ANNOUNCEMENT,
-  GUILD_FORUM,
-  GUILD_MEDIA,
   type DiscoveredChannelDescriptor,
   type DiscoveryOptions,
   type DiscoveryResult,
   type DiscoveredChannelSummary,
 } from './discovery.js';
 import type { Logger } from '../logger.js';
+import type { ChannelKind } from '../platform/types.js';
 
 /**
  * Active and archived thread discovery (Sections 6.5, 7.1, 9.7).
@@ -27,13 +23,8 @@ import type { Logger } from '../logger.js';
  * stands in for `channel.threads.fetchArchived`.
  */
 
-/** Parent channel types that can host threads (Section 6.5). */
-export const THREAD_CAPABLE_PARENT_TYPES = new Set<number>([
-  GUILD_TEXT,
-  GUILD_ANNOUNCEMENT,
-  GUILD_FORUM,
-  GUILD_MEDIA,
-]);
+/** Parent channel kinds that can host threads (Section 6.5). */
+export const THREAD_CAPABLE_PARENT_KINDS = new Set<ChannelKind>(['text', 'announcement', 'forum', 'media']);
 
 /** One page of archived threads, mirroring the discord.js fetched-page shape. */
 export interface ArchivedThreadPage {
@@ -52,7 +43,7 @@ export interface ThreadArchiveSource {
 /** Reference to a thread-capable parent channel. */
 export interface ThreadParentRef {
   id: string;
-  type: number;
+  kind: ChannelKind;
   /** Parent-local permission; explicit false narrows the coarse guild capability. */
   canManageThreads?: boolean;
 }
@@ -95,14 +86,14 @@ export function formatArchivedPrivateCoverageWarning(): string {
   return 'Missing Manage Threads: archived private-thread discovery is incomplete';
 }
 
-/** Whether a channel type can host threads (Section 6.5). */
-export function isThreadCapableParent(type: number): boolean {
-  return THREAD_CAPABLE_PARENT_TYPES.has(type);
+/** Whether a channel kind can host threads (Section 6.5). */
+export function isThreadCapableParent(kind: ChannelKind): boolean {
+  return THREAD_CAPABLE_PARENT_KINDS.has(kind);
 }
 
 /** Whether a descriptor represents a thread. */
 export function isThreadDescriptor(d: DiscoveredChannelDescriptor): boolean {
-  return THREAD_TYPES.has(d.type);
+  return d.kind === 'thread';
 }
 
 /** Extract active thread descriptors from a guild channel list. */
@@ -159,7 +150,7 @@ export async function fetchArchivedThreads(
   };
 
   for (const parent of parents) {
-    if (!isThreadCapableParent(parent.type)) continue;
+    if (!isThreadCapableParent(parent.kind)) continue;
 
     // Public archived: always enumerated.
     await fetchEndpoint((cursor) => source.fetchPublicArchived(parent.id, cursor));
@@ -201,8 +192,8 @@ export async function discoverThreads(db: DatabaseSync, input: ThreadDiscoveryIn
 
   if (input.archiveSource) {
     const parents: ThreadParentRef[] = input.parents
-      .filter((p) => isThreadCapableParent(p.type))
-      .map((p) => ({ id: p.id, type: p.type, canManageThreads: p.capabilities?.canManageThreads }));
+      .filter((p) => isThreadCapableParent(p.kind))
+      .map((p) => ({ id: p.id, kind: p.kind, canManageThreads: p.capabilities?.canManageThreads }));
     let archived: Awaited<ReturnType<typeof fetchArchivedThreads>>;
     try {
       archived = await fetchArchivedThreads(input.archiveSource, parents, {

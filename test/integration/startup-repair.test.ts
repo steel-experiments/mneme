@@ -134,7 +134,7 @@ describe('durable startup repair', () => {
   it('expires a legacy pending scheduled proposal aimed at the approval inbox', () => {
     const reviewChannelId = '100000000000000099';
     upsertChannel(env.db, {
-      id: reviewChannelId, guildId: ids.guildId, parentId: null, type: 0,
+      id: reviewChannelId, guildId: ids.guildId, parentId: null, kind: 'text',
       name: 'mneme-review', topic: null, position: null, isThread: false,
       isArchived: false, isLocked: false, ingestEnabled: true,
       visibilityClass: 'review_only', allowInterventions: false,
@@ -561,7 +561,7 @@ describe('durable startup repair', () => {
       id,
       guildId: ids.guildId,
       parentId: parentIdValue,
-      type: isThread ? 11 : 0,
+      kind: isThread ? 'thread' as const : 'text' as const,
       name,
       topic: null,
       position: null,

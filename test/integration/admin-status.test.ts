@@ -69,10 +69,10 @@ const RUNTIME: StatusRuntimeInputs = {
 
 function seedChannel(id: string, cls: string, name: string, allowInterventions = 0): void {
   db.prepare(
-    `INSERT INTO channels (id, workspace_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
+    `INSERT INTO channels (id, workspace_id, parent_id, kind, name, topic, position, is_thread, is_archived, is_locked,
        ingest_enabled, visibility_class, allow_interventions, permission_fingerprint, last_message_id,
        discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json)
-     VALUES (?, ?, NULL, 0, ?, NULL, NULL, 0, 0, 0, 1, ?, ?, NULL, NULL, ?, ?, NULL, NULL)`,
+     VALUES (?, ?, NULL, 'text', ?, NULL, NULL, 0, 0, 0, 1, ?, ?, NULL, NULL, ?, ?, NULL, NULL)`,
   ).run(id, GUILD, name, cls, allowInterventions, NOW, NOW);
 }
 

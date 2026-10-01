@@ -13,10 +13,10 @@ let env: TestDb;
 
 function channel(id: string, name: string, visibility = 'org', allow = 1, parent: string | null = null) {
   env.db.prepare(`INSERT INTO channels
-    (id,workspace_id,parent_id,type,name,is_thread,is_archived,is_locked,ingest_enabled,
+    (id,workspace_id,parent_id,kind,name,is_thread,is_archived,is_locked,ingest_enabled,
      visibility_class,allow_interventions,discovered_at_ms,updated_at_ms)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
-      id, GUILD, parent, parent ? 11 : 0, name, parent ? 1 : 0, 0, 0, 1,
+      id, GUILD, parent, parent ? 'thread' : 'text', name, parent ? 1 : 0, 0, 0, 1,
       visibility, allow, NOW, NOW,
     );
 }

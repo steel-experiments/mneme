@@ -39,16 +39,16 @@ afterEach(() => env.cleanup());
 
 function seedChannel(id: string, cls: string, name: string, guild = GUILD): void {
   db.prepare(
-    `INSERT INTO channels (id, workspace_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
+    `INSERT INTO channels (id, workspace_id, parent_id, kind, name, topic, position, is_thread, is_archived, is_locked,
        ingest_enabled, visibility_class, allow_interventions, permission_fingerprint, last_message_id,
        discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json)
-     VALUES (?, ?, NULL, 0, ?, NULL, NULL, 0, 0, 0, 1, ?, 0, NULL, NULL, ?, ?, NULL, NULL)`,
+     VALUES (?, ?, NULL, 'text', ?, NULL, NULL, 0, 0, 0, 1, ?, 0, NULL, NULL, ?, ?, NULL, NULL)`,
   ).run(id, guild, name, cls, NOW, NOW);
 }
 
 function seedThread(id: string, parentId: string, cls: string, name: string): void {
   seedChannel(id, cls, name);
-  db.prepare('UPDATE channels SET parent_id=?, type=11, is_thread=1 WHERE id=?')
+  db.prepare("UPDATE channels SET parent_id=?, kind='thread', is_thread=1 WHERE id=?")
     .run(parentId, id);
 }
 

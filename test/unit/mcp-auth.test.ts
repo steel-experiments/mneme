@@ -65,7 +65,7 @@ function channel(id: string, visibility: VisibilityClass): ChannelUpsertInput {
     id,
     guildId: GUILD,
     parentId: null,
-    type: 0,
+    kind: 'text',
     name: id,
     topic: null,
     position: null,
@@ -159,7 +159,7 @@ describe('issuance round-trip', () => {
     upsertChannel(env.db, {
       ...channel(threadId, 'restricted'),
       parentId: ORG_CHANNEL,
-      type: 11,
+      kind: 'thread',
       isThread: true,
     });
     const outcome = create({ channelIds: [threadId] });

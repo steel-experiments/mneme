@@ -57,7 +57,7 @@ afterEach(() => {
 
 function channel(id: string, visibility: VisibilityClass, name: string): ChannelUpsertInput {
   return {
-    id, guildId: GUILD, parentId: null, type: 0, name, topic: null, position: null,
+    id, guildId: GUILD, parentId: null, kind: 'text', name, topic: null, position: null,
     isThread: false, isArchived: false, isLocked: false, ingestEnabled: true,
     visibilityClass: visibility, allowInterventions: false, permissionFingerprint: null,
     lastMessageId: null, discoveredAtMs: NOW, updatedAtMs: NOW, rawJson: null,

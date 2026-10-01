@@ -110,7 +110,7 @@ function setup(): Env {
 
 function channel(id: string, visibility: 'org' | 'restricted' | 'review_only' | 'excluded') {
   return {
-    id, guildId: GUILD, parentId: null, type: 0, name: id, topic: null, position: null,
+    id, guildId: GUILD, parentId: null, kind: 'text' as const, name: id, topic: null, position: null,
     isThread: false, isArchived: false, isLocked: false, ingestEnabled: true,
     visibilityClass: visibility, allowInterventions: false, permissionFingerprint: null,
     lastMessageId: null, discoveredAtMs: NOW, updatedAtMs: NOW, rawJson: null,

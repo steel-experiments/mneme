@@ -18,6 +18,7 @@ import {
   resolveObservedChannelPolicy,
 } from '../policy/channel-policy-review-service.js';
 import type { ChannelPolicySource } from '../config.js';
+import type { ChannelKind } from '../platform/types.js';
 
 /**
  * Channel discovery and access auditing (Sections 6.3, 6.5, 7, 9.2, 48 Ingestion).
@@ -33,30 +34,10 @@ import type { ChannelPolicySource } from '../config.js';
  * discord.js adapter converts guild channels into descriptors in production.
  */
 
-// Discord channel types (Section 6.5). Numeric to match raw payloads and avoid
-// coupling the discovery core to discord.js enum names.
-export const GUILD_TEXT = 0;
-export const GUILD_ANNOUNCEMENT = 5;
-export const ANNOUNCEMENT_THREAD = 10;
-export const PUBLIC_THREAD = 11;
-export const PRIVATE_THREAD = 12;
-export const GUILD_FORUM = 15;
-export const GUILD_MEDIA = 16;
-export const GUILD_CATEGORY = 4;
-
-/** Text-bearing channel types discovery enumerates (Section 6.5). */
-export const SUPPORTED_CHANNEL_TYPES = new Set<number>([
-  GUILD_TEXT,
-  GUILD_ANNOUNCEMENT,
-  GUILD_FORUM,
-  GUILD_MEDIA,
-  ANNOUNCEMENT_THREAD,
-  PUBLIC_THREAD,
-  PRIVATE_THREAD,
-]);
-
-/** Thread-shaped channel types (forum/media posts are represented as threads). */
-export const THREAD_TYPES = new Set<number>([ANNOUNCEMENT_THREAD, PUBLIC_THREAD, PRIVATE_THREAD]);
+/** Channel kinds discovery enumerates (Section 6.5). */
+export function isSupportedChannelKind(kind: ChannelKind): boolean {
+  return kind !== 'category' && kind !== 'other';
+}
 
 export type SyncState = 'pending' | 'backfilling' | 'live' | 'error' | 'excluded';
 
@@ -67,7 +48,7 @@ export type SyncState = 'pending' | 'backfilling' | 'live' | 'error' | 'excluded
 export interface DiscoveredChannelDescriptor {
   id: string;
   parentId: string | null;
-  type: number;
+  kind: ChannelKind;
   name: string | null;
   topic?: string | null;
   position?: number | null;
@@ -100,7 +81,7 @@ export interface DiscoveryOptions {
 export interface DiscoveredChannelSummary {
   id: string;
   name: string | null;
-  type: number;
+  kind: ChannelKind;
   isThread: boolean;
   /** Resolved visibility class after policy inheritance (Section 7.1). */
   visibilityClass: VisibilityClass;
@@ -177,7 +158,7 @@ function resolveCategoryId(byId: Map<string, DiscoveredChannelDescriptor>, chann
   let guard = 0;
   while (current && guard < 16) {
     guard += 1;
-    if (current.type === GUILD_CATEGORY) return current.id;
+    if (current.kind === 'category') return current.id;
     if (!current.parentId) return null;
     current = byId.get(current.parentId);
   }
@@ -214,18 +195,18 @@ export function discoverChannels(
   // Persist every accessible supported channel (and excluded ones) in one transaction.
   transaction(db, () => {
     for (const d of descriptors) {
-      if (!SUPPORTED_CHANNEL_TYPES.has(d.type)) continue;
+      if (!isSupportedChannelKind(d.kind)) continue;
 
       const caps = d.capabilities ?? NO_ACCESS;
       const fingerprint = computePermissionFingerprint(caps);
-      const isThread = THREAD_TYPES.has(d.type);
+      const isThread = d.kind === 'thread';
       const categoryId = resolveCategoryId(byId, d.id);
       const identity = {
         id: d.id,
         guildId: options.guildId,
         parentId: d.parentId,
         isThread,
-        type: d.type,
+        kind: d.kind,
         categoryId,
       };
       const resolved = resolveObservedChannelPolicy(db, options.policy, identity, {
@@ -242,7 +223,7 @@ export function discoverChannels(
       const summary: DiscoveredChannelSummary = {
         id: d.id,
         name: d.name,
-        type: d.type,
+        kind: d.kind,
         isThread,
         visibilityClass: rule.visibility,
         policySource: resolved.source,
@@ -266,7 +247,7 @@ export function discoverChannels(
             id: existing.id,
             guildId: existing.workspace_id,
             parentId: existing.parent_id,
-            type: existing.type,
+            kind: existing.kind,
             name: existing.name,
             topic: existing.topic,
             position: existing.position,
@@ -310,7 +291,7 @@ export function discoverChannels(
           id: d.id,
           guildId: options.guildId,
           parentId: d.parentId,
-          type: d.type,
+          kind: d.kind,
           name: d.name,
           topic: d.topic ?? null,
           position: d.position ?? null,
@@ -353,7 +334,7 @@ export function discoverChannels(
         id: d.id,
         guildId: options.guildId,
         parentId: d.parentId,
-        type: d.type,
+        kind: d.kind,
         name: d.name,
         topic: d.topic ?? null,
         position: d.position ?? null,
@@ -412,7 +393,7 @@ export function discoverChannels(
     // fail-closed default quarantine for incomplete/failed coverage.
     const missing = db.prepare(`SELECT * FROM channels
       WHERE workspace_id = ? AND deleted_at_ms IS NULL`).all(options.guildId) as unknown as Array<{
-        id: string; name: string | null; type: number; is_thread: number;
+        id: string; name: string | null; kind: ChannelKind; is_thread: number;
         visibility_class: VisibilityClass;
       }>;
     const noAccessFingerprint = computePermissionFingerprint(NO_ACCESS);
@@ -445,7 +426,7 @@ export function discoverChannels(
             guildId: missingRow.workspace_id,
             parentId: missingRow.parent_id,
             isThread: missingRow.is_thread === 1,
-            type: missingRow.type,
+            kind: missingRow.kind,
           },
           options.now,
           { accessible: false, channelPolicySource: options.channelPolicySource },
@@ -454,7 +435,7 @@ export function discoverChannels(
       inaccessible.push({
         id: row.id,
         name: row.name,
-        type: row.type,
+        kind: row.kind,
         isThread: row.is_thread === 1,
         visibilityClass: 'excluded',
         policySource: 'default',

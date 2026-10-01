@@ -88,10 +88,10 @@ function seedFixture(db: DatabaseSync, now: number): void {
     'INSERT INTO workspaces (id, name, owner_id, joined_at_ms, discovered_at_ms, updated_at_ms, raw_json) VALUES (?,?,?,?,?,?,NULL)',
   ).run(GUILD, 'Fixture Guild', null, now, now, now);
 
-  const channelSql = `INSERT INTO channels (id, workspace_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
+  const channelSql = `INSERT INTO channels (id, workspace_id, parent_id, kind, name, topic, position, is_thread, is_archived, is_locked,
       ingest_enabled, visibility_class, allow_interventions, permission_fingerprint, last_message_id,
       discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json)
-    VALUES (?, ?, NULL, 0, ?, NULL, NULL, 0, 0, 0, 1, ?, 1, NULL, NULL, ?, ?, NULL, NULL)`;
+    VALUES (?, ?, NULL, 'text', ?, NULL, NULL, 0, 0, 0, 1, ?, 1, NULL, NULL, ?, ?, NULL, NULL)`;
   db.prepare(channelSql).run(ORG_CHANNEL, GUILD, 'general', 'org', now, now);
   db.prepare(channelSql).run(RESTRICTED_CHANNEL, GUILD, 'confidential', 'restricted', now, now);
 

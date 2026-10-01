@@ -1,6 +1,12 @@
 // ABOUTME: Platform-neutral types shared by the core and every chat-platform adapter.
 // ABOUTME: Adapters normalize platform payloads into these shapes before the core sees them.
 
+/**
+ * Platform-neutral channel kind (plan 002 decision 17). `other` is a channel the
+ * platform reports but discovery does not enumerate, such as a voice channel.
+ */
+export type ChannelKind = 'text' | 'announcement' | 'forum' | 'media' | 'category' | 'thread' | 'other';
+
 export interface NormalizedAuthor {
   id: string;
   username: string | null;

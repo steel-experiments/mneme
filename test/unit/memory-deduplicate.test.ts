@@ -91,7 +91,7 @@ describe('duplicate candidate detection', () => {
       id: REST_CH,
       guildId: GUILD,
       parentId: null,
-      type: 0,
+      kind: 'text',
       name: 'restricted',
       topic: null,
       position: null,

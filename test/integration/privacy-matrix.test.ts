@@ -335,7 +335,7 @@ describe('46.3 case 7 — reclassification hides the memory on the next read', (
       id: PUB,
       guildId: GUILD,
       parentId: null,
-      type: 0,
+      kind: 'text',
       name: PUB,
       topic: null,
       position: null,

@@ -289,9 +289,9 @@ describe('ingestEpisodeActivity / applyEpisodeTrigger — DB effects', () => {
     const otherChannel = '999000000000000099';
     // Seed the other channel row for the episodes FK.
     db.prepare(
-      `INSERT INTO channels (id, workspace_id, parent_id, type, name, is_thread, is_archived, is_locked,
+      `INSERT INTO channels (id, workspace_id, parent_id, kind, name, is_thread, is_archived, is_locked,
          ingest_enabled, visibility_class, allow_interventions, discovered_at_ms, updated_at_ms)
-       VALUES (?, ?, NULL, 0, 'other', 0, 0, 0, 1, 'restricted', 0, ?, ?)`,
+       VALUES (?, ?, NULL, 'text', 'other', 0, 0, 0, 1, 'restricted', 0, ?, ?)`,
     ).run(otherChannel, GUILD, NOW, NOW);
     const b = nm({ id: 'b1', channelId: otherChannel });
     persist(a); persist(b);

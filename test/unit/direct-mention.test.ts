@@ -260,10 +260,10 @@ describe('enqueueDirectAnswerForMention', () => {
   it('never changes the current channel visibility grant or policy', () => {
     // Seed a restricted channel with a known policy and one access audit.
     db.prepare(
-      `INSERT INTO channels (id, workspace_id, parent_id, type, name, is_thread, is_archived, is_locked,
+      `INSERT INTO channels (id, workspace_id, parent_id, kind, name, is_thread, is_archived, is_locked,
          ingest_enabled, visibility_class, allow_interventions, permission_fingerprint,
          last_message_id, discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json)
-       VALUES (?, ?, NULL, 0, 'secret', 0, 0, 0, 1, 'restricted', 0, 'fp', NULL, ?, ?, NULL, NULL)`,
+       VALUES (?, ?, NULL, 'text', 'secret', 0, 0, 0, 1, 'restricted', 0, 'fp', NULL, ?, ?, NULL, NULL)`,
     ).run('200000000000000555', GUILD, NOW, NOW);
 
     enqueueDirectAnswerForMention(

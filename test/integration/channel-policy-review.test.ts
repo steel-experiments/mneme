@@ -48,9 +48,9 @@ review_channel:
 
 function insertChannel(t: TestDb, id: string, name: string, parentId: string | null = null) {
   t.db.prepare(`INSERT INTO channels
-    (id,workspace_id,parent_id,type,name,is_thread,is_archived,is_locked,ingest_enabled,
+    (id,workspace_id,parent_id,kind,name,is_thread,is_archived,is_locked,ingest_enabled,
      visibility_class,allow_interventions,discovered_at_ms,updated_at_ms)
-    VALUES (?,?,?,0,?,0,0,0,1,'restricted',0,?,?)`).run(id, GUILD, parentId, name, NOW, NOW);
+    VALUES (?,?,?,'text',?,0,0,0,1,'restricted',0,?,?)`).run(id, GUILD, parentId, name, NOW, NOW);
 }
 
 describe('durable new-channel policy review', () => {
@@ -82,7 +82,7 @@ describe('durable new-channel policy review', () => {
       WHERE type='deliver_channel_policy_review' AND status IN ('queued','running')`).get())
       .toEqual({ n: 1 });
     expect(resolveObservedChannelPolicy(db, policy(), {
-      id: CHANNEL, guildId: GUILD, parentId: null, isThread: false, type: 0,
+      id: CHANNEL, guildId: GUILD, parentId: null, isThread: false, kind: 'text',
     })).toMatchObject({ source: 'default', needsReview: true, rule: { visibility: 'restricted' } });
   });
 
@@ -93,7 +93,7 @@ describe('durable new-channel policy review', () => {
     expect(result.created).toBe(false);
     expect(getActiveChannelPolicyReview(db, CHANNEL)).toBeUndefined();
     expect(resolveObservedChannelPolicy(db, policy(), {
-      id: CHANNEL, guildId: GUILD, parentId: null, isThread: false, type: 0,
+      id: CHANNEL, guildId: GUILD, parentId: null, isThread: false, kind: 'text',
     }).rule.visibility).toBe('restricted');
   });
 
@@ -108,9 +108,9 @@ describe('durable new-channel policy review', () => {
 
     const thread = '100000000000000007';
     t!.db.prepare(`INSERT INTO channels
-      (id,workspace_id,parent_id,type,name,is_thread,is_archived,is_locked,ingest_enabled,
+      (id,workspace_id,parent_id,kind,name,is_thread,is_archived,is_locked,ingest_enabled,
        visibility_class,allow_interventions,discovered_at_ms,updated_at_ms)
-      VALUES (?,?,?,11,'thread',1,0,0,1,'restricted',0,?,?)`)
+      VALUES (?,?,?,'thread','thread',1,0,0,1,'restricted',0,?,?)`)
       .run(thread, GUILD, CHANNEL, NOW, NOW);
     expect(reconcileStoredChannelPolicyReview(db, policy(), thread, NOW).created).toBe(false);
   });
@@ -119,9 +119,9 @@ describe('durable new-channel policy review', () => {
     const db = setup().db;
     const voice = '100000000000000009';
     t!.db.prepare(`INSERT INTO channels
-      (id,workspace_id,parent_id,type,name,is_thread,is_archived,is_locked,ingest_enabled,
+      (id,workspace_id,parent_id,kind,name,is_thread,is_archived,is_locked,ingest_enabled,
        visibility_class,allow_interventions,discovered_at_ms,updated_at_ms)
-      VALUES (?,?,?,2,'voice',0,0,0,1,'restricted',0,?,?)`)
+      VALUES (?,?,?,'other','voice',0,0,0,1,'restricted',0,?,?)`)
       .run(voice, GUILD, null, NOW, NOW);
     expect(reconcileStoredChannelPolicyReview(db, policy(), voice, NOW)).toMatchObject({
       created: false,
@@ -144,7 +144,7 @@ review_channel:
   accepts_scopes: [org, restricted, review_only]
 `);
     expect(resolveObservedChannelPolicy(db, categoryPolicy, {
-      id: CHANNEL, guildId: GUILD, parentId: category, isThread: false, type: 0,
+      id: CHANNEL, guildId: GUILD, parentId: category, isThread: false, kind: 'text',
     })).toMatchObject({ source: 'category', needsReview: false, rule: { visibility: 'org' } });
     expect(db.prepare('SELECT 1 FROM channels WHERE id=?').get(category)).toBeUndefined();
   });
@@ -243,7 +243,7 @@ review_channel:
     expect(db.prepare('SELECT ingest_enabled,visibility_class,allow_interventions FROM channels WHERE id=?')
       .get(CHANNEL)).toEqual({ ingest_enabled: 1, visibility_class: 'org', allow_interventions: 0 });
     expect(resolveObservedChannelPolicy(db, policy(), {
-      id: CHANNEL, guildId: GUILD, parentId: null, isThread: false, type: 0,
+      id: CHANNEL, guildId: GUILD, parentId: null, isThread: false, kind: 'text',
     })).toMatchObject({ source: 'review', needsReview: false, rule: { visibility: 'org' } });
   });
 
@@ -260,7 +260,7 @@ review_channel:
       VALUES (?,'other',NULL,?,?,?,NULL)`).run(otherGuild, NOW, NOW, NOW);
     db.prepare('UPDATE channel_policy_reviews SET workspace_id=? WHERE id=?').run(otherGuild, reviewId);
     expect(resolveObservedChannelPolicy(db, policy(), {
-      id: CHANNEL, guildId: GUILD, parentId: null, isThread: false, type: 0,
+      id: CHANNEL, guildId: GUILD, parentId: null, isThread: false, kind: 'text',
     })).toMatchObject({ source: 'default', needsReview: true, rule: { visibility: 'restricted' } });
   });
 
@@ -292,7 +292,7 @@ review_channel:
     expect(getChannelPolicyReview(db, firstId)).toMatchObject({ status: 'superseded', superseded_reason: 'parent_changed' });
     expect(getActiveChannelPolicyReview(db, CHANNEL)).toMatchObject({ status: 'pending', observed_parent_id: category });
     expect(resolveObservedChannelPolicy(db, policy(), {
-      id: CHANNEL, guildId: GUILD, parentId: category, isThread: false, type: 0,
+      id: CHANNEL, guildId: GUILD, parentId: category, isThread: false, kind: 'text',
     }).rule.visibility).toBe('restricted');
   });
 });
@@ -334,7 +334,7 @@ describe('basic-mode policy source and classification reviews', () => {
     // Discovery behavior itself is unchanged: the unselected channel stays
     // fail-closed restricted through the default rule.
     expect(resolveObservedChannelPolicy(db, basicPolicy(), {
-      id: CHANNEL, guildId: GUILD, parentId: null, isThread: false, type: 0,
+      id: CHANNEL, guildId: GUILD, parentId: null, isThread: false, kind: 'text',
     })).toMatchObject({ source: 'default', rule: { ingest: false, visibility: 'restricted' } });
   });
 
@@ -364,7 +364,7 @@ describe('basic-mode policy source and classification reviews', () => {
     // The row is still active, yet the unselected channel resolves through the
     // fail-closed default rather than the stale org decision.
     expect(resolveObservedChannelPolicy(db, basicPolicy(), {
-      id: CHANNEL, guildId: GUILD, parentId: null, isThread: false, type: 0,
+      id: CHANNEL, guildId: GUILD, parentId: null, isThread: false, kind: 'text',
     }, { channelPolicySource: 'basic' })).toMatchObject({
       source: 'default', rule: { ingest: false, visibility: 'restricted' },
     });

@@ -23,7 +23,7 @@ function seedChannel(id: string, visibility: 'org' | 'restricted'): void {
     id,
     guildId: GUILD,
     parentId: null,
-    type: 0,
+    kind: 'text',
     name: id,
     topic: null,
     position: null,

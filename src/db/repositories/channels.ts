@@ -2,6 +2,7 @@ import { type DatabaseSync } from '../database.js';
 import type { SQLOutputValue } from 'node:sqlite';
 import { prepareCached, toInt } from './util.js';
 import type { RetrievalGrant } from './message-search.js';
+import type { ChannelKind } from '../../platform/types.js';
 
 /**
  * Idempotent channel metadata persistence (Section 9.1, 29.1).
@@ -17,7 +18,7 @@ export interface ChannelUpsertInput {
   id: string;
   guildId: string;
   parentId: string | null;
-  type: number;
+  kind: ChannelKind;
   name: string | null;
   topic: string | null;
   position: number | null;
@@ -38,7 +39,7 @@ export interface ChannelRow {
   id: string;
   workspace_id: string;
   parent_id: string | null;
-  type: number;
+  kind: ChannelKind;
   name: string | null;
   topic: string | null;
   position: number | null;
@@ -57,19 +58,19 @@ export interface ChannelRow {
 
 const UPSERT_SQL = `
   INSERT INTO channels (
-    id, workspace_id, parent_id, type, name, topic, position,
+    id, workspace_id, parent_id, kind, name, topic, position,
     is_thread, is_archived, is_locked, ingest_enabled, visibility_class,
     allow_interventions, permission_fingerprint, last_message_id,
     discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json
   ) VALUES (
-    @id, @workspace_id, @parent_id, @type, @name, @topic, @position,
+    @id, @workspace_id, @parent_id, @kind, @name, @topic, @position,
     @is_thread, @is_archived, @is_locked, @ingest_enabled, @visibility_class,
     @allow_interventions, @permission_fingerprint, @last_message_id,
     @discovered_at_ms, @updated_at_ms, NULL, @raw_json
   )
   ON CONFLICT(id) DO UPDATE SET
     parent_id = excluded.parent_id,
-    type = excluded.type,
+    kind = excluded.kind,
     name = excluded.name,
     topic = excluded.topic,
     position = excluded.position,
@@ -85,7 +86,7 @@ const UPSERT_SQL = `
     deleted_at_ms = NULL,
     updated_at_ms = excluded.updated_at_ms
   WHERE excluded.parent_id IS NOT channels.parent_id
-     OR excluded.type IS NOT channels.type
+     OR excluded.kind IS NOT channels.kind
      OR excluded.name IS NOT channels.name
      OR excluded.topic IS NOT channels.topic
      OR excluded.position IS NOT channels.position
@@ -108,7 +109,7 @@ export function upsertChannel(db: DatabaseSync, input: ChannelUpsertInput): numb
     id: input.id,
     workspace_id: input.guildId,
     parent_id: input.parentId,
-    type: input.type,
+    kind: input.kind,
     name: input.name,
     topic: input.topic,
     position: input.position,

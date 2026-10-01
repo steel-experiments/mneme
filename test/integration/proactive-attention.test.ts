@@ -204,8 +204,8 @@ beforeEach(() => {
   seedIdentity(env.db);
   env.db.prepare("UPDATE channels SET visibility_class = 'org', allow_interventions = 1 WHERE id = ?").run(CHANNEL);
   env.db.prepare(
-    `INSERT INTO channels (id,workspace_id,type,name,visibility_class,ingest_enabled,allow_interventions,discovered_at_ms,updated_at_ms)
-     VALUES (?, ?, 0, 'review', 'org', 1, 0, ?, ?)`,
+    `INSERT INTO channels (id,workspace_id,kind,name,visibility_class,ingest_enabled,allow_interventions,discovered_at_ms,updated_at_ms)
+     VALUES (?, ?, 'text', 'review', 'org', 1, 0, ?, ?)`,
   ).run(REVIEW_CHANNEL, GUILD, NOW, NOW);
 });
 

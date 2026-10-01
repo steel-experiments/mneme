@@ -45,16 +45,16 @@ function jobRow(maxAttempts = 10): JobRow {
 function seedThreadChannel(id: string, parentId: string, guild = GUILD): void {
   const now = NOW;
   db.prepare(
-    `INSERT INTO channels (id, workspace_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
+    `INSERT INTO channels (id, workspace_id, parent_id, kind, name, topic, position, is_thread, is_archived, is_locked,
        ingest_enabled, visibility_class, allow_interventions, permission_fingerprint, last_message_id,
        discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json)
-     VALUES (?, ?, NULL, 15, ?, NULL, NULL, 0, 0, 0, 1, 'restricted', 0, NULL, NULL, ?, ?, NULL, NULL)`,
+     VALUES (?, ?, NULL, 'forum', ?, NULL, NULL, 0, 0, 0, 1, 'restricted', 0, NULL, NULL, ?, ?, NULL, NULL)`,
   ).run(parentId, guild, `${parentId}-name`, now, now);
   db.prepare(
-    `INSERT INTO channels (id, workspace_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
+    `INSERT INTO channels (id, workspace_id, parent_id, kind, name, topic, position, is_thread, is_archived, is_locked,
        ingest_enabled, visibility_class, allow_interventions, permission_fingerprint, last_message_id,
        discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json)
-     VALUES (?, ?, ?, 11, ?, NULL, NULL, 1, 0, 0, 1, 'restricted', 0, NULL, NULL, ?, ?, NULL, NULL)`,
+     VALUES (?, ?, ?, 'thread', ?, NULL, NULL, 1, 0, 0, 1, 'restricted', 0, NULL, NULL, ?, ?, NULL, NULL)`,
   ).run(id, guild, parentId, `${id}-name`, now, now);
 }
 

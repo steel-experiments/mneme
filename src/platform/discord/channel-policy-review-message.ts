@@ -4,6 +4,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'disc
 import type { DatabaseSync } from '../../db/database.js';
 import { transaction } from '../../db/database.js';
 import { getChannel } from '../../db/repositories/channels.js';
+import { discordTypeOfKind } from './channel-types.js';
 import {
   getChannelPolicyReview,
   markChannelPolicyReviewDeliveryFailed,
@@ -59,7 +60,8 @@ export interface ChannelPolicyReviewCardInput {
   reviewId: string;
   channelId: string;
   channelName: string | null;
-  channelType: number;
+  /** Discord channel type number, or the neutral kind when Discord has no number for it. */
+  channelType: number | string;
   parentId: string | null;
   parentName: string | null;
 }
@@ -163,7 +165,7 @@ export function createDeliverChannelPolicyReviewHandler(deps: {
       reviewId,
       channelId: channel.id,
       channelName: channel.name,
-      channelType: channel.type,
+      channelType: discordTypeOfKind(channel.kind) ?? channel.kind,
       parentId: channel.parent_id,
       parentName: parent?.name ?? null,
     }, deps.secret);

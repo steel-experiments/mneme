@@ -93,7 +93,7 @@ function seedPolicyChannel(
     id,
     guildId: GUILD,
     parentId: options.parentId ?? null,
-    type: options.isThread ? 11 : 0,
+    kind: options.isThread ? 'thread' : 'text',
     name: id,
     topic: null,
     position: null,

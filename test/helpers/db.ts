@@ -70,11 +70,11 @@ export function seedIdentity(db: DatabaseSync, guildId = '100000000000000001'): 
     'INSERT INTO workspaces (id, name, owner_id, joined_at_ms, discovered_at_ms, updated_at_ms, raw_json) VALUES (?,?,?,?,?,?,NULL)',
   ).run(guildId, 'Guild', null, now, now, now);
   db.prepare(
-    `INSERT INTO channels (id, workspace_id, parent_id, type, name, topic, position, is_thread, is_archived, is_locked,
+    `INSERT INTO channels (id, workspace_id, parent_id, kind, name, topic, position, is_thread, is_archived, is_locked,
        ingest_enabled, visibility_class, allow_interventions, permission_fingerprint, last_message_id,
        discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json)
      VALUES (?, ?, NULL, ?, ?, NULL, NULL, 0, 0, 0, 1, 'restricted', 0, NULL, NULL, ?, ?, NULL, NULL)`,
-  ).run(channelId, guildId, 0, 'general', now, now);
+  ).run(channelId, guildId, 'text', 'general', now, now);
   db.prepare(
     'INSERT INTO users (id, username, global_name, is_bot, first_seen_at_ms, last_seen_at_ms, raw_json) VALUES (?,?,?,0,?,?,NULL)',
   ).run(userId, 'alice', 'Alice', now, now);

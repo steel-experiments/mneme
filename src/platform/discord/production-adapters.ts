@@ -4,6 +4,7 @@ import {
   type GuildBasedChannel,
 } from 'discord.js';
 import type { BackfillMessageFetcher } from '../../ingestion/backfill.js';
+import { channelKindOf } from './channel-types.js';
 import { rawMessageFromJs } from './client.js';
 import type { DiscoveredChannelDescriptor } from '../../ingestion/discovery.js';
 import type { ThreadArchiveSource, ArchivedThreadPage } from '../../ingestion/threads.js';
@@ -16,7 +17,7 @@ export function descriptorFromDiscord(channel: GuildBasedChannel): DiscoveredCha
   return {
     id: channel.id,
     parentId: 'parentId' in channel ? channel.parentId : null,
-    type: channel.type,
+    kind: channelKindOf(channel.type),
     name: 'name' in channel ? channel.name : null,
     topic: 'topic' in channel ? channel.topic : null,
     position: 'position' in channel ? channel.position : null,

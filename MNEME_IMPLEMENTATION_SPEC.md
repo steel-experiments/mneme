@@ -3935,7 +3935,7 @@ CREATE TABLE IF NOT EXISTS channels (
   id TEXT PRIMARY KEY,
   workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   parent_id TEXT,
-  type INTEGER NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'text', -- text | announcement | forum | media | category | thread | other
   name TEXT,
   topic TEXT,
   position INTEGER,
