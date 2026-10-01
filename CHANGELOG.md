@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Cassandra for Discord are documented in this file.
+All notable changes to Mneme are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
@@ -8,6 +8,24 @@ and this project adheres to
 
 This changelog starts at the launch baseline. Changes before that point are
 not recorded.
+
+## [Unreleased]
+
+### Changed
+
+- **Platform selection.** `MNEME_PLATFORM` is required and has no default.
+  Set `MNEME_PLATFORM=discord` before you upgrade; startup stops without it.
+- **Platform-neutral schema.** Migration 041 renames `guild_id` columns to
+  `workspace_id`, the guild tables to workspace tables, and
+  `outbox.discord_message_id` to `platform_message_id`. Migration 042 replaces
+  the numeric `channels.type` with a text `channels.kind`. The MCP result field
+  `discordLink` is now `link`.
+
+### Upgrade notes
+
+- Make a backup and verify it before you upgrade. Older releases cannot run on
+  a database after migrations 041 and 042. To go back, restore the backup from
+  before the upgrade.
 
 ## [2.0.0] - 2026-10-01
 
