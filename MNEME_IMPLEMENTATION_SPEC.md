@@ -1365,7 +1365,7 @@ Discord message creation has no idempotency key, so the `dedupe_key` column only
 the database side. The send path must close the crash window itself:
 
 1. Mark the outbox row `sending` and commit before calling Discord.
-2. Call Discord, then record `discord_message_id` and mark the row `sent`.
+2. Call Discord, then record `platform_message_id` and mark the row `sent`.
 3. On startup, for every row still in `sending`, fetch recent Mneme messages in the
    target channel and compare them against the row's content and dedupe marker.
 4. If a matching message is found, record its ID and mark the row `sent`.
@@ -1447,7 +1447,7 @@ This filter must be conservative. Missing an important review is worse than occa
 
 An exact human reply to one sent scheduled notification is a memory link and bypasses the
 trivial-message skip. The association is resolved at episode-review time through exactly
-one same-channel `reply_to_message_id -> outbox.discord_message_id -> scheduled proposal`
+one same-channel `reply_to_message_id -> outbox.platform_message_id -> scheduled proposal`
 join. The outbox and proposal must both be `sent`; their target channels and exact message
 text must agree; the originating run provenance and every subject scope must still be
 permitted in the reply channel. The prompt receives at most ten reply associations and 20
@@ -3901,6 +3901,9 @@ SQLite’s `-wal` and `-shm` files are part of live database state. Never move o
 
 This is the v1 logical schema. Implement it as numbered SQL migrations.
 
+(Amendment (plan 004): migration 041 renames guild tables and columns to
+workspace names and discord_message_id to platform_message_id.)
+
 ```sql
 CREATE TABLE IF NOT EXISTS schema_migrations (
   version INTEGER PRIMARY KEY,
@@ -3918,7 +3921,7 @@ CREATE TABLE IF NOT EXISTS settings (
   updated_at_ms INTEGER NOT NULL
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS guilds (
+CREATE TABLE IF NOT EXISTS workspaces (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   owner_id TEXT,
@@ -3930,7 +3933,7 @@ CREATE TABLE IF NOT EXISTS guilds (
 
 CREATE TABLE IF NOT EXISTS channels (
   id TEXT PRIMARY KEY,
-  guild_id TEXT NOT NULL REFERENCES guilds(id),
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   parent_id TEXT,
   type INTEGER NOT NULL,
   name TEXT,
@@ -3952,15 +3955,15 @@ CREATE TABLE IF NOT EXISTS channels (
   raw_json TEXT
 ) STRICT;
 
-CREATE INDEX IF NOT EXISTS channels_guild_idx
-  ON channels(guild_id, deleted_at_ms);
+CREATE INDEX IF NOT EXISTS channels_workspace_idx
+  ON channels(workspace_id, deleted_at_ms);
 
 CREATE INDEX IF NOT EXISTS channels_parent_idx
   ON channels(parent_id);
 
 CREATE TABLE IF NOT EXISTS channel_policy_reviews (
   id TEXT PRIMARY KEY,
-  guild_id TEXT NOT NULL REFERENCES guilds(id),
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   channel_id TEXT NOT NULL REFERENCES channels(id),
   observed_parent_id TEXT,
   status TEXT NOT NULL CHECK (status IN ('pending','org','restricted','excluded','superseded')),
@@ -3986,18 +3989,18 @@ CREATE TABLE IF NOT EXISTS users (
   raw_json TEXT
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS guild_members (
-  guild_id TEXT NOT NULL REFERENCES guilds(id),
+CREATE TABLE IF NOT EXISTS workspace_members (
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   user_id TEXT NOT NULL REFERENCES users(id),
   display_name TEXT,
   role_ids_json TEXT NOT NULL DEFAULT '[]',
   updated_at_ms INTEGER NOT NULL,
-  PRIMARY KEY (guild_id, user_id)
+  PRIMARY KEY (workspace_id, user_id)
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS messages (
   id TEXT PRIMARY KEY,
-  guild_id TEXT NOT NULL REFERENCES guilds(id),
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   channel_id TEXT NOT NULL REFERENCES channels(id),
   author_id TEXT REFERENCES users(id),
   author_display_name TEXT NOT NULL,
@@ -4141,7 +4144,7 @@ CREATE TABLE IF NOT EXISTS sync_cursors (
 
 CREATE TABLE IF NOT EXISTS ingestion_recovery_requests (
   id TEXT PRIMARY KEY,
-  guild_id TEXT NOT NULL,
+  workspace_id TEXT NOT NULL,
   channel_id TEXT NOT NULL,
   message_id TEXT NOT NULL,
   generation INTEGER NOT NULL,
@@ -4150,7 +4153,7 @@ CREATE TABLE IF NOT EXISTS ingestion_recovery_requests (
   first_observed_at_ms INTEGER NOT NULL,
   last_observed_at_ms INTEGER NOT NULL,
   completed_at_ms INTEGER,
-  UNIQUE (guild_id, channel_id, message_id)
+  UNIQUE (workspace_id, channel_id, message_id)
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS channel_access_audits (
@@ -4170,7 +4173,7 @@ CREATE INDEX IF NOT EXISTS channel_access_latest_idx
 
 CREATE TABLE IF NOT EXISTS episodes (
   id TEXT PRIMARY KEY,
-  guild_id TEXT NOT NULL REFERENCES guilds(id),
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   conversation_channel_id TEXT NOT NULL REFERENCES channels(id),
   status TEXT NOT NULL
     CHECK (status IN ('open', 'queued', 'reviewing', 'reviewed', 'skipped', 'error')),
@@ -4202,7 +4205,7 @@ CREATE INDEX IF NOT EXISTS episodes_last_activity_idx
 
 CREATE TABLE IF NOT EXISTS historical_memory_campaigns (
   id TEXT PRIMARY KEY,
-  guild_id TEXT NOT NULL REFERENCES guilds(id),
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   status TEXT NOT NULL
     CHECK (status IN ('running', 'paused', 'completed', 'budget_exhausted')),
   direction TEXT NOT NULL CHECK (direction = 'newest_first'),
@@ -4242,7 +4245,7 @@ CREATE TABLE IF NOT EXISTS episode_messages (
 
 CREATE TABLE IF NOT EXISTS memories (
   id TEXT PRIMARY KEY,
-  guild_id TEXT NOT NULL REFERENCES guilds(id),
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   scope_type TEXT NOT NULL
     CHECK (scope_type IN ('org', 'channel', 'review_only')),
   scope_key TEXT,
@@ -4271,7 +4274,7 @@ CREATE TABLE IF NOT EXISTS memories (
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS memories_scope_status_idx
-  ON memories(guild_id, scope_type, scope_key, status);
+  ON memories(workspace_id, scope_type, scope_key, status);
 
 CREATE INDEX IF NOT EXISTS memories_review_idx
   ON memories(review_after_ms, status);
@@ -4330,7 +4333,7 @@ CREATE TABLE IF NOT EXISTS memory_links (
 
 CREATE TABLE IF NOT EXISTS agent_runs (
   id TEXT PRIMARY KEY,
-  guild_id TEXT NOT NULL REFERENCES guilds(id),
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   episode_id TEXT REFERENCES episodes(id),
   run_type TEXT NOT NULL
     CHECK (run_type IN ('episode', 'direct_answer', 'scheduled_review')),
@@ -4462,15 +4465,15 @@ CREATE INDEX IF NOT EXISTS scheduled_review_cohort_subject_leases_job_idx
 
 CREATE TABLE attention_subjects (
   id TEXT PRIMARY KEY,
-  guild_id TEXT NOT NULL REFERENCES guilds(id),
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   deadline_forget_cutoff_at_ms INTEGER,
   registration_state TEXT NOT NULL
     CHECK (registration_state IN ('pending', 'complete')),
   created_at_ms INTEGER NOT NULL
 ) STRICT;
 
-CREATE INDEX attention_subjects_guild_idx
-  ON attention_subjects(guild_id, created_at_ms);
+CREATE INDEX attention_subjects_workspace_idx
+  ON attention_subjects(workspace_id, created_at_ms);
 
 CREATE TABLE attention_subject_members (
   memory_id TEXT PRIMARY KEY REFERENCES memories(id),
@@ -4562,7 +4565,7 @@ CREATE TABLE IF NOT EXISTS outbox (
   dedupe_key TEXT NOT NULL UNIQUE,
   status TEXT NOT NULL DEFAULT 'queued'
     CHECK (status IN ('queued', 'sending', 'sent', 'failed', 'cancelled')),
-  discord_message_id TEXT,
+  platform_message_id TEXT,
   attempts INTEGER NOT NULL DEFAULT 0,
   next_attempt_at_ms INTEGER NOT NULL,
   last_error TEXT,
@@ -4574,9 +4577,9 @@ CREATE TABLE IF NOT EXISTS outbox (
 CREATE INDEX IF NOT EXISTS outbox_due_idx
   ON outbox(status, next_attempt_at_ms);
 
-CREATE INDEX IF NOT EXISTS outbox_discord_message_idx
-  ON outbox(discord_message_id)
-  WHERE discord_message_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS outbox_platform_message_idx
+  ON outbox(platform_message_id)
+  WHERE platform_message_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS jobs (
   id TEXT PRIMARY KEY,
@@ -4609,7 +4612,7 @@ CREATE TABLE IF NOT EXISTS direct_answer_requests (
   job_id TEXT REFERENCES jobs(id) ON DELETE SET NULL,
   run_id TEXT REFERENCES agent_runs(id) ON DELETE RESTRICT,
   outbox_id TEXT UNIQUE REFERENCES outbox(id) ON DELETE RESTRICT,
-  guild_id TEXT NOT NULL REFERENCES guilds(id),
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   target_channel_id TEXT NOT NULL,
   question_created_at_ms INTEGER NOT NULL,
   deadline_at_ms INTEGER NOT NULL CHECK (deadline_at_ms >= question_created_at_ms),
@@ -4674,7 +4677,7 @@ CREATE INDEX IF NOT EXISTS messages_recent_live_idx
 -- accounting. The files are canonical; this abbreviated schema lists each contract field.
 CREATE TABLE deep_recap_requests (
   id TEXT PRIMARY KEY,
-  guild_id TEXT NOT NULL REFERENCES guilds(id),
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   target_channel_id TEXT NOT NULL REFERENCES channels(id),
   requested_by_user_id TEXT NOT NULL,
   retry_of_request_id TEXT REFERENCES deep_recap_requests(id),
@@ -4700,7 +4703,7 @@ CREATE TABLE deep_recap_requests (
 ) STRICT;
 
 CREATE UNIQUE INDEX deep_recap_active_target_idx
-  ON deep_recap_requests(guild_id, target_channel_id)
+  ON deep_recap_requests(workspace_id, target_channel_id)
   WHERE status IN ('queued','running','synthesizing');
 
 CREATE INDEX deep_recap_retry_parent_idx
@@ -4792,7 +4795,7 @@ CREATE TABLE IF NOT EXISTS inspector_tokens (
 
 CREATE TABLE IF NOT EXISTS admin_events (
   id TEXT PRIMARY KEY,
-  guild_id TEXT NOT NULL REFERENCES guilds(id),
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   actor_user_id TEXT NOT NULL,
   action TEXT NOT NULL,
   target TEXT,
@@ -4939,10 +4942,12 @@ as a fail-closed defense against stale cached scope.
 
 ### 30.3 Message links
 
+`src/platform/links.ts` builds every message link. (Amendment (plan 004).)
+
 On Discord, construct:
 
 ```text
-https://discord.com/channels/{guild_id}/{channel_id}/{message_id}
+https://discord.com/channels/{workspace_id}/{channel_id}/{message_id}
 ```
 
 On Slack, construct: (Amendment (plan 003): specified, not implemented. Plan 006 implements this
