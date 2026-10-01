@@ -24,7 +24,7 @@ import { fingerprintExposedMemory, fingerprintExposedMessage } from '../../agent
 import type { SQLInputValue } from 'node:sqlite';
 import type { RetrievalGrant } from '../../db/repositories/message-search.js';
 import { channelVisibilityPredicate } from '../../db/repositories/message-search.js';
-import { isCassandraTestChannelName } from '../../discord/test-channels.js';
+import { isMnemeTestChannelName } from '../../discord/test-channels.js';
 import {
   listMemoriesPage,
   listMemoryArchivePage,
@@ -988,7 +988,7 @@ export interface SpeechPageData {
   }>;
 }
 
-/** The speech trail: what Cassandra proposed, how it was decided, what was sent. */
+/** The speech trail: what Mneme proposed, how it was decided, what was sent. */
 export function speechPage(
   db: DatabaseSync,
   view: SpeechView,
@@ -1151,9 +1151,9 @@ export function channelsPage(
     lastMessageAtMs: n(r.last_message_at_ms),
     messageCount: n(r.message_count) ?? 0,
     episodeCount: n(r.episode_count) ?? 0,
-    controlSurface: isCassandraTestChannelName(s(r.name))
+    controlSurface: isMnemeTestChannelName(s(r.name))
       || (Number(r.is_thread) === 1
-        && isCassandraTestChannelName(r.parent_name === null ? null : s(r.parent_name))),
+        && isMnemeTestChannelName(r.parent_name === null ? null : s(r.parent_name))),
   }));
   const page = paginate(mapped, PAGE_SIZE, (row) => ({
     deleted: row.deletedAtMs === null ? 0 : 1,

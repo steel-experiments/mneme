@@ -25,7 +25,7 @@ import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
  * grant model rather than two.
  */
 
-const BASE = 'https://cassandra.example';
+const BASE = 'https://mneme.example';
 const CLIENT_ID = 'b7f3c1a9d24e40f8';
 const ADMIN_ROLE = '456789012345678901';
 const USER_ID = '100000000000000007';
@@ -170,7 +170,7 @@ describe('the whole sign-in, end to end', () => {
 
     const body = (await res.json()) as Record<string, string | number>;
     expect(body.token_type).toBe('Bearer');
-    expect(body.scope).toBe('cassandra:read');
+    expect(body.scope).toBe('mneme:read');
     expect(body.expires_in).toBe(ACCESS_TOKEN_TTL_MS / 1000);
     expect(typeof body.refresh_token).toBe('string');
 

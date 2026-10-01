@@ -14,10 +14,10 @@ import type { NormalizedMessage, NormalizedMention } from './normalize.js';
 export { DIRECT_ANSWER_PRIORITY, directAnswerJobKey } from '../jobs/direct-answer-identity.js';
 
 /**
- * Explicit Cassandra mention detection and direct-answer scheduling
+ * Explicit Mneme mention detection and direct-answer scheduling
  * (Sections 11.2, 26).
  *
- * A direct mention of Cassandra creates an immediate high-priority direct-answer job
+ * A direct mention of Mneme creates an immediate high-priority direct-answer job
  * pinned to the current channel; the message also remains part of the normal episode
  * (handled by the episode builder). Detection uses Discord's parsed mention entities,
  * never substring text matching, so a lookalike in prose or a similarly named user
@@ -27,8 +27,8 @@ export { DIRECT_ANSWER_PRIORITY, directAnswerJobKey } from '../jobs/direct-answe
  * 26: direct questions never grant access to another restricted channel).
  */
 
-/** A real Discord mention entity targeting Cassandra. */
-export interface CassandraMention {
+/** A real Discord mention entity targeting Mneme. */
+export interface MnemeMention {
   /** The message that contains the mention (the direct-answer source). */
   messageId: string;
   /** The channel the message lives in (the reply target). */
@@ -37,35 +37,35 @@ export interface CassandraMention {
 }
 
 /**
- * Find an explicit Cassandra mention among Discord's parsed mention entities. Returns
- * the first Cassandra mention, or null when the message does not directly mention
- * Cassandra. Entity-based only: a textual "@Cassandra" lookalike is never matched.
+ * Find an explicit Mneme mention among Discord's parsed mention entities. Returns
+ * the first Mneme mention, or null when the message does not directly mention
+ * Mneme. Entity-based only: a textual "@Mneme" lookalike is never matched.
  */
 export function findDirectMention(
   msg: NormalizedMessage,
-  cassandraId: string,
-): CassandraMention | null {
-  const hit = findMentionEntity(msg.mentions, cassandraId);
+  mnemeId: string,
+): MnemeMention | null {
+  const hit = findMentionEntity(msg.mentions, mnemeId);
   if (!hit) return null;
   return { messageId: msg.id, channelId: msg.channelId, guildId: msg.guildId };
 }
 
-/** Whether the parsed mention list contains Cassandra (entity-based). */
-export function mentionsCassandra(mentions: readonly NormalizedMention[], cassandraId: string): boolean {
-  return findMentionEntity(mentions, cassandraId) !== undefined;
+/** Whether the parsed mention list contains Mneme (entity-based). */
+export function mentionsMneme(mentions: readonly NormalizedMention[], mnemeId: string): boolean {
+  return findMentionEntity(mentions, mnemeId) !== undefined;
 }
 
 function findMentionEntity(
   mentions: readonly NormalizedMention[],
-  cassandraId: string,
+  mnemeId: string,
 ): NormalizedMention | undefined {
   if (!mentions || mentions.length === 0) return undefined;
-  return mentions.find((m) => m.id === cassandraId);
+  return mentions.find((m) => m.id === mnemeId);
 }
 
 export interface EnqueueDirectAnswerOptions {
   db: DatabaseSync;
-  cassandraId: string;
+  mnemeId: string;
   now: number;
   /** Mirrors DIRECT_ANSWER_ENABLED. When false, detection still runs but no job is queued. */
   enabled?: boolean;
@@ -76,12 +76,12 @@ export interface EnqueueDirectAnswerOptions {
 export interface EnqueueDirectAnswerResult {
   /** True when a direct-answer job was freshly queued. */
   enqueued: boolean;
-  /** The detected mention, or null when the message did not mention Cassandra. */
-  mention: CassandraMention | null;
+  /** The detected mention, or null when the message did not mention Mneme. */
+  mention: MnemeMention | null;
 }
 
 /**
- * When `msg` directly mentions Cassandra, enqueue a high-priority direct-answer job
+ * When `msg` directly mentions Mneme, enqueue a high-priority direct-answer job
  * pinned to the current channel, deduplicated durably by source message ID and also
  * by the queue's active-unique key. Honors `enabled` (DIRECT_ANSWER_ENABLED). A repeat
  * mention in the same message (or a re-delivered event) collapses to a single job even
@@ -92,16 +92,16 @@ export function enqueueDirectAnswerForMention(
   msg: NormalizedMessage,
   options: EnqueueDirectAnswerOptions,
 ): EnqueueDirectAnswerResult {
-  const mention = findDirectMention(msg, options.cassandraId);
+  const mention = findDirectMention(msg, options.mnemeId);
   if (!mention) return { enqueued: false, mention: null };
   if (options.enabled === false) return { enqueued: false, mention };
-  if (msg.author.id === options.cassandraId || msg.isWebhook) {
+  if (msg.author.id === options.mnemeId || msg.isWebhook) {
     return { enqueued: false, mention };
   }
   if (msg.author.isBot && !options.allowlistedBotIds?.has(msg.author.id)) {
     return { enqueued: false, mention };
   }
-  // Cassandra is guild-scoped; a DM mention has no valid policy/target grant.
+  // Mneme is guild-scoped; a DM mention has no valid policy/target grant.
   const guildId = mention.guildId;
   if (!guildId) return { enqueued: false, mention };
   const persist = (): boolean => {

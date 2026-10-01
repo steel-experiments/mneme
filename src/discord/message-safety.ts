@@ -6,7 +6,7 @@
  * behavior or link trust:
  *
  * - Discord mention syntax (`<@id>`, `<@&id>`, `@everyone`, `@here`) is parsed
- *   independently of any model claim and rejected outright — Cassandra never
+ *   independently of any model claim and rejected outright — Mneme never
  *   authorizes a ping, so any mention in the proposed text is an injection.
  * - The hard 1,800-character limit is enforced host-side (the schema cap is the
  *   first line of defense; this is the second).
@@ -34,7 +34,7 @@ export const MAX_SOURCE_LINKS = 3;
  * duplicate detector strips it before comparing message bodies.
  */
 export const SCHEDULED_NOTIFICATION_FOOTER =
-  '_Cassandra tracks decisions and open commitments in this server. Reply to this message to update the record._';
+  '_Mneme tracks decisions and open commitments in this server. Reply to this message to update the record._';
 
 /** Remove the host-owned scheduled footer for content comparisons. */
 export function stripScheduledFooter(content: string): string {
@@ -111,7 +111,7 @@ const DISCORD_NATIVE_URL_CANDIDATE = /(?=(discord:[^\s<>"'`]+))/giu;
 // dot segments such as `%2e%2e`. Capture the whole boundary-started token and
 // resolve it instead of trying to strip a few textual prefixes by hand.
 const RELATIVE_URL_CANDIDATE = /(?=([^\s<>"'`]+))/gu;
-const RELATIVE_URL_BASE = 'https://cassandra.invalid/';
+const RELATIVE_URL_BASE = 'https://mneme.invalid/';
 const DISCORD_RELATIVE_URL_BASE = 'https://discord.com/';
 const ABSOLUTE_URL_SCHEME = /^[a-z][a-z0-9+.-]*:/iu;
 

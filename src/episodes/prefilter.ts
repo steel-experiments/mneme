@@ -8,7 +8,7 @@ import type { NormalizedMessage } from '../discord/normalize.js';
  * Section 11.4 permits a skip only when **all** of the following hold:
  *
  *   1. fewer than two human messages;
- *   2. no Cassandra mention;
+ *   2. no Mneme mention;
  *   3. no decision-like phrase;
  *   4. no reaction burst;
  *   5. no link to an existing memory;
@@ -16,7 +16,7 @@ import type { NormalizedMessage } from '../discord/normalize.js';
  *
  * The filter is deliberately conservative: missing an important review is far
  * worse than occasionally reviewing a harmless episode, so a skip requires every
- * condition, and a direct Cassandra mention can never be skipped. Each condition
+ * condition, and a direct Mneme mention can never be skipped. Each condition
  * is an explicit, explainable predicate so a non-skip always carries a reason.
  */
 
@@ -43,7 +43,7 @@ export interface EpisodePrefilterOptions {
 
 export interface PrefilterConditions {
   fewHumanMessages: boolean;
-  noCassandraMention: boolean;
+  noMnemeMention: boolean;
   noDecisionPhrase: boolean;
   noReactionBurst: boolean;
   noMemoryLink: boolean;
@@ -53,7 +53,7 @@ export interface PrefilterConditions {
 /** Short codes for the conditions that prevented a skip (empty when the episode is skipped). */
 export type PrefilterBlocker =
   | 'multiple_human_messages'
-  | 'cassandra_mention'
+  | 'mneme_mention'
   | 'decision_phrase'
   | 'reaction_burst'
   | 'memory_link'
@@ -65,13 +65,13 @@ export interface PrefilterEvaluation {
   conditions: PrefilterConditions;
   /** Conditions that did NOT hold and therefore forced a review. */
   blockers: PrefilterBlocker[];
-  /** Number of human (non-bot, non-Cassandra) messages in the episode. */
+  /** Number of human (non-bot, non-Mneme) messages in the episode. */
   humanMessageCount: number;
 }
 
 export interface PrefilterInput {
   messages: readonly PrefilterMessage[];
-  cassandraId: string;
+  mnemeId: string;
   options?: EpisodePrefilterOptions;
 }
 
@@ -140,20 +140,20 @@ function buildDecisionRegex(phrases: readonly string[]): RegExp {
   return new RegExp(`(?:${alternation})`, 'i');
 }
 
-/** A human message: authored by a non-bot that is not Cassandra. */
-function isHuman(msg: PrefilterMessage, cassandraId: string): boolean {
-  return !msg.author.isBot && msg.author.id !== cassandraId;
+/** A human message: authored by a non-bot that is not Mneme. */
+function isHuman(msg: PrefilterMessage, mnemeId: string): boolean {
+  return !msg.author.isBot && msg.author.id !== mnemeId;
 }
 
 /**
- * Whether a message directly mentions Cassandra. The mentions array (populated
+ * Whether a message directly mentions Mneme. The mentions array (populated
  * by normalization) is the primary signal; a defensive content scan for the raw
  * `<@id>` / `<@!id>` ping backs it up so a mention is never missed (Section 11.4:
  * never skip a direct mention).
  */
-export function messageMentionsCassandra(msg: PrefilterMessage, cassandraId: string): boolean {
-  if (msg.mentions?.some((m) => m.id === cassandraId)) return true;
-  return new RegExp(`<@!?${cassandraId}>`).test(msg.content);
+export function messageMentionsMneme(msg: PrefilterMessage, mnemeId: string): boolean {
+  if (msg.mentions?.some((m) => m.id === mnemeId)) return true;
+  return new RegExp(`<@!?${mnemeId}>`).test(msg.content);
 }
 
 /** Max single-emoji reaction count on a message (0 when it has no reactions). */
@@ -170,7 +170,7 @@ function maxReactionCount(msg: PrefilterMessage): number {
  * whether the model review may be skipped. Pure: no I/O, no side effects.
  */
 export function evaluateEpisodePrefilter(input: PrefilterInput): PrefilterEvaluation {
-  const { messages, cassandraId } = input;
+  const { messages, mnemeId } = input;
   const opts = input.options ?? {};
   const burstThreshold = opts.reactionBurstThreshold ?? DEFAULT_REACTION_BURST_THRESHOLD;
   const minChars = opts.minInformationChars ?? DEFAULT_MIN_INFORMATION_CHARS;
@@ -181,7 +181,7 @@ export function evaluateEpisodePrefilter(input: PrefilterInput): PrefilterEvalua
   let humanChars = 0;
   const conditions: PrefilterConditions = {
     fewHumanMessages: true,
-    noCassandraMention: true,
+    noMnemeMention: true,
     noDecisionPhrase: true,
     noReactionBurst: true,
     noMemoryLink: true,
@@ -189,12 +189,12 @@ export function evaluateEpisodePrefilter(input: PrefilterInput): PrefilterEvalua
   };
 
   for (const msg of messages) {
-    if (isHuman(msg, cassandraId)) {
+    if (isHuman(msg, mnemeId)) {
       humanCount += 1;
       humanChars += msg.content.trim().length;
     }
-    if (conditions.noCassandraMention && messageMentionsCassandra(msg, cassandraId)) {
-      conditions.noCassandraMention = false;
+    if (conditions.noMnemeMention && messageMentionsMneme(msg, mnemeId)) {
+      conditions.noMnemeMention = false;
     }
     if (conditions.noDecisionPhrase && decisionRegex.test(msg.content)) {
       conditions.noDecisionPhrase = false;
@@ -212,7 +212,7 @@ export function evaluateEpisodePrefilter(input: PrefilterInput): PrefilterEvalua
 
   const blockers: PrefilterBlocker[] = [];
   if (!conditions.fewHumanMessages) blockers.push('multiple_human_messages');
-  if (!conditions.noCassandraMention) blockers.push('cassandra_mention');
+  if (!conditions.noMnemeMention) blockers.push('mneme_mention');
   if (!conditions.noDecisionPhrase) blockers.push('decision_phrase');
   if (!conditions.noReactionBurst) blockers.push('reaction_burst');
   if (!conditions.noMemoryLink) blockers.push('memory_link');
@@ -220,7 +220,7 @@ export function evaluateEpisodePrefilter(input: PrefilterInput): PrefilterEvalua
 
   const skip =
     conditions.fewHumanMessages &&
-    conditions.noCassandraMention &&
+    conditions.noMnemeMention &&
     conditions.noDecisionPhrase &&
     conditions.noReactionBurst &&
     conditions.noMemoryLink &&
@@ -232,8 +232,8 @@ export function evaluateEpisodePrefilter(input: PrefilterInput): PrefilterEvalua
 /** Convenience: normalize already-normalized messages are accepted as-is. */
 export function evaluateEpisodePrefilterNormalized(
   messages: readonly NormalizedMessage[],
-  cassandraId: string,
+  mnemeId: string,
   options?: EpisodePrefilterOptions,
 ): PrefilterEvaluation {
-  return evaluateEpisodePrefilter({ messages, cassandraId, options });
+  return evaluateEpisodePrefilter({ messages, mnemeId, options });
 }

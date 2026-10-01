@@ -11,7 +11,7 @@ matches a test in that file. A citation that drifts fails `npm test`. Most title
 below are the full test title. The guard accepts a cited title that matches the
 start of the test title.
 
-Spec reference: Section 48 of `CASSANDRA_IMPLEMENTATION_SPEC.md`.
+Spec reference: Section 48 of `MNEME_IMPLEMENTATION_SPEC.md`.
 
 ## Baseline commands
 
@@ -25,7 +25,7 @@ Run these before you claim any criterion passes.
 | Compose config | `docker compose -f docker-compose.yml config` | validates and shows one service that reads `.env` through the `env_file` long syntax and pins only the container-fixed overrides |
 | Compose with override | `docker compose -f docker-compose.yml -f docker-compose.override.example.yml config` | publishes `127.0.0.1:3000:3000`, loopback only |
 | Railway config | compare `railway.json` against the schema at `https://railway.com/railway.schema.json` | validates |
-| Image build | `docker build -t cassandra-acceptance .` | build exits 0 |
+| Image build | `docker build -t mneme-acceptance .` | build exits 0 |
 
 Use Node 24 or later. The compose checks need Docker Compose v2.24 or later,
 because the service block uses the `env_file` long syntax. To re-run the tests
@@ -137,7 +137,7 @@ effort, date, and commit hash. Use the model and reasoning effort named in
 | Section 48 criterion | Tests that must pass |
 | --- | --- |
 | The same image runs locally, on Coolify, and on Railway | One `Dockerfile` built by all three: `docker-compose.yml` (`build.dockerfile: Dockerfile`) and `railway.json` (`builder: DOCKERFILE`, `dockerfilePath: Dockerfile`); `test/unit/railway.test.ts` — "builds the repository Dockerfile" (see [Security model](../docs/explanation/security-model.md)) |
-| `/app/data` persists through redeploy | Named volume `cassandra_data` mounted at `/app/data`: `test/integration/compose.test.ts` — "mounts the named volume at /app/data"; "declares the named volume at the top level" (see [Deploy Cassandra](../docs/how-to/deploy.md)) |
+| `/app/data` persists through redeploy | Named volume `mneme_data` mounted at `/app/data`: `test/integration/compose.test.ts` — "mounts the named volume at /app/data"; "declares the named volume at the top level" (see [Deploy Mneme](../docs/how-to/deploy.md)) |
 | `/livez` and `/readyz` behave as specified | `test/integration/health.test.ts` — "returns 200 ok when SQLite SELECT 1 succeeds"; "fails liveness (503) when the database is unavailable"; "stays live regardless of Discord or model state"; `test/integration/readiness.test.ts` — "is not ready at construction and names migrations as the first pending milestone"; `test/integration/healthcheck.test.ts` — "exits 0 when /livez returns a success status"; "exits 1 when /livez returns a non-success status" |
 | SIGTERM performs graceful shutdown | `test/integration/shutdown.test.ts` — "runs the coordinator and exits zero on SIGTERM"; "ShutdownCoordinator — full ordered sequence"; "ignores a repeated signal (idempotent coordinator)"; "leaves an unfinished job recoverable when the drain deadline elapses" |
 | Only one replica is active | `test/integration/compose.test.ts` — "defines exactly one application service"; `test/unit/railway.test.ts` — "declares no replica count" |

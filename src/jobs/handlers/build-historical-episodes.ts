@@ -7,7 +7,7 @@ import { DeferJobError } from '../errors.js';
 import type { JobHandler } from '../worker.js';
 import type { JobRow } from '../types.js';
 import type { Logger } from '../../logger.js';
-import { isCassandraTestSurface } from '../../discord/test-channels.js';
+import { isMnemeTestSurface } from '../../discord/test-channels.js';
 import { markSkipped } from '../../episodes/repository.js';
 
 const LOW_PRIORITY = 200;
@@ -78,7 +78,7 @@ export function ensureHistoricalCursors(
     VALUES (?, ?, 'pending', ?)
   `);
   const persist = () => eligible.reduce(
-    (changes, channel) => isCassandraTestSurface(db, channel.id)
+    (changes, channel) => isMnemeTestSurface(db, channel.id)
       ? changes
       : changes + Number(insert.run(channel.id, now, now).changes),
     0,
@@ -99,7 +99,7 @@ function countCurrentPendingReviews(
 ): number {
   let pending = 0;
   for (const row of rows) {
-    if (!isCassandraTestSurface(db, row.conversation_channel_id)) {
+    if (!isMnemeTestSurface(db, row.conversation_channel_id)) {
       pending += 1;
       continue;
     }
@@ -152,7 +152,7 @@ function nextCursor(
      ORDER BY hc.updated_at_ms ASC, hc.channel_id ASC
   `).all(...filter.params) as unknown as CursorRow[];
   for (const cursor of candidates) {
-    if (!isCassandraTestSurface(db, cursor.channel_id)) return cursor;
+    if (!isMnemeTestSurface(db, cursor.channel_id)) return cursor;
     db.prepare(`UPDATE historical_episode_cursors SET state='complete',updated_at_ms=?
       WHERE channel_id=? AND state='pending'`).run(now, cursor.channel_id);
   }
@@ -261,7 +261,7 @@ function ensureCampaignCursors(db: DatabaseSync, config: HistoricalEpisodeConfig
     VALUES (?,?,'pending',?)
   `);
   const persist = () => eligible.reduce(
-    (changes, channel) => isCassandraTestSurface(db, channel.id)
+    (changes, channel) => isMnemeTestSurface(db, channel.id)
       ? changes
       : changes + Number(insert.run(campaign.id, channel.id, now).changes),
     0,
@@ -283,7 +283,7 @@ function nextCampaignCursor(
      ORDER BY cc.updated_at_ms ASC,cc.channel_id ASC
   `).all(campaignId) as unknown as CampaignCursorRow[];
   for (const cursor of candidates) {
-    if (!isCassandraTestSurface(db, cursor.channel_id)) return cursor;
+    if (!isMnemeTestSurface(db, cursor.channel_id)) return cursor;
     db.prepare(`UPDATE historical_campaign_cursors SET state='complete',updated_at_ms=?
       WHERE campaign_id=? AND channel_id=? AND state='pending'`)
       .run(now, campaignId, cursor.channel_id);

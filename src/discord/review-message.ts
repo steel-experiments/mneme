@@ -16,7 +16,7 @@ import { setProposalReviewMessage } from '../db/repositories/proposals.js';
  * channel as one auditable embed with target, score, reason, the safe proposed
  * text, and permitted source links, plus Approve/Dismiss buttons. The buttons
  * carry HMAC-signed custom ids so the interaction handler can verify
- * each click was issued by Cassandra for that exact proposal — a forged id that
+ * each click was issued by Mneme for that exact proposal — a forged id that
  * merely names a proposal cannot approve it.
  *
  * Only content already cleared for the secure-channel scope appears; the review
@@ -160,7 +160,7 @@ export function buildReviewMessage(
     : [{ name: 'Reason', value: boundedFieldValue(input.reason || '—'), inline: true }];
 
   const embed = new EmbedBuilder()
-    .setTitle(`Cassandra proposal ${shortId}`)
+    .setTitle(`Mneme proposal ${shortId}`)
     .setDescription(descriptionLines.join('\n'))
     .addFields(
       { name: 'Target', value: input.targetLabel, inline: true },

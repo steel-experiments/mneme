@@ -1,4 +1,4 @@
-# Cassandra deployment (Section 39).
+# Mneme deployment (Section 39).
 #
 # All application settings flow from a ./.env file through env_file. The
 # application validates every setting itself and stops with a precise message
@@ -8,7 +8,7 @@
 # (application default 3000) while expose stays 3000 — set both together when
 # you change the port.
 services:
-  cassandra:
+  mneme:
     build:
       context: .
       dockerfile: Dockerfile
@@ -23,14 +23,14 @@ services:
       NODE_ENV: production
       HOME: /tmp
       DATA_DIR: /app/data
-      DATABASE_PATH: /app/data/cassandra.sqlite
+      DATABASE_PATH: /app/data/mneme.sqlite
       PROMPT_DIR: /app/prompts
       DOCS_DIR: /app/docs
-      CASSANDRA_CONFIG_PATH: /app/config/cassandra.yml
+      MNEME_CONFIG_PATH: /app/config/mneme.yml
       CHANNEL_POLICY_PATH: /app/config/channel-policy.yml
 
     volumes:
-      - cassandra_data:/app/data
+      - mneme_data:/app/data
 
     expose:
       - "3000"
@@ -53,4 +53,4 @@ services:
       - no-new-privileges:true
 
 volumes:
-  cassandra_data:
+  mneme_data:

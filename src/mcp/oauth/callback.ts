@@ -15,12 +15,12 @@ import type { DiscordIdentityClient, DiscordIdentityFailure } from './discord.js
 /**
  * The identity-provider return leg (Section 32.5.2, amended).
  *
- * Discord sends the person back here with its own authorization code. Cassandra
+ * Discord sends the person back here with its own authorization code. Mneme
  * exchanges it, reads their guild roles, and decides. Only then does a code exist
- * that a client can redeem — the credential is minted from Cassandra's judgment
+ * that a client can redeem — the credential is minted from Mneme's judgment
  * of the person's Discord roles, never from Discord's token itself.
  *
- * **Who may sign in.** The same admin roles that gate `/cassandra mcp-token
+ * **Who may sign in.** The same admin roles that gate `/mneme mcp-token
  * create` (Section 6.6). A person who could not mint a token through Discord must
  * not be able to mint one through a browser instead; that would be a privilege
  * expansion wearing a different hat. `authorizeAdmin` fails closed on both edges
@@ -42,7 +42,7 @@ export interface CallbackDeps {
   db: DatabaseSync;
   identity: DiscordIdentityClient;
   adminRoleIds: readonly string[];
-  /** Cassandra's public origin, used as the RFC 9207 issuer. */
+  /** Mneme's public origin, used as the RFC 9207 issuer. */
   issuer: string;
   nowMs: number;
 }

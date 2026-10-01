@@ -1,4 +1,4 @@
-// ABOUTME: `list_docs` agent tool: the index of Cassandra's own documentation.
+// ABOUTME: `list_docs` agent tool: the index of Mneme's own documentation.
 // ABOUTME: Returns path, title, and summary per file, and no file bodies.
 import type { AgentTool, AgentToolResult } from '@earendil-works/pi-agent-core';
 import type { TextContent } from '@earendil-works/pi-ai';
@@ -21,7 +21,7 @@ export interface ListDocsDetails {
   charsExposed: number;
 }
 
-const DESCRIPTION = `List Cassandra's own documentation: how she works, her Discord commands,
+const DESCRIPTION = `List Mneme's own documentation: how she works, her Discord commands,
 MCP client setup, and her configuration. Returns a path, title, and summary per file, and no
 file content. Read one file with read_doc. A listed canonical public URL is host-built and may
 be cited exactly; never invent or rewrite a documentation URL.`;

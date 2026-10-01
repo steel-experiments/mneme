@@ -21,7 +21,7 @@ import { createTestDb, type TestDb } from '../helpers/db.js';
  * decided by that row and never by the return leg.
  */
 
-const BASE = 'https://cassandra.example';
+const BASE = 'https://mneme.example';
 const CLIENT_ID = 'b7f3c1a9d24e40f8';
 const HOST = '127.0.0.1';
 const OAUTH_RATE_LIMIT = 20;
@@ -112,7 +112,7 @@ describe('GET /authorize', () => {
       redirectUri: CLAUDE_HOSTED_REDIRECT_URI,
       clientState: 'client-state',
       resource: `${BASE}/mcp`,
-      scope: 'cassandra:read',
+      scope: 'mneme:read',
     });
   });
 
@@ -134,7 +134,7 @@ describe('GET /authorize', () => {
       { redirect_uri: null },
     ]) {
       const res = await fetch(authorizeUrl(bad), noRedirect);
-      // A 302 here would make Cassandra an open redirector.
+      // A 302 here would make Mneme an open redirector.
       expect(res.status).toBe(400);
       expect(res.headers.get('location')).toBeNull();
       expect(res.headers.get('content-type')).toContain('text/html');
@@ -171,7 +171,7 @@ describe('pending sign-in storage', () => {
     clientState: 'abc',
     codeChallenge: 'challenge-value',
     resource: `${BASE}/mcp`,
-    scope: 'cassandra:read',
+    scope: 'mneme:read',
   };
 
   it('resolves a handle exactly once', async () => {

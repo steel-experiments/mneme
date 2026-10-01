@@ -19,7 +19,7 @@ export interface TestDb {
  * so each test gets its own temp directory.
  */
 export function createTestDb(): TestDb {
-  const dir = mkdtempSync(join(tmpdir(), 'cassandra-test-'));
+  const dir = mkdtempSync(join(tmpdir(), 'mneme-test-'));
   const path = join(dir, 'test.sqlite');
   const db = openDatabase(path);
   applyMigrations(db, REPO_MIGRATIONS);
@@ -44,7 +44,7 @@ export function createTestDb(): TestDb {
 
 /** Copy the repo migrations into a temp dir so tests can mutate them safely. */
 export function copyMigrationsToTemp(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'cassandra-migrations-'));
+  const dir = mkdtempSync(join(tmpdir(), 'mneme-migrations-'));
   cpSync(REPO_MIGRATIONS, dir, { recursive: true });
   return dir;
 }
@@ -54,7 +54,7 @@ export function writeMigration(dir: string, name: string, sql: string): void {
 }
 
 export function makeTempDir(): string {
-  return mkdtempSync(join(tmpdir(), 'cassandra-tmp-'));
+  return mkdtempSync(join(tmpdir(), 'mneme-tmp-'));
 }
 
 /** Minimal guild + channel + user scaffolding for FK-safe repository tests. */

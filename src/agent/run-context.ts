@@ -443,6 +443,6 @@ export interface AgentRunContext {
   retrieval: RunRetrievalState;
   /** Immutable direct-question creation time; snapshot `before` cannot exceed it. */
   requestCreatedAtMs?: number;
-  /** Cassandra's own documentation, for direct-answer runs (Section 22.7). */
+  /** Mneme's own documentation, for direct-answer runs (Section 22.7). */
   docs?: DocsIndex;
 }

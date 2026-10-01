@@ -5,7 +5,7 @@ import { authorizeAdmin, type AuthorizationReason } from '../authorization.js';
 import { recordAdminEvent } from '../../db/repositories/admin-events.js';
 import type { AutonomyMode } from '../../config.js';
 import { normalizeBuildInfo, type BuildInfo } from '../../build-info.js';
-import { isCassandraTestSurface } from '../test-channels.js';
+import { isMnemeTestSurface } from '../test-channels.js';
 import {
   collectDirectAnswerStatus24h,
   type DirectAnswerStatus24h,
@@ -13,7 +13,7 @@ import {
 import { countPendingProposals } from '../../db/repositories/proposals.js';
 
 /**
- * `/cassandra status` (Sections 27, 33).
+ * `/mneme status` (Sections 27, 33).
  *
  * Returns bounded operational state to an authorized administrator: Gateway,
  * database, job queue, model, deployment mode, ingestion sync, proposals,
@@ -24,7 +24,7 @@ import { countPendingProposals } from '../../db/repositories/proposals.js';
  * {@link formatStatusReply}.
  *
  * The command responds quickly: it does not run `PRAGMA integrity_check` (that
- * is the dedicated `/cassandra integrity-check` command) and it does not call the
+ * is the dedicated `/mneme integrity-check` command) and it does not call the
  * model or Discord. Runtime-only fields the database cannot know — Gateway
  * connection state, model health, and backup recency — are supplied by the host.
  */
@@ -129,7 +129,7 @@ export interface SyncStatus {
   eligibleHistoryComplete: number;
   eligibleInProgress: number;
   eligibleErrors: number;
-  /** Cassandra-named control/test surfaces intentionally omitted from history sync. */
+  /** Mneme-named control/test surfaces intentionally omitted from history sync. */
   controlIgnored: number;
   /** Other current channels disabled/excluded by policy or an unavailable parent. */
   policyExcluded: number;
@@ -170,7 +170,7 @@ export interface ProposalStatusCounts {
   observed: number;
   /** Legacy durable count of every row whose stored status is `pending_review`. */
   pendingReview: number;
-  /** Currently actionable subset, using the same deadline predicate as `/cassandra proposals`. */
+  /** Currently actionable subset, using the same deadline predicate as `/mneme proposals`. */
   actionablePendingReview: number;
   /** Past-deadline durable rows awaiting the idempotent expiry sweep. */
   stalePendingReview: number;
@@ -268,7 +268,7 @@ export type StatusOutcome =
   | { kind: 'not_authorized'; reason: AuthorizationReason }
   | { kind: 'done'; report: StatusReport };
 
-/** Run `/cassandra status`. Authorization is checked first and audited on denial. */
+/** Run `/mneme status`. Authorization is checked first and audited on denial. */
 export function handleStatusCommand(input: HandleStatusInput, deps: HandleStatusDeps): StatusOutcome {
   const outcome = authorizeAdmin(input.memberRoleIds, deps.adminRoleIds);
   if (!outcome.authorized) {
@@ -298,7 +298,7 @@ export const STATUS_REPLY_MAX_LENGTH = 1_900;
 /** Format an ephemeral, compact operational dashboard. No content or secrets. */
 export function formatStatusReply(outcome: StatusOutcome): string {
   if (outcome.kind === 'not_authorized') {
-    return 'You are not authorized to view Cassandra status.';
+    return 'You are not authorized to view Mneme status.';
   }
   const r = outcome.report;
   const g = r.gateway;
@@ -313,7 +313,7 @@ export function formatStatusReply(outcome: StatusOutcome): string {
     s.policyExcluded > 0 ? `${s.policyExcluded} policy-excluded` : null,
   ].filter((value): value is string => value !== null);
   const lines = [
-    '**Cassandra status**',
+    '**Mneme status**',
     `Build: ${formatBuild(r.build)}`,
     `Mode: **${r.mode}** · ${r.paused ? 'paused' : 'running'}`,
     `Gateway: ${gatewayState} · ${formatLastSeen('event', g.lastEventAtMs, r.now)} · ${g.reconnectCount} reconnects`,
@@ -683,7 +683,7 @@ function collectSyncStatus(db: DatabaseSync): SyncStatus {
   let controlIgnored = 0;
   let policyExcluded = 0;
   for (const row of rows) {
-    if (isCassandraTestSurface(db, row.id)) {
+    if (isMnemeTestSurface(db, row.id)) {
       controlIgnored += 1;
       continue;
     }
@@ -764,8 +764,8 @@ function collectHistoricalMemoryStatus(
         LEFT JOIN channels parent ON parent.id=c.parent_id
         JOIN json_each(?) selected ON selected.value=m.channel_id
         WHERE m.deleted_at_ms IS NULL AND u.is_bot=0 AND trim(m.content)<>''
-          AND INSTR(LOWER(COALESCE(c.name,'')), 'cassandra')=0
-          AND (c.is_thread=0 OR INSTR(LOWER(COALESCE(parent.name,'')), 'cassandra')=0)
+          AND INSTR(LOWER(COALESCE(c.name,'')), 'mneme')=0
+          AND (c.is_thread=0 OR INSTR(LOWER(COALESCE(parent.name,'')), 'mneme')=0)
           AND m.created_at_ms>=? AND m.created_at_ms<=?`).get(c.channel_ids_json, c.from_at_ms, c.to_at_ms) as { n: number };
       const campaignPending = db.prepare(`SELECT COUNT(*) n FROM episodes
         WHERE historical_campaign_id=? AND status IN ('queued','reviewing')`).get(c.id) as { n: number };
@@ -799,7 +799,7 @@ function collectProposalCounts(db: DatabaseSync, now: number): ProposalStatusCou
   return {
     observed: by('observed'),
     // Preserve the original raw HTTP field, while Discord renders the exact
-    // actionable predicate used by `/cassandra proposals`: equality remains
+    // actionable predicate used by `/mneme proposals`: equality remains
     // actionable and only a strictly past deadline is stale.
     ...pending,
     approved: by('approved'),

@@ -68,14 +68,14 @@ export function evaluateSettle(input: {
 
 /**
  * Creation time of the most recent meaningful human message in a channel, or
- * null when there is none. Cassandra's own messages, other bots, deleted
+ * null when there is none. Mneme's own messages, other bots, deleted
  * messages, and whitespace-only messages never count as activity — they cannot
- * be the conversation Cassandra would interrupt.
+ * be the conversation Mneme would interrupt.
  */
 export function lastHumanMessageAtMs(
   db: DatabaseSync,
   channelId: string,
-  cassandraId: string,
+  mnemeId: string,
 ): number | null {
   const row = db.prepare(`
     SELECT MAX(m.created_at_ms) AS last_at_ms
@@ -83,7 +83,7 @@ export function lastHumanMessageAtMs(
       LEFT JOIN users u ON u.id=m.author_id
      WHERE m.channel_id=? AND m.deleted_at_ms IS NULL AND trim(m.content)<>''
        AND (m.author_id IS NULL OR (m.author_id<>? AND COALESCE(u.is_bot,0)=0))
-  `).get(channelId, cassandraId) as { last_at_ms: number | null } | undefined;
+  `).get(channelId, mnemeId) as { last_at_ms: number | null } | undefined;
   const value = row?.last_at_ms;
   return typeof value === 'number' ? value : null;
 }

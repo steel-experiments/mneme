@@ -12,7 +12,7 @@ import { resolveMcpToken, DEFAULT_MCP_TOKEN_TTL_MS } from '../../src/mcp/auth.js
 import { getMcpToken, listMcpTokens } from '../../src/db/repositories/mcp-tokens.js';
 
 /**
- * `/cassandra mcp-token create|list|revoke` integration suite (Sections 27,
+ * `/mneme mcp-token create|list|revoke` integration suite (Sections 27,
  * 32.5.2).
  *
  * Acceptance — verbatim: "Only the creator interaction sees the token once and
@@ -64,7 +64,7 @@ function channel(id: string, visibility: VisibilityClass, name: string): Channel
   };
 }
 
-const ENDPOINT = 'https://cassandra.example.com/mcp';
+const ENDPOINT = 'https://mneme.example.com/mcp';
 
 function deps(): HandleMcpTokenDeps {
   return { db, adminRoleIds: ADMIN_ROLES, nowMs: NOW, endpointUrl: ENDPOINT };

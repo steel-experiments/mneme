@@ -1,6 +1,6 @@
 import type { DatabaseSync } from '../db/database.js';
 import { getChannel } from '../db/repositories/channels.js';
-import { isCassandraTestSurface } from './test-channels.js';
+import { isMnemeTestSurface } from './test-channels.js';
 
 export type ChannelIngestionIneligibilityReason =
   | 'missing'
@@ -14,7 +14,7 @@ export type ChannelIngestionIneligibilityReason =
 /**
  * Current, parent-aware eligibility for historical/reconciliation ingestion.
  * Both the concrete row and a thread's required parent must remain live and
- * ingestion-enabled, and neither may be part of a Cassandra-named test surface.
+ * ingestion-enabled, and neither may be part of a Mneme-named test surface.
  */
 export function channelIngestionIneligibilityReason(
   db: DatabaseSync,
@@ -22,7 +22,7 @@ export function channelIngestionIneligibilityReason(
 ): ChannelIngestionIneligibilityReason | null {
   const channel = getChannel(db, channelId);
   if (!channel) return 'missing';
-  if (isCassandraTestSurface(db, channelId)) return 'control_surface';
+  if (isMnemeTestSurface(db, channelId)) return 'control_surface';
   if (channel.deleted_at_ms !== null) return 'deleted';
   if (channel.ingest_enabled !== 1 || channel.visibility_class === 'excluded') return 'ineligible';
   if (channel.is_thread !== 1) return null;

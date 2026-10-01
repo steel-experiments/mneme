@@ -17,7 +17,7 @@ import {
 } from '../../review/workflow.js';
 
 /**
- * `/cassandra proposals`, `/cassandra approve <id>`, `/cassandra dismiss <id>`
+ * `/mneme proposals`, `/mneme approve <id>`, `/mneme dismiss <id>`
  * (Sections 25, 27).
  *
  * These commands are the slash-command twin of the review-message Approve/Dismiss
@@ -39,7 +39,7 @@ import {
 const DEFAULT_LIST_LIMIT = 10;
 
 // ---------------------------------------------------------------------------
-// `/cassandra proposals` — list bounded unexpired pending proposals.
+// `/mneme proposals` — list bounded unexpired pending proposals.
 // ---------------------------------------------------------------------------
 
 export interface HandleProposalsInput {
@@ -66,7 +66,7 @@ export interface ProposalCommandListItem extends ProposalListItem {
 }
 
 /**
- * Run `/cassandra proposals`. Authorization is checked first and audited on both
+ * Run `/mneme proposals`. Authorization is checked first and audited on both
  * denial and success, then the bounded unexpired pending list is read.
  */
 export function handleProposalsCommand(
@@ -107,7 +107,7 @@ export function handleProposalsCommand(
 /** Format the proposals list as an ephemeral reply. No content or secrets. */
 export function formatProposalsReply(outcome: ProposalsOutcome): string {
   if (outcome.kind === 'not_authorized') {
-    return 'You are not authorized to view Cassandra proposals.';
+    return 'You are not authorized to view Mneme proposals.';
   }
   if (outcome.proposals.length === 0) {
     return 'No proposals are pending review.';
@@ -124,7 +124,7 @@ export function formatProposalsReply(outcome: ProposalsOutcome): string {
 }
 
 // ---------------------------------------------------------------------------
-// `/cassandra approve <id>` and `/cassandra dismiss <id>` — delegate to workflow.
+// `/mneme approve <id>` and `/mneme dismiss <id>` — delegate to workflow.
 // ---------------------------------------------------------------------------
 
 export interface HandleApproveInput {
@@ -156,7 +156,7 @@ export type DismissCommandOutcome =
   | { kind: 'resolved'; result: DismissProposalResult };
 
 /**
- * Run `/cassandra approve <id>`. Resolve the reference; an ambiguous short id is
+ * Run `/mneme approve <id>`. Resolve the reference; an ambiguous short id is
  * audited and reported so the admin can supply the full id. Every other path —
  * unique, not-found, or the raw reference — is delegated to {@link approveProposal},
  * which authorizes, revalidates, records, enqueues, and audits exactly as the
@@ -200,7 +200,7 @@ export async function handleApproveCommand(
 }
 
 /**
- * Run `/cassandra dismiss <id>`. Same resolution-and-delegate shape as approve,
+ * Run `/mneme dismiss <id>`. Same resolution-and-delegate shape as approve,
  * but dismissal needs no policy re-check and never enqueues an outbox row.
  */
 export async function handleDismissCommand(
@@ -243,7 +243,7 @@ export async function handleDismissCommand(
 // ---------------------------------------------------------------------------
 
 export function formatApproveReply(outcome: ApproveCommandOutcome): string {
-  if (outcome.kind === 'not_authorized') return 'You are not authorized to approve Cassandra proposals.';
+  if (outcome.kind === 'not_authorized') return 'You are not authorized to approve Mneme proposals.';
   if (outcome.kind === 'ambiguous') {
     return `That short id matches ${outcome.matchCount} proposals. Use the full proposal id.`;
   }
@@ -251,7 +251,7 @@ export function formatApproveReply(outcome: ApproveCommandOutcome): string {
 }
 
 export function formatDismissReply(outcome: DismissCommandOutcome): string {
-  if (outcome.kind === 'not_authorized') return 'You are not authorized to dismiss Cassandra proposals.';
+  if (outcome.kind === 'not_authorized') return 'You are not authorized to dismiss Mneme proposals.';
   if (outcome.kind === 'ambiguous') {
     return `That short id matches ${outcome.matchCount} proposals. Use the full proposal id.`;
   }
@@ -263,7 +263,7 @@ function labelForApprove(outcome: ApproveOutcome): string {
     case 'approved':
       return 'Approved — the message is queued for delivery.';
     case 'unauthorized':
-      return 'You are not authorized to approve Cassandra proposals.';
+      return 'You are not authorized to approve Mneme proposals.';
     case 'expired':
       return 'This proposal has expired.';
     case 'policy_blocked':
@@ -280,7 +280,7 @@ function labelForDismiss(outcome: DismissOutcome): string {
     case 'dismissed':
       return 'Proposal dismissed.';
     case 'unauthorized':
-      return 'You are not authorized to dismiss Cassandra proposals.';
+      return 'You are not authorized to dismiss Mneme proposals.';
     case 'stale':
       return 'This proposal has already been resolved.';
     case 'not_found':

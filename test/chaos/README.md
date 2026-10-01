@@ -1,6 +1,6 @@
 # Section 46.5 chaos suite
 
-Fault-injection tests for the eight chaos cases in [Section 46.5](../../CASSANDRA_IMPLEMENTATION_SPEC.md)
+Fault-injection tests for the eight chaos cases in [Section 46.5](../../MNEME_IMPLEMENTATION_SPEC.md)
 of the implementation spec. Every case documents a recovery verdict: the
 state the system is left in, whether it is recoverable, and confirmation that
 there is no privacy leak and no silent corruption.

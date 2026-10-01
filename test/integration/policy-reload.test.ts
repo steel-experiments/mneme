@@ -47,7 +47,7 @@ afterEach(() => {
 /** Minimal, valid prompt surface (no partial references) that compiles cleanly. */
 function promptFiles(overrides: Partial<PromptFiles> = {}): PromptFiles {
   return {
-    system: 'Cassandra system prompt.',
+    system: 'Mneme system prompt.',
     'episode-review': 'Review episode {{json id}}.',
     'direct-answer': 'Answer: {{json question}}.',
     'scheduled-review': 'Scheduled review.',
@@ -101,7 +101,7 @@ describe('buildConfigSnapshot — validation fails closed', () => {
 
   it('rejects a prompt template that does not compile or dry-render', () => {
     // Unclosed block — structural breakage the dry-render catches.
-    const broken = promptFiles({ system: 'Cassandra. {{#each items}}{{name}}' });
+    const broken = promptFiles({ system: 'Mneme. {{#each items}}{{name}}' });
     expect(() => buildConfigSnapshot({ channelPolicyYml: DEFAULT_POLICY, promptFiles: broken, now: NOW })).toThrow(
       ConfigReloadError,
     );
@@ -118,7 +118,7 @@ describe('buildConfigSnapshot — validation fails closed', () => {
   });
 
   it('rejects a template referencing a partial outside the fixed set', () => {
-    const broken = promptFiles({ system: 'Cassandra. {{> notARealPartial}}' });
+    const broken = promptFiles({ system: 'Mneme. {{> notARealPartial}}' });
     expect(() => buildConfigSnapshot({ channelPolicyYml: DEFAULT_POLICY, promptFiles: broken, now: NOW })).toThrow(
       ConfigReloadError,
     );

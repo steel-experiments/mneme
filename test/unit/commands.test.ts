@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { ApplicationCommandOptionType } from 'discord.js';
 import {
-  CASSANDRA_COMMAND_NAME,
-  CASSANDRA_SUBCOMMANDS,
-  CASSANDRA_SUBCOMMAND_GROUPS,
-  CASSANDRA_COMMANDS,
-  buildCassandraCommand,
+  MNEME_COMMAND_NAME,
+  MNEME_SUBCOMMANDS,
+  MNEME_SUBCOMMAND_GROUPS,
+  MNEME_COMMANDS,
+  buildMnemeCommand,
   listCommandEndpoints,
   registerGuildCommands,
   isAuthorizedAdmin,
@@ -21,11 +21,11 @@ import {
  * admin-role gate (Section 6.6) and registration outcome.
  */
 
-const ROOT_SUBCOMMANDS = new Set(CASSANDRA_SUBCOMMANDS.map((s) => s.name));
+const ROOT_SUBCOMMANDS = new Set(MNEME_SUBCOMMANDS.map((s) => s.name));
 
 describe('command surface matches Section 27', () => {
   it('declares exactly the sixteen flat admin subcommands', () => {
-    expect(CASSANDRA_SUBCOMMANDS).toHaveLength(16);
+    expect(MNEME_SUBCOMMANDS).toHaveLength(16);
     for (const name of [
       'status',
       'mode',
@@ -49,11 +49,11 @@ describe('command surface matches Section 27', () => {
   });
 
   it('declares the mcp-token and inspector-token groups with create / list / revoke', () => {
-    expect(CASSANDRA_SUBCOMMAND_GROUPS).toHaveLength(5);
-    const group = CASSANDRA_SUBCOMMAND_GROUPS.find((g) => g.name === 'mcp-token')!;
+    expect(MNEME_SUBCOMMAND_GROUPS).toHaveLength(5);
+    const group = MNEME_SUBCOMMAND_GROUPS.find((g) => g.name === 'mcp-token')!;
     expect(group.name).toBe('mcp-token');
     expect(group.subcommands.map((s) => s.name).sort()).toEqual(['create', 'list', 'revoke']);
-    const inspector = CASSANDRA_SUBCOMMAND_GROUPS.find((g) => g.name === 'inspector-token')!;
+    const inspector = MNEME_SUBCOMMAND_GROUPS.find((g) => g.name === 'inspector-token')!;
     expect(inspector.name).toBe('inspector-token');
     expect(inspector.subcommands.map((s) => s.name).sort()).toEqual(['create', 'list', 'revoke']);
   });
@@ -70,8 +70,8 @@ describe('command surface matches Section 27', () => {
   });
 
   it('gives every subcommand a non-empty description (Discord requires one)', () => {
-    for (const s of CASSANDRA_SUBCOMMANDS) expect(s.description.length).toBeGreaterThan(0);
-    for (const g of CASSANDRA_SUBCOMMAND_GROUPS) {
+    for (const s of MNEME_SUBCOMMANDS) expect(s.description.length).toBeGreaterThan(0);
+    for (const g of MNEME_SUBCOMMAND_GROUPS) {
       expect(g.description.length).toBeGreaterThan(0);
       for (const s of g.subcommands) expect(s.description.length).toBeGreaterThan(0);
     }
@@ -79,7 +79,7 @@ describe('command surface matches Section 27', () => {
 });
 
 describe('subcommand options', () => {
-  const flat = new Map(CASSANDRA_SUBCOMMANDS.map((s) => [s.name, s]));
+  const flat = new Map(MNEME_SUBCOMMANDS.map((s) => [s.name, s]));
 
   it('approve and dismiss require a proposal id', () => {
     for (const name of ['approve', 'dismiss']) {
@@ -117,7 +117,7 @@ describe('subcommand options', () => {
   });
 
   it('mcp-token create requires a name and accepts optional channels; revoke requires id', () => {
-    const group = CASSANDRA_SUBCOMMAND_GROUPS.find((g) => g.name === 'mcp-token')!;
+    const group = MNEME_SUBCOMMAND_GROUPS.find((g) => g.name === 'mcp-token')!;
     const byName = new Map(group.subcommands.map((s) => [s.name, s]));
     const create = byName.get('create')!;
     expect(create.options.find((o) => o.name === 'name')!.required).toBe(true);
@@ -127,7 +127,7 @@ describe('subcommand options', () => {
   });
 
   it('mcp-token create accepts an optional integer expires-days', () => {
-    const group = CASSANDRA_SUBCOMMAND_GROUPS.find((g) => g.name === 'mcp-token')!;
+    const group = MNEME_SUBCOMMAND_GROUPS.find((g) => g.name === 'mcp-token')!;
     const create = group.subcommands.find((s) => s.name === 'create')!;
     const expires = create.options.find((o) => o.name === 'expires-days')!;
     expect(expires.required).toBe(false);
@@ -135,7 +135,7 @@ describe('subcommand options', () => {
   });
 
   it('inspector-token create requires a name and takes optional expires-days; revoke requires id', () => {
-    const group = CASSANDRA_SUBCOMMAND_GROUPS.find((g) => g.name === 'inspector-token')!;
+    const group = MNEME_SUBCOMMAND_GROUPS.find((g) => g.name === 'inspector-token')!;
     const byName = new Map(group.subcommands.map((s) => [s.name, s]));
     const create = byName.get('create')!;
     expect(create.options.find((o) => o.name === 'name')!.required).toBe(true);
@@ -148,7 +148,7 @@ describe('subcommand options', () => {
 });
 
 describe('compiled REST payload', () => {
-  const payload = CASSANDRA_COMMANDS[0] as {
+  const payload = MNEME_COMMANDS[0] as {
     name: string;
     description: string;
     options?: Array<{
@@ -159,14 +159,14 @@ describe('compiled REST payload', () => {
     }>;
   };
 
-  it('is one root command named cassandra', () => {
-    expect(CASSANDRA_COMMANDS).toHaveLength(1);
-    expect(payload.name).toBe(CASSANDRA_COMMAND_NAME);
+  it('is one root command named mneme', () => {
+    expect(MNEME_COMMANDS).toHaveLength(1);
+    expect(payload.name).toBe(MNEME_COMMAND_NAME);
     expect(payload.description.length).toBeGreaterThan(0);
   });
 
   it('compiles deterministically from the spec', () => {
-    const rebuilt = buildCassandraCommand().toJSON() as typeof payload;
+    const rebuilt = buildMnemeCommand().toJSON() as typeof payload;
     expect(rebuilt).toEqual(payload);
   });
 
@@ -175,7 +175,7 @@ describe('compiled REST payload', () => {
     const subTypes = new Map(opts.map((o) => [o.name, o.type]));
     // 16 subcommands + 5 groups.
     expect(opts).toHaveLength(21);
-    for (const name of CASSANDRA_SUBCOMMANDS.map((s) => s.name)) {
+    for (const name of MNEME_SUBCOMMANDS.map((s) => s.name)) {
       expect(subTypes.get(name)).toBe(ApplicationCommandOptionType.Subcommand);
     }
     const group = opts.find((o) => o.name === 'mcp-token')!;
@@ -232,7 +232,7 @@ describe('guild command registration', () => {
     expect(calls).toHaveLength(1);
     expect(calls[0]!.route).toContain('700000000000000001');
     expect(calls[0]!.route).toContain('700000000000000002');
-    expect(calls[0]!.body).toBe(CASSANDRA_COMMANDS);
+    expect(calls[0]!.body).toBe(MNEME_COMMANDS);
   });
 
   it('returns ok:false on registration failure so readiness stays false', async () => {

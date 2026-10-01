@@ -23,7 +23,7 @@ import { createTestDb, type TestDb } from '../helpers/db.js';
  * return URL.
  */
 
-const BASE = 'https://cassandra.example';
+const BASE = 'https://mneme.example';
 const CLIENT_ID = 'b7f3c1a9d24e40f8';
 const ADMIN_ROLE = '456789012345678901';
 const MEMBER_ROLE = '456789012345678902';
@@ -84,7 +84,7 @@ function pendingSignIn(): string {
     clientState: 'client-state',
     codeChallenge: CHALLENGE,
     resource: `${BASE}/mcp`,
-    scope: 'cassandra:read',
+    scope: 'mneme:read',
     createdAtMs: Date.now(),
   }).id;
 }
@@ -270,7 +270,7 @@ describe('authorization code redemption', () => {
         CLAUDE_HOSTED_REDIRECT_URI,
         CHALLENGE,
         `${BASE}/mcp`,
-        'cassandra:read',
+        'mneme:read',
         USER_ID,
         now,
         (overrides.expiresAtMs as number) ?? now + 60_000,

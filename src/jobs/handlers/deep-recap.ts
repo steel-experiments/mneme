@@ -549,7 +549,7 @@ function finishFailedRequest(
     finishDeepRecap(deps.db, { id: recapId, status: 'failed', errorCategory: category, now });
     return;
   }
-  const content = `Deep recap ${request.id.slice(0, 8)} could not be completed reliably. No report was posted. Check \`/cassandra recap status\` and retry with a narrower window or topic.`;
+  const content = `Deep recap ${request.id.slice(0, 8)} could not be completed reliably. No report was posted. Check \`/mneme recap status\` and retry with a narrower window or topic.`;
   transactionImmediate(deps.db, () => {
     const outbox = enqueueOutbox(deps.db, {
       responseIntentKey: `deep-recap:${request.id}:notice`,
@@ -714,7 +714,7 @@ async function summarizeChunk(
     model: deps.agent.model,
     thinkingLevel: deps.agent.thinkingLevel,
     streamFn: deps.agent.streamFn,
-    sessionId: `cassandra:deep-recap:${request.id}:chunk:${chunk.ordinal}`,
+    sessionId: `mneme:deep-recap:${request.id}:chunk:${chunk.ordinal}`,
     cacheProfile: 'recap',
     promptText: compiler.compile(source)(sanitizePromptData(context)),
     promptVersion: promptVersion(compiler.versionFor('direct-answer'), source),
@@ -796,7 +796,7 @@ async function synthesizeReport(
       model: deps.agent.model,
       thinkingLevel: deps.agent.thinkingLevel,
       streamFn: deps.agent.streamFn,
-      sessionId: `cassandra:deep-recap:${request.id}:synthesis`,
+      sessionId: `mneme:deep-recap:${request.id}:synthesis`,
       cacheProfile: 'recap',
       promptText: compiler.compile(SYNTHESIS_PROMPT)(sanitizePromptData(context)),
       promptVersion: promptVersion(compiler.versionFor('direct-answer'), SYNTHESIS_PROMPT),

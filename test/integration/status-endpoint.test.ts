@@ -86,7 +86,7 @@ function setup(): Env {
   // A completed backup pair (the manifest marks post-integrity-check completion).
   const backupsDir = join(testDb.dir, 'backups');
   mkdirSync(backupsDir, { recursive: true });
-  const backupFile = join(backupsDir, 'cassandra-20260811-120000.sqlite');
+  const backupFile = join(backupsDir, 'mneme-20260811-120000.sqlite');
   writeFileSync(backupFile, Buffer.alloc(64));
   writeFileSync(`${backupFile}.manifest.json`, '{}');
 

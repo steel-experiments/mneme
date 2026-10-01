@@ -10,7 +10,7 @@ import {
 import { listMcpTokens, getMcpToken, revokeMcpToken } from '../../db/repositories/mcp-tokens.js';
 
 /**
- * `/cassandra mcp-token create|list|revoke` (Sections 27, 32.5.2).
+ * `/mneme mcp-token create|list|revoke` (Sections 27, 32.5.2).
  *
  * The admin surface over MCP bearer tokens. `create` issues a scoped token and
  * returns the plaintext **exactly once** in its reply — the only place it ever

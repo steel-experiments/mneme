@@ -38,7 +38,7 @@ export interface ApprovalPolicyRecheck {
   outboundEvidence: OutboundEvidenceResult;
   /** Channel/topic/daily-limit cooldown (Section 24.4), re-run now. */
   cooldown: CooldownDecision;
-  /** Near-/exact-duplicate of a recent Cassandra message (Section 24.4), re-run now. */
+  /** Near-/exact-duplicate of a recent Mneme message (Section 24.4), re-run now. */
   duplicate: DuplicateResult;
   /** Scheduled-subject quiet period used by the atomic approval recheck. */
   scheduledReminderIntervalMs?: number;
@@ -105,7 +105,7 @@ export interface ApproveProposalInput {
   proposalId: string;
   /** Resolved role ids of the clicking member, or null when unresolved (fail closed). */
   memberRoleIds: readonly string[] | null | undefined;
-  /** Configured admin role ids (`CASSANDRA_ADMIN_ROLE_IDS`). */
+  /** Configured admin role ids (`MNEME_ADMIN_ROLE_IDS`). */
   adminRoleIds: readonly string[];
   actorUserId: string;
   guildId: string;

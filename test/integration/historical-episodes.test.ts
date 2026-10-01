@@ -108,7 +108,7 @@ describe('historical episode reconstruction', () => {
     const deferredUntil = NOW + 86_400_000;
     db.prepare("UPDATE jobs SET run_after_ms=? WHERE type='review_episode'").run(deferredUntil);
     db.prepare('UPDATE channels SET name=?,updated_at_ms=? WHERE id=?')
-      .run('cassandra-project-history', NOW + 1, parentId);
+      .run('mneme-project-history', NOW + 1, parentId);
 
     expect(wakeHistoricalCampaignReviews(db, campaignId, NOW + 2)).toBe(0);
     expect(db.prepare("SELECT run_after_ms FROM jobs WHERE type='review_episode'").get())
@@ -150,10 +150,10 @@ describe('historical episode reconstruction', () => {
     expect(db.prepare('SELECT count(*) AS n FROM historical_episode_cursors').get()).toEqual({ n: 0 });
   });
 
-  it('never creates ordinary or campaign episodes for a child thread below a Cassandra test parent', () => {
+  it('never creates ordinary or campaign episodes for a child thread below a Mneme test parent', () => {
     const parentId = '100000000000001100';
     const threadId = '100000000000001101';
-    seedChannel(parentId, { name: 'cassandra-history-tests' });
+    seedChannel(parentId, { name: 'mneme-history-tests' });
     seedChannel(threadId, { name: 'release-planning', parentId, isThread: true });
     db.prepare(`INSERT INTO sync_cursors
       (channel_id,state,history_complete,updated_at_ms) VALUES (?,'live',1,?)`).run(threadId, NOW);
@@ -207,7 +207,7 @@ describe('historical episode reconstruction', () => {
       .run(threadId, NOW, NOW);
     message('100000000000001112', NOW - 1_000, 'We decided after the cursor was created.', threadId);
     db.prepare('UPDATE channels SET name=?, updated_at_ms=? WHERE id=?')
-      .run('cassandra-project-history', NOW + 1, parentId);
+      .run('mneme-project-history', NOW + 1, parentId);
 
     const result = processHistoricalBatch(db, ids.guildId, {
       ...config,

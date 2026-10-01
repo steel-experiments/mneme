@@ -13,7 +13,7 @@ import {
 
 // The deployed shape: a Railway public domain and the default MCP path.
 const config = {
-  publicBaseUrl: 'https://cassandra.example.up.railway.app',
+  publicBaseUrl: 'https://mneme.example.up.railway.app',
   mcpPath: '/mcp',
 };
 
@@ -22,7 +22,7 @@ describe('MCP OAuth discovery documents', () => {
     // A client sends this as the RFC 8707 `resource` parameter and compares it
     // against the metadata; a trailing slash or a query would break the match.
     expect(mcpResourceIdentifier(config)).toBe(
-      'https://cassandra.example.up.railway.app/mcp',
+      'https://mneme.example.up.railway.app/mcp',
     );
     expect(protectedResourceMetadata(config).resource).toBe(mcpResourceIdentifier(config));
   });
@@ -31,7 +31,7 @@ describe('MCP OAuth discovery documents', () => {
     // Section 3.1 inserts the resource path after the well-known segment.
     expect(protectedResourceMetadataPath('/mcp')).toBe('/.well-known/oauth-protected-resource/mcp');
     expect(protectedResourceMetadataUrl(config)).toBe(
-      'https://cassandra.example.up.railway.app/.well-known/oauth-protected-resource/mcp',
+      'https://mneme.example.up.railway.app/.well-known/oauth-protected-resource/mcp',
     );
   });
 
@@ -43,7 +43,7 @@ describe('MCP OAuth discovery documents', () => {
     );
   });
 
-  it('names exactly one authorization server: Cassandra itself', () => {
+  it('names exactly one authorization server: Mneme itself', () => {
     const prm = protectedResourceMetadata(config);
     // A client uses the first entry and never falls back to later ones, so a
     // longer list would be dead weight.
@@ -81,7 +81,7 @@ describe('MCP OAuth discovery documents', () => {
     const challenge = wwwAuthenticateChallenge(config);
     expect(challenge).toBe(
       'Bearer error="invalid_token", ' +
-        'resource_metadata="https://cassandra.example.up.railway.app' +
+        'resource_metadata="https://mneme.example.up.railway.app' +
         '/.well-known/oauth-protected-resource/mcp", ' +
         `scope="${MCP_OAUTH_SCOPE}"`,
     );

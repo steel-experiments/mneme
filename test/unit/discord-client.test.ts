@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { GatewayIntentBits, Events } from 'discord.js';
 import { createLogger } from '../../src/logger.js';
 import {
-  CASSANDRA_INTENTS,
-  CASSANDRA_PARTIALS,
+  MNEME_INTENTS,
+  MNEME_PARTIALS,
   ClientHealthTracker,
   createDiscordClient,
   handleReady,
@@ -20,7 +20,7 @@ import { Partials } from 'discord.js';
 const log = () => createLogger({ level: 'silent' });
 
 describe('Discord client intents and partials', () => {
-  it('recognizes only parsed roles assigned to Cassandra', () => {
+  it('recognizes only parsed roles assigned to Mneme', () => {
     const mentions = { roles: new Map([['bot-role', { id: 'bot-role' }]]) };
     expect(mentionsAssignedBotRole(mentions, new Set(['bot-role']))).toBe(true);
     expect(mentionsAssignedBotRole(mentions, new Set(['other-role']))).toBe(false);
@@ -28,19 +28,19 @@ describe('Discord client intents and partials', () => {
   });
 
   it('requests exactly the five required intents and no presence/full-member intents', () => {
-    expect(CASSANDRA_INTENTS).toContain(GatewayIntentBits.Guilds);
-    expect(CASSANDRA_INTENTS).toContain(GatewayIntentBits.GuildMessages);
-    expect(CASSANDRA_INTENTS).toContain(GatewayIntentBits.GuildMessageReactions);
-    expect(CASSANDRA_INTENTS).toContain(GatewayIntentBits.DirectMessages);
-    expect(CASSANDRA_INTENTS).toContain(GatewayIntentBits.MessageContent);
-    expect(CASSANDRA_INTENTS).not.toContain(GatewayIntentBits.GuildPresences);
-    expect(CASSANDRA_INTENTS).not.toContain(GatewayIntentBits.GuildMembers);
-    expect(CASSANDRA_INTENTS).toHaveLength(5);
+    expect(MNEME_INTENTS).toContain(GatewayIntentBits.Guilds);
+    expect(MNEME_INTENTS).toContain(GatewayIntentBits.GuildMessages);
+    expect(MNEME_INTENTS).toContain(GatewayIntentBits.GuildMessageReactions);
+    expect(MNEME_INTENTS).toContain(GatewayIntentBits.DirectMessages);
+    expect(MNEME_INTENTS).toContain(GatewayIntentBits.MessageContent);
+    expect(MNEME_INTENTS).not.toContain(GatewayIntentBits.GuildPresences);
+    expect(MNEME_INTENTS).not.toContain(GatewayIntentBits.GuildMembers);
+    expect(MNEME_INTENTS).toHaveLength(5);
 
     // Partials cover the uncached entity types the gateway events need.
-    expect(CASSANDRA_PARTIALS).toContain(Partials.Channel);
-    expect(CASSANDRA_PARTIALS).toContain(Partials.Message);
-    expect(CASSANDRA_PARTIALS).toContain(Partials.Reaction);
+    expect(MNEME_PARTIALS).toContain(Partials.Channel);
+    expect(MNEME_PARTIALS).toContain(Partials.Message);
+    expect(MNEME_PARTIALS).toContain(Partials.Reaction);
   });
 
   it('constructs the discord.js client with only those intents', () => {
@@ -50,7 +50,7 @@ describe('Discord client intents and partials', () => {
       logger: log(),
     });
     const intents = client.options.intents;
-    for (const bit of CASSANDRA_INTENTS) expect(intents.has(bit)).toBe(true);
+    for (const bit of MNEME_INTENTS) expect(intents.has(bit)).toBe(true);
     expect(intents.has(GatewayIntentBits.GuildPresences)).toBe(false);
     expect(intents.has(GatewayIntentBits.GuildMembers)).toBe(false);
     expect(intents.has(GatewayIntentBits.DirectMessages)).toBe(true);

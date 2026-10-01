@@ -106,7 +106,7 @@ describe('durable deep recap worker', () => {
       db: env.db,
       guildId: ids.guildId,
       promptCompiler: loadPromptCompiler('prompts'),
-      systemPrompt: 'You are Cassandra. Target {{target.label}}.',
+      systemPrompt: 'You are Mneme. Target {{target.label}}.',
       resolveChannelScope,
       rateChecks: () => ({
         cooldown: { allowed: true, blocks: [], retryAfterMs: null },
@@ -374,7 +374,7 @@ describe('durable deep recap worker', () => {
     const base = executor();
     const run = handler(async (deps) => {
       modelCalls += 1;
-      expect(deps.sessionId).toBe(`cassandra:deep-recap:${retried.id}:synthesis`);
+      expect(deps.sessionId).toBe(`mneme:deep-recap:${retried.id}:synthesis`);
       expect(deps.cacheProfile).toBe('recap');
       return base(deps);
     });

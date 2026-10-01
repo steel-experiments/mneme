@@ -69,7 +69,7 @@ export interface IntegrityCheckResult {
 /**
  * Run `PRAGMA integrity_check` on the live connection. Unlike the backup
  * subsystem's file-based check, this reads the open database directly — it is
- * the read path for `/cassandra integrity-check` and the optional periodic
+ * the read path for `/mneme integrity-check` and the optional periodic
  * health probe. Returns `{ ok: true, message: 'ok' }` when consistent.
  */
 export function runIntegrityCheck(db: DatabaseSync): IntegrityCheckResult {

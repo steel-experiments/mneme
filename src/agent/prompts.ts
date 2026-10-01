@@ -16,7 +16,7 @@ import Handlebars from 'handlebars';
  * missing template file raises a typed `PromptLoadError`.
  */
 
-/** The complete set of helpers a Cassandra prompt may use (Section 15.2). */
+/** The complete set of helpers a Mneme prompt may use (Section 15.2). */
 export const ALLOWED_HELPERS = ['json', 'join', 'isoDate', 'messageLink'] as const;
 export type AllowedHelper = (typeof ALLOWED_HELPERS)[number];
 
@@ -125,8 +125,8 @@ export interface PromptVersionParts {
   readonly taskTemplate: string;
   /** Partial sources, in canonical order. */
   readonly partials: readonly string[];
-  /** `cassandra.yml` content, if available. */
-  readonly cassandraYml?: string;
+  /** `mneme.yml` content, if available. */
+  readonly mnemeYml?: string;
   /** `channel-policy.yml` content, if available. */
   readonly channelPolicyYml?: string;
 }
@@ -144,7 +144,7 @@ function lengthPrefixedSection(content: string): string {
 /**
  * Compute the SHA-256 prompt version recorded for a run (Section 15.2). Every input
  * that can change a rendered prompt is its own section: the system template, the
- * selected task template, each partial in canonical order, the Cassandra YAML, and
+ * selected task template, each partial in canonical order, the Mneme YAML, and
  * the channel-policy YAML. Sections are length-prefixed and concatenated, so the
  * hash is stable for identical files and changes when any single input changes,
  * with no possibility of a boundary collision. The version is stored with each
@@ -155,7 +155,7 @@ export function computePromptVersion(parts: PromptVersionParts): string {
     parts.system,
     parts.taskTemplate,
     ...parts.partials,
-    parts.cassandraYml ?? '',
+    parts.mnemeYml ?? '',
     parts.channelPolicyYml ?? '',
   ];
   const canonical = sections.map(lengthPrefixedSection).join('');
@@ -167,7 +167,7 @@ export function computePromptVersion(parts: PromptVersionParts): string {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Compiles Cassandra's prompt surface once and renders task prompts safely. Templates
+ * Compiles Mneme's prompt surface once and renders task prompts safely. Templates
  * are compiled in strict mode with only the allowlisted helpers; render contexts are
  * sanitized to block prototype-property access; missing values throw.
  */
@@ -204,13 +204,13 @@ export class PromptCompiler {
   /** SHA-256 prompt version for a specific task run (Section 15.2). */
   versionFor(
     task: TaskTemplateName,
-    configs?: { cassandraYml?: string; channelPolicyYml?: string },
+    configs?: { mnemeYml?: string; channelPolicyYml?: string },
   ): string {
     return computePromptVersion({
       system: this.files.system,
       taskTemplate: task === 'system' ? '' : this.files[task],
       partials: PARTIAL_NAMES.map((p) => this.files.partials[p]),
-      cassandraYml: configs?.cassandraYml,
+      mnemeYml: configs?.mnemeYml,
       channelPolicyYml: configs?.channelPolicyYml,
     });
   }

@@ -4,8 +4,8 @@ import { recordAdminEvent } from '../db/repositories/admin-events.js';
 /**
  * Admin-role authorization and auditing (Sections 6.6, 27, 44).
  *
- * Guild-scoped Cassandra commands and review controls are gated on the configured
- * role IDs in `CASSANDRA_ADMIN_ROLE_IDS`. Authorization fails closed in two cases
+ * Guild-scoped Mneme commands and review controls are gated on the configured
+ * role IDs in `MNEME_ADMIN_ROLE_IDS`. Authorization fails closed in two cases
  * required by Section 6.6: when no admin roles are configured (nobody is privileged)
  * and when the member's role data could not be resolved (a partial member or cache
  * miss must not be treated as authorized). Every attempted material admin action —

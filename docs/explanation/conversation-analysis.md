@@ -1,6 +1,6 @@
-# How Cassandra analyzes conversations
+# How Mneme analyzes conversations
 
-Cassandra does not review every message independently and does not automatically
+Mneme does not review every message independently and does not automatically
 send a fixed window around every message to the model. It first groups nearby
 messages from one Discord conversation into a bounded **episode**, then reviews
 that complete episode. The model may retrieve additional permitted evidence
@@ -16,7 +16,7 @@ For a bounded historical campaign, a channel or thread is processed only when
 its own Discord ID is in the campaign allowlist. Allowlisting a parent channel
 does not implicitly include all of its child threads.
 
-A Cassandra-named channel is a test surface, as is every child thread even when the
+A Mneme-named channel is a test surface, as is every child thread even when the
 thread itself has a normal name. The same parent-aware boundary applies to live ingestion,
 history and reconciliation, historical episode construction, startup repair, review,
 retrieval, and sync status. Episode review checks immediately before the model call and
@@ -25,7 +25,7 @@ discards an in-flight result.
 
 ## Episode boundaries
 
-Within one conversation, Cassandra keeps messages in chronological order and
+Within one conversation, Mneme keeps messages in chronological order and
 starts a new episode when any configured boundary is reached:
 
 - the gap since the previous message is at least `EPISODE_QUIET_SECONDS`;
@@ -56,11 +56,11 @@ An episode boundary controls what one review reads. It does not show that the
 discussion is complete: 90 seconds of quiet is a pause, and the message and
 duration limits are reached while people are still typing.
 
-Cassandra therefore holds the review of a closed episode until the channel is
+Mneme therefore holds the review of a closed episode until the channel is
 quiet for `EPISODE_SETTLE_SECONDS` (10 minutes by default). The wait has two
 purposes. A held review reads the later human messages in the same conversation,
 so it sees the answer, correction, or fix that arrived after the boundary. And
-Cassandra does not interrupt a discussion that the team is still having.
+Mneme does not interrupt a discussion that the team is still having.
 
 If a channel stays busy, the review starts anyway after
 `EPISODE_SETTLE_MAX_MINUTES`, so organizational memory is never blocked. Such a
@@ -69,13 +69,13 @@ again when the review finishes, because a channel can become active while the
 model is thinking. A proposal about an active conversation is recorded and not
 sent, and the subject can come back in a later review.
 
-A direct question to Cassandra is never delayed by this wait.
+A direct question to Mneme is never delayed by this wait.
 
 ## Historical ordering and batches
 
 A newest-first historical campaign selects up to
 `HISTORICAL_MEMORY_BATCH_MESSAGES` candidate messages from one eligible
-conversation, beginning at its newest unprocessed cursor. Cassandra puts those
+conversation, beginning at its newest unprocessed cursor. Mneme puts those
 messages back into chronological order before splitting them into episodes. It
 reviews the newest resulting episode first and rotates among eligible channels
 so one busy channel does not monopolize the campaign.
@@ -117,7 +117,7 @@ retrieved-character limits.
 
 ## Context for explicit questions
 
-A direct answer does not begin with only the text after `@Cassandra`. The host supplies
+A direct answer does not begin with only the text after `@Mneme`. The host supplies
 the current question as structured message data, including its message ID, author,
 timestamp, reply target, and canonical Discord link. It also supplies a chronological
 window of at most ten immediately preceding permitted messages from the same channel.
@@ -130,7 +130,7 @@ exposure fingerprint are recorded while that initial prompt is rendered, before 
 runs. Tool-returned messages and memories are fingerprinted at their exact exposure
 boundary too; only IDs and hashes, not duplicate bodies, enter provenance.
 
-Channels whose names contain `cassandra`, and threads below them, are deliberately
+Channels whose names contain `mneme`, and threads below them, are deliberately
 different: ordinary messages there are never activity evidence. Their automatic
 preceding window is always empty, even if stale policy accidentally marks the test
 surface ingestion-enabled. The exact explicit question is supplied separately as the
@@ -149,7 +149,7 @@ even one row is rejected and must be narrowed rather than presented as empty.
 The same retrieval grant applies as everywhere else, so an org test console can summarize
 org-visible channels but cannot see restricted channels. An unqualified catch-up leaves
 the channel filter unset and therefore spans that full permitted scope; the channel where
-Cassandra was addressed is only the answer destination. Cassandra narrows the snapshot
+Mneme was addressed is only the answer destination. Mneme narrows the snapshot
 only when the user explicitly requests specific channels. The older
 `list_recent_messages` operation remains a lossless paged browse for focused inspection
 and MCP pagination, not the normal recap loop.
@@ -176,7 +176,7 @@ from the at-most-50 ranked page it returns. For a larger activity report, the ad
 deep-recap workflow persists daily partitions and actual coverage, survives restarts,
 and performs a final synthesis under explicit request and organization-day budgets.
 
-Immediately before a primary or partial report is enqueued, Cassandra re-fetches every
+Immediately before a primary or partial report is enqueued, Mneme re-fetches every
 message exposed to the run and recomputes every exposed memory from current evidence. The
 complete current ID-to-fingerprint maps must match the hashes captured at exposure. Those
 hashes cover model-visible fields plus joined channel, parent, author, aggregate-reaction,
@@ -186,17 +186,17 @@ stale paraphrase. The conservative run-start version boundary remains an additio
 
 ## Local triviality filter
 
-Before paying for a model call, Cassandra may skip an unmistakably trivial
+Before paying for a model call, Mneme may skip an unmistakably trivial
 episode. A skip occurs only when every condition below is true:
 
 - it contains fewer than two human messages;
-- it does not mention Cassandra;
+- it does not mention Mneme;
 - it contains no decision-like phrase;
 - it has no reaction burst of at least three reactions on one emoji;
 - none of its messages already supports a memory; and
 - its combined human text is shorter than 32 characters.
 
-If any one condition fails, Cassandra reviews the episode. This filter is
+If any one condition fails, Mneme reviews the episode. This filter is
 deliberately conservative because missing a consequential discussion is more
 costly than reviewing an occasional unimportant one.
 

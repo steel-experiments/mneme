@@ -19,5 +19,5 @@ plans
 internal
 mkdocs.yml
 requirements-docs.txt
-CASSANDRA_IMPLEMENTATION_SPEC.md
+MNEME_IMPLEMENTATION_SPEC.md
 *.md

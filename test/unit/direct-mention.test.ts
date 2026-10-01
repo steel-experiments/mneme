@@ -4,7 +4,7 @@ import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 import type { NormalizedMessage, NormalizedMention } from '../../src/discord/normalize.js';
 import {
   findDirectMention,
-  mentionsCassandra,
+  mentionsMneme,
   enqueueDirectAnswerForMention,
   directAnswerJobKey,
   DIRECT_ANSWER_PRIORITY,
@@ -15,7 +15,7 @@ import {
 } from '../../src/db/repositories/direct-answers.js';
 
 /**
- * Explicit Cassandra mention detection and direct-answer scheduling (Sections 11.2,
+ * Explicit Mneme mention detection and direct-answer scheduling (Sections 11.2,
  * 26).
  *
  * Acceptance: one real mention creates one high-priority job and never changes the
@@ -24,7 +24,7 @@ import {
 
 const GUILD = '100000000000000001';
 const CHANNEL = '100000000000000002'; // seeded by seedIdentity
-const CASSANDRA = '100000000000000010';
+const MNEME = '100000000000000010';
 const OTHER_USER = '100000000000000099';
 const NOW = 1_700_000_001_000;
 
@@ -74,48 +74,48 @@ beforeEach(() => {
 afterEach(() => env.cleanup());
 
 describe('findDirectMention — entity-based detection', () => {
-  it('detects a real Cassandra mention entity', () => {
-    const m = findDirectMention(msg({ id: 'm1', mentions: [mention(CASSANDRA, 'Cassandra')] }), CASSANDRA);
+  it('detects a real Mneme mention entity', () => {
+    const m = findDirectMention(msg({ id: 'm1', mentions: [mention(MNEME, 'Mneme')] }), MNEME);
     expect(m).toEqual({ messageId: 'm1', channelId: CHANNEL, guildId: GUILD });
   });
 
   it('never matches a textual lookalike when no mention entity is present', () => {
-    // Content says "@Cassandra" but Discord parsed no mention entity for the bot id.
-    const m = findDirectMention(msg({ id: 'm2', content: '@Cassandra what do you think?' }), CASSANDRA);
+    // Content says "@Mneme" but Discord parsed no mention entity for the bot id.
+    const m = findDirectMention(msg({ id: 'm2', content: '@Mneme what do you think?' }), MNEME);
     expect(m).toBeNull();
   });
 
   it('ignores mentions of other users', () => {
-    const m = findDirectMention(msg({ id: 'm3', mentions: [mention(OTHER_USER, 'bob')] }), CASSANDRA);
+    const m = findDirectMention(msg({ id: 'm3', mentions: [mention(OTHER_USER, 'bob')] }), MNEME);
     expect(m).toBeNull();
   });
 
-  it('finds Cassandra among several mention entities', () => {
+  it('finds Mneme among several mention entities', () => {
     const m = findDirectMention(
-      msg({ id: 'm4', mentions: [mention(OTHER_USER, 'bob'), mention(CASSANDRA, 'Cassandra')] }),
-      CASSANDRA,
+      msg({ id: 'm4', mentions: [mention(OTHER_USER, 'bob'), mention(MNEME, 'Mneme')] }),
+      MNEME,
     );
     expect(m?.messageId).toBe('m4');
   });
 
   it('returns null when there are no mentions', () => {
-    expect(findDirectMention(msg({ id: 'm5' }), CASSANDRA)).toBeNull();
+    expect(findDirectMention(msg({ id: 'm5' }), MNEME)).toBeNull();
   });
 });
 
-describe('mentionsCassandra', () => {
-  it('is true only when the cassandra id is among parsed entities', () => {
-    expect(mentionsCassandra([mention(CASSANDRA)], CASSANDRA)).toBe(true);
-    expect(mentionsCassandra([mention(OTHER_USER)], CASSANDRA)).toBe(false);
-    expect(mentionsCassandra([], CASSANDRA)).toBe(false);
+describe('mentionsMneme', () => {
+  it('is true only when the mneme id is among parsed entities', () => {
+    expect(mentionsMneme([mention(MNEME)], MNEME)).toBe(true);
+    expect(mentionsMneme([mention(OTHER_USER)], MNEME)).toBe(false);
+    expect(mentionsMneme([], MNEME)).toBe(false);
   });
 });
 
 describe('enqueueDirectAnswerForMention', () => {
   it('creates one high-priority job pinned to the current channel for a real mention', () => {
     const res = enqueueDirectAnswerForMention(
-      msg({ id: 'm1', mentions: [mention(CASSANDRA, 'Cassandra')] }),
-      { db, cassandraId: CASSANDRA, now: NOW },
+      msg({ id: 'm1', mentions: [mention(MNEME, 'Mneme')] }),
+      { db, mnemeId: MNEME, now: NOW },
     );
     expect(res.enqueued).toBe(true);
     expect(res.mention?.messageId).toBe('m1');
@@ -139,11 +139,11 @@ describe('enqueueDirectAnswerForMention', () => {
   });
 
   it('deduplicates by source message id: a repeat mention enqueues nothing new', () => {
-    const message = msg({ id: 'm1', mentions: [mention(CASSANDRA, 'Cassandra')] });
-    const first = enqueueDirectAnswerForMention(message, { db, cassandraId: CASSANDRA, now: NOW });
+    const message = msg({ id: 'm1', mentions: [mention(MNEME, 'Mneme')] });
+    const first = enqueueDirectAnswerForMention(message, { db, mnemeId: MNEME, now: NOW });
     const second = enqueueDirectAnswerForMention(
       { ...message, createdAtMs: NOW + 999_999 },
-      { db, cassandraId: CASSANDRA, now: NOW + 1000 },
+      { db, mnemeId: MNEME, now: NOW + 1000 },
     );
     expect(first.enqueued).toBe(true);
     expect(second.enqueued).toBe(false); // active unique key collapsed the duplicate
@@ -156,8 +156,8 @@ describe('enqueueDirectAnswerForMention', () => {
   });
 
   it('repairs a pending request when Discord redelivers after its first job is terminal', () => {
-    const message = msg({ id: 'm-terminal-redelivery', mentions: [mention(CASSANDRA)] });
-    const first = enqueueDirectAnswerForMention(message, { db, cassandraId: CASSANDRA, now: NOW });
+    const message = msg({ id: 'm-terminal-redelivery', mentions: [mention(MNEME)] });
+    const first = enqueueDirectAnswerForMention(message, { db, mnemeId: MNEME, now: NOW });
     expect(first.enqueued).toBe(true);
     const firstJobId = getDirectAnswerRequest(db, message.id)?.jobId;
     db.prepare("UPDATE jobs SET status='succeeded', completed_at_ms=? WHERE type='direct_answer'")
@@ -165,7 +165,7 @@ describe('enqueueDirectAnswerForMention', () => {
 
     const repeated = enqueueDirectAnswerForMention(message, {
       db,
-      cassandraId: CASSANDRA,
+      mnemeId: MNEME,
       now: NOW + 1_000,
     });
 
@@ -176,8 +176,8 @@ describe('enqueueDirectAnswerForMention', () => {
   });
 
   it('does not recreate work when the durable request is already terminal', () => {
-    const message = msg({ id: 'm-terminal-request-redelivery', mentions: [mention(CASSANDRA)] });
-    const first = enqueueDirectAnswerForMention(message, { db, cassandraId: CASSANDRA, now: NOW });
+    const message = msg({ id: 'm-terminal-request-redelivery', mentions: [mention(MNEME)] });
+    const first = enqueueDirectAnswerForMention(message, { db, mnemeId: MNEME, now: NOW });
     expect(first.enqueued).toBe(true);
     db.prepare(`UPDATE direct_answer_requests
       SET outcome_kind='suppressed', reason_category='target_invalid',
@@ -188,7 +188,7 @@ describe('enqueueDirectAnswerForMention', () => {
 
     const repeated = enqueueDirectAnswerForMention(message, {
       db,
-      cassandraId: CASSANDRA,
+      mnemeId: MNEME,
       now: NOW + 1_000,
     });
 
@@ -201,8 +201,8 @@ describe('enqueueDirectAnswerForMention', () => {
       BEGIN SELECT RAISE(ABORT, 'simulated request failure'); END`);
 
     expect(() => enqueueDirectAnswerForMention(
-      msg({ id: 'm-request-fails', mentions: [mention(CASSANDRA)] }),
-      { db, cassandraId: CASSANDRA, now: NOW },
+      msg({ id: 'm-request-fails', mentions: [mention(MNEME)] }),
+      { db, mnemeId: MNEME, now: NOW },
     )).toThrow('simulated request failure');
 
     expect(directAnswerJobs(db)).toHaveLength(0);
@@ -211,8 +211,8 @@ describe('enqueueDirectAnswerForMention', () => {
 
   it('honors DIRECT_ANSWER_ENABLED=false: detects the mention but queues no job', () => {
     const res = enqueueDirectAnswerForMention(
-      msg({ id: 'm1', mentions: [mention(CASSANDRA, 'Cassandra')] }),
-      { db, cassandraId: CASSANDRA, now: NOW, enabled: false },
+      msg({ id: 'm1', mentions: [mention(MNEME, 'Mneme')] }),
+      { db, mnemeId: MNEME, now: NOW, enabled: false },
     );
     expect(res.enqueued).toBe(false);
     expect(res.mention?.messageId).toBe('m1'); // still detected
@@ -221,14 +221,14 @@ describe('enqueueDirectAnswerForMention', () => {
 
   it('blocks self, ordinary bot, and webhook mentions while permitting an allowlisted bot', () => {
     const cases = [
-      msg({ id: 'self', author: { id: CASSANDRA, username: 'cassandra', globalName: 'Cassandra', isBot: true }, mentions: [mention(CASSANDRA)] }),
-      msg({ id: 'bot', author: { id: OTHER_USER, username: 'bot', globalName: 'Bot', isBot: true }, mentions: [mention(CASSANDRA)] }),
-      msg({ id: 'webhook', isWebhook: true, mentions: [mention(CASSANDRA)] }),
+      msg({ id: 'self', author: { id: MNEME, username: 'mneme', globalName: 'Mneme', isBot: true }, mentions: [mention(MNEME)] }),
+      msg({ id: 'bot', author: { id: OTHER_USER, username: 'bot', globalName: 'Bot', isBot: true }, mentions: [mention(MNEME)] }),
+      msg({ id: 'webhook', isWebhook: true, mentions: [mention(MNEME)] }),
     ];
     for (const message of cases) {
       expect(enqueueDirectAnswerForMention(message, {
         db,
-        cassandraId: CASSANDRA,
+        mnemeId: MNEME,
         now: NOW,
       }).enqueued).toBe(false);
     }
@@ -236,11 +236,11 @@ describe('enqueueDirectAnswerForMention', () => {
     const allowlisted = msg({
       id: 'allowlisted-bot',
       author: { id: OTHER_USER, username: 'bot', globalName: 'Bot', isBot: true },
-      mentions: [mention(CASSANDRA)],
+      mentions: [mention(MNEME)],
     });
     expect(enqueueDirectAnswerForMention(allowlisted, {
       db,
-      cassandraId: CASSANDRA,
+      mnemeId: MNEME,
       now: NOW,
       allowlistedBotIds: new Set([OTHER_USER]),
     }).enqueued).toBe(true);
@@ -249,8 +249,8 @@ describe('enqueueDirectAnswerForMention', () => {
 
   it('creates no job for a non-mention message', () => {
     const res = enqueueDirectAnswerForMention(
-      msg({ id: 'm1', content: '@Cassandra lookalike', mentions: [] }),
-      { db, cassandraId: CASSANDRA, now: NOW },
+      msg({ id: 'm1', content: '@Mneme lookalike', mentions: [] }),
+      { db, mnemeId: MNEME, now: NOW },
     );
     expect(res.enqueued).toBe(false);
     expect(res.mention).toBeNull();
@@ -267,8 +267,8 @@ describe('enqueueDirectAnswerForMention', () => {
     ).run('200000000000000555', GUILD, NOW, NOW);
 
     enqueueDirectAnswerForMention(
-      msg({ id: 'm1', channelId: '200000000000000555', mentions: [mention(CASSANDRA, 'Cassandra')] }),
-      { db, cassandraId: CASSANDRA, now: NOW },
+      msg({ id: 'm1', channelId: '200000000000000555', mentions: [mention(MNEME, 'Mneme')] }),
+      { db, mnemeId: MNEME, now: NOW },
     );
 
     const ch = db.prepare('SELECT visibility_class, ingest_enabled, allow_interventions FROM channels WHERE id = ?').get('200000000000000555') as { visibility_class: string; ingest_enabled: number; allow_interventions: number };

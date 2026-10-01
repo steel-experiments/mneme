@@ -583,7 +583,7 @@ export interface ExecuteAgentRunDeps {
   }>;
   /** Memory scopes embedded in the initial task payload before tool retrieval. */
   initialProvenanceMemoryScopes?: ReadonlyArray<{ memoryId: string; scopeType: string; scopeKey: string | null }>;
-  /** Cassandra's own documentation; used by direct-answer runs (Section 22.7). */
+  /** Mneme's own documentation; used by direct-answer runs (Section 22.7). */
   docs?: DocsIndex;
   providerId: string;
   modelId: string;

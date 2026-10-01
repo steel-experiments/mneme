@@ -1,7 +1,7 @@
 import type { DatabaseSync } from '../db/database.js';
 import { getChannel, resolveRetrievableChannelScope } from '../db/repositories/channels.js';
 import type { RetrievalGrant } from '../db/repositories/message-search.js';
-import { isCassandraTestSurface } from '../discord/test-channels.js';
+import { isMnemeTestSurface } from '../discord/test-channels.js';
 import { evaluateProvenanceGate, resolveProvenanceScopes } from '../agent/policy.js';
 import type { RetrievalProvenance } from '../agent/run-context.js';
 import { getMemory } from './repository.js';
@@ -49,12 +49,12 @@ export function resolveScheduledFeedback(
     guildId: string;
     channelId: string;
     messageIds: readonly string[];
-    cassandraId: string;
+    mnemeId: string;
     maxAssociations?: number;
     maxSubjects?: number;
   },
 ): ScheduledFeedbackAssociation[] {
-  if (isCassandraTestSurface(db, input.channelId)) return [];
+  if (isMnemeTestSurface(db, input.channelId)) return [];
   const currentTarget = resolveRetrievableChannelScope(db, input.channelId);
   const grant = targetGrant(db, input.channelId);
   const targetChannel = getChannel(db, input.channelId);
@@ -75,7 +75,7 @@ export function resolveScheduledFeedback(
       author_id: string | null; is_bot: number | null;
     } | undefined;
     if (!reply?.reply_to_message_id || reply.channel_id !== input.channelId
-      || reply.author_id === input.cassandraId || reply.is_bot !== 0) continue;
+      || reply.author_id === input.mnemeId || reply.is_bot !== 0) continue;
 
     const matches = db.prepare(
       `SELECT o.id AS outbox_id,o.channel_id,o.content,o.status,o.discord_message_id,

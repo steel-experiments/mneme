@@ -161,7 +161,7 @@ describe('authentication and rate limiting', () => {
 
   it('carries the OAuth challenge on 401 when discovery is enabled', async () => {
     const challenge = wwwAuthenticateChallenge({
-      publicBaseUrl: 'https://cassandra.example',
+      publicBaseUrl: 'https://mneme.example',
       mcpPath: PATH,
     });
     const { base, token } = await start({ wwwAuthenticate: challenge });
@@ -173,7 +173,7 @@ describe('authentication and rate limiting', () => {
       expect(res.status).toBe(401);
       expect(res.headers.get('www-authenticate')).toBe(challenge);
       expect(res.headers.get('www-authenticate')).toContain(
-        'resource_metadata="https://cassandra.example/.well-known/oauth-protected-resource/mcp"',
+        'resource_metadata="https://mneme.example/.well-known/oauth-protected-resource/mcp"',
       );
     }
 

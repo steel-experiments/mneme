@@ -432,7 +432,7 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
   if (ctx.snapshot) {
     const policyReview = ctx.snapshot.channelPolicy.review_channel;
     if (config.reviewChannelId && policyReview?.id !== config.reviewChannelId) {
-      throw new BootstrapError('CASSANDRA_REVIEW_CHANNEL_ID must match channel-policy.yml review_channel.id');
+      throw new BootstrapError('MNEME_REVIEW_CHANNEL_ID must match channel-policy.yml review_channel.id');
     }
     if ((config.mode === 'review' || config.mode === 'autonomous') &&
         (!policyReview || !policyReview.secure || policyReview.id !== config.reviewChannelId)) {
@@ -618,8 +618,8 @@ async function defaultBeginIngestion(ctx: BootstrapContext, discord: DiscordWiri
     reconcileStoredChannelPolicyReview,
     resolveObservedChannelPolicy,
   } = await import('./discord/channel-policy-review-service.js');
-  const { isCassandraTestSurface } = await import('./discord/test-channels.js');
-  const { mentionsCassandra } = await import('./discord/mentions.js');
+  const { isMnemeTestSurface } = await import('./discord/test-channels.js');
+  const { mentionsMneme } = await import('./discord/mentions.js');
   const ing = ctx.config.ingestion;
   registerIngestionHandlers(discord.client, {
     db: ctx.db,
@@ -638,10 +638,10 @@ async function defaultBeginIngestion(ctx: BootstrapContext, discord: DiscordWiri
       now: ctx.now(),
     }),
     shouldIngestMessage: (channelId, message) => {
-      const isDirectMention = mentionsCassandra(message.mentions, ctx.config.discord.applicationId);
+      const isDirectMention = mentionsMneme(message.mentions, ctx.config.discord.applicationId);
       const channel = getChannel(ctx.db, channelId);
       if (channel) {
-        if (isCassandraTestSurface(ctx.db, channelId)) {
+        if (isMnemeTestSurface(ctx.db, channelId)) {
           if (isDirectMention) {
             ctx.logger.info({ event: 'discord.direct_mention_received', channelId, testOnly: true }, 'direct mention accepted in test-only channel');
           }
@@ -671,10 +671,10 @@ async function defaultBeginIngestion(ctx: BootstrapContext, discord: DiscordWiri
     observer: createIngestionObserver(ctx.counters),
     onMessageCreate: (message) => {
       const observedAt = ctx.now();
-      if (!isCassandraTestSurface(ctx.db, message.channelId)) {
+      if (!isMnemeTestSurface(ctx.db, message.channelId)) {
         ingestEpisodeActivity(
           message,
-          { cassandraId: ctx.config.discord.applicationId },
+          { mnemeId: ctx.config.discord.applicationId },
           {
             db: ctx.db,
             guildId: ctx.config.discord.guildId,
@@ -689,7 +689,7 @@ async function defaultBeginIngestion(ctx: BootstrapContext, discord: DiscordWiri
       }
       const direct = enqueueDirectAnswerForMention(message, {
         db: ctx.db,
-        cassandraId: ctx.config.discord.applicationId,
+        mnemeId: ctx.config.discord.applicationId,
         enabled: ctx.config.directAnswerEnabled,
         now: observedAt,
       });

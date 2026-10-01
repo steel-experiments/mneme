@@ -97,7 +97,7 @@
     },
     {
       "id": "self-documentation",
-      "question": "How do I connect Claude Desktop to Cassandra over MCP?",
+      "question": "How do I connect Claude Desktop to Mneme over MCP?",
       "expectedFirstTool": "list_docs",
       "language": "en"
     }

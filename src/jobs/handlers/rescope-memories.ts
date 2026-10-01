@@ -5,7 +5,7 @@ import { rescopeMemories, type RescopeResult } from '../../memory/maintenance.js
 
 /**
  * `rescope_memories` job handler: rewrite cached memory scopes to the current channel
- * policy (Sections 7.2, 27). Queued by `/cassandra reload-policy`. The handler
+ * policy (Sections 7.2, 27). Queued by `/mneme reload-policy`. The handler
  * rescopes every memory (a policy reload may have changed any channel) using a
  * system actor; each material change is audited in `admin_events`. Read-time
  * recomputation remains the enforcement boundary, so this job only converges the

@@ -35,10 +35,10 @@ const INDEX = new DocsIndex([
     path: 'reference/discord-commands.md',
     title: 'Discord command reference',
     summary: 'Every admin subcommand.',
-    content: '# Discord command reference\n\nRun /cassandra status for the mode.\n',
+    content: '# Discord command reference\n\nRun /mneme status for the mode.\n',
   }),
   entry({ path: 'how-to/connect-mcp-clients.md', title: 'Connect MCP clients', summary: 'MCP setup.' }),
-  entry({ path: 'index.md', title: 'Cassandra documentation', summary: '' }),
+  entry({ path: 'index.md', title: 'Mneme documentation', summary: '' }),
 ]);
 
 function ctx(budget = 60_000, docs: DocsIndex = INDEX): AgentRunContext {
@@ -73,7 +73,7 @@ describe('list_docs — the index only', () => {
     expect(text).toContain('3 documentation file(s):');
     expect(text).toContain('how-to/connect-mcp-clients.md — Connect MCP clients: MCP setup.');
     expect(text).toContain('reference/discord-commands.md — Discord command reference: Every admin subcommand.');
-    expect(text).toContain('index.md — Cassandra documentation');
+    expect(text).toContain('index.md — Mneme documentation');
     expect(result.details.paths).toEqual([
       'how-to/connect-mcp-clients.md',
       'index.md',
@@ -83,7 +83,7 @@ describe('list_docs — the index only', () => {
 
   it('returns no file content', async () => {
     const text = textOf(await createListDocsTool(ctx(), INDEX).execute('c1', {}));
-    expect(text).not.toContain('Run /cassandra status for the mode.');
+    expect(text).not.toContain('Run /mneme status for the mode.');
   });
 
   it('returns only host-constructed canonical URLs supplied by the index', async () => {
@@ -91,12 +91,12 @@ describe('list_docs — the index only', () => {
       entry({
         path: 'guide.md',
         title: 'Guide',
-        publicUrl: 'https://docs.example.com/cassandra/guide/',
+        publicUrl: 'https://docs.example.com/mneme/guide/',
       }),
     ]);
     const text = textOf(await createListDocsTool(ctx(60_000, publicIndex), publicIndex).execute('c1', {}));
 
-    expect(text).toContain('[canonical: https://docs.example.com/cassandra/guide/]');
+    expect(text).toContain('[canonical: https://docs.example.com/mneme/guide/]');
   });
 
   it('says so plainly when no documentation is indexed', async () => {
@@ -119,13 +119,13 @@ describe('list_docs — the index only', () => {
   });
 
   it('drops entries that do not fit the remaining character budget', async () => {
-    const run = ctx(180);
+    const run = ctx(176);
     const result = await createListDocsTool(run, INDEX).execute('c1', {});
 
     expect(result.details.truncated).toBe(1);
     expect(result.details.paths).not.toContain('reference/discord-commands.md');
     expect(textOf(result)).toContain('1 more documentation file(s) omitted — per-run character budget reached');
-    expect(run.retrieval.charsExposed).toBeLessThanOrEqual(180);
+    expect(run.retrieval.charsExposed).toBeLessThanOrEqual(176);
   });
 });
 
@@ -160,7 +160,7 @@ describe('read_doc — only an indexed path resolves', () => {
     const publicIndex = new DocsIndex([
       entry({
         path: 'guide.md',
-        publicUrl: 'https://docs.example.com/cassandra/guide/',
+        publicUrl: 'https://docs.example.com/mneme/guide/',
         content: '# Guide\n\nPublic content.\n',
       }),
     ]);
@@ -170,13 +170,13 @@ describe('read_doc — only an indexed path resolves', () => {
     );
 
     expect(textOf(result)).toContain(
-      'Canonical public URL: https://docs.example.com/cassandra/guide/',
+      'Canonical public URL: https://docs.example.com/mneme/guide/',
     );
-    expect(result.details.publicUrl).toBe('https://docs.example.com/cassandra/guide/');
+    expect(result.details.publicUrl).toBe('https://docs.example.com/mneme/guide/');
   });
 
   it.each([
-    ['a parent-directory traversal', '../CASSANDRA_IMPLEMENTATION_SPEC.md'],
+    ['a parent-directory traversal', '../MNEME_IMPLEMENTATION_SPEC.md'],
     ['a traversal through an indexed directory', 'reference/../../.env'],
     ['a deep traversal', '../../../../etc/passwd'],
     ['an absolute path', '/etc/passwd'],

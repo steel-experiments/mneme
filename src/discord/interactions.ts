@@ -30,7 +30,7 @@ export interface ReviewInteractionDeps {
   db: DatabaseSync;
   /** HMAC secret shared with {@link signReviewComponent}. */
   secret: string;
-  /** Configured admin role ids (`CASSANDRA_ADMIN_ROLE_IDS`). */
+  /** Configured admin role ids (`MNEME_ADMIN_ROLE_IDS`). */
   adminRoleIds: readonly string[];
   /**
    * Build the current-state policy re-check for a proposal, gathered from the DB
@@ -57,7 +57,7 @@ export function createReviewButtonHandler(deps: ReviewInteractionDeps) {
     const guildId = interaction.guildId;
     const actorUserId = interaction.user.id;
     if (!guildId) {
-      await replySafe(interaction, 'Cassandra review controls only work inside a server.');
+      await replySafe(interaction, 'Mneme review controls only work inside a server.');
       return;
     }
 
@@ -115,7 +115,7 @@ function labelForApprove(outcome: ApproveOutcome): string {
     case 'approved':
       return 'Approved — the message is queued for delivery.';
     case 'unauthorized':
-      return 'You are not authorized to approve Cassandra proposals.';
+      return 'You are not authorized to approve Mneme proposals.';
     case 'expired':
       return 'This proposal has expired.';
     case 'policy_blocked':
@@ -132,7 +132,7 @@ function labelForDismiss(outcome: DismissOutcome): string {
     case 'dismissed':
       return 'Proposal dismissed.';
     case 'unauthorized':
-      return 'You are not authorized to dismiss Cassandra proposals.';
+      return 'You are not authorized to dismiss Mneme proposals.';
     case 'stale':
       return 'This proposal has already been resolved.';
     case 'not_found':

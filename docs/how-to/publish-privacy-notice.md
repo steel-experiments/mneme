@@ -7,24 +7,24 @@ changes.
 
 ## Notice template
 
-> # Cassandra in this server
+> # Mneme in this server
 >
-> Cassandra is an organizational-memory bot for [server name]. It reads
+> Mneme is an organizational-memory bot for [server name]. It reads
 > permitted conversations so it can remember decisions and assumptions, notice
 > contradictions, and answer questions when mentioned.
 >
-> ## What Cassandra can read
+> ## What Mneme can read
 >
-> Cassandra can read these categories and channels: [list them]. Its access is
-> limited by both its Discord role and the server's Cassandra channel policy.
+> Mneme can read these categories and channels: [list them]. Its access is
+> limited by both its Discord role and the server's Mneme channel policy.
 >
-> Cassandra cannot read direct messages between members, channels hidden from
+> Mneme cannot read direct messages between members, channels hidden from
 > its role, voice conversations, or member presence. These categories and
 > channels are excluded: [list them].
 >
-> ## What Cassandra stores
+> ## What Mneme stores
 >
-> Cassandra stores normalized message text and the Discord IDs needed to link
+> Mneme stores normalized message text and the Discord IDs needed to link
 > messages, channels, users, replies, and reactions. Our current settings are:
 >
 > - raw Discord JSON: [stored / not stored]
@@ -39,14 +39,14 @@ changes.
 >
 > ## Model processing
 >
-> Cassandra sends selected, scoped excerpts to [provider and model] for API
+> Mneme sends selected, scoped excerpts to [provider and model] for API
 > inference. It does not train or fine-tune a model on server messages. Our
 > provider settings and agreement cover [training policy, provider retention,
 > processing region, and DPA where relevant].
 >
-> ## When Cassandra speaks
+> ## When Mneme speaks
 >
-> Cassandra currently runs in [observe / review / autonomous] mode.
+> Mneme currently runs in [observe / review / autonomous] mode.
 >
 > - Observe mode stores memories but does not post unsolicited interventions.
 > - Review mode sends proposed interventions to [review channel or group] for
@@ -54,13 +54,13 @@ changes.
 > - Autonomous mode may post in [allowed channels] within configured evidence,
 >   cooldown, and daily limits.
 >
-> Cassandra may answer when it is explicitly mentioned if direct answers are
+> Mneme may answer when it is explicitly mentioned if direct answers are
 > enabled.
 >
 > ## Correction and deletion
 >
-> Ask [operator contact] to correct or remove stored data. Cassandra admins can
-> request removal with `/cassandra forget-message` or `/cassandra forget-user`.
+> Ask [operator contact] to correct or remove stored data. Mneme admins can
+> request removal with `/mneme forget-message` or `/mneme forget-user`.
 > A different authorized deletion approver must approve the request. A 24-hour
 > cancellation window follows approval; content remains available until the purge
 > starts. The final purge cannot be undone, and does not delete Discord originals.
@@ -77,13 +77,13 @@ changes.
 
 Before posting:
 
-1. Run `/cassandra channels` and compare it with the readable and excluded lists.
+1. Run `/mneme channels` and compare it with the readable and excluded lists.
 2. Check `STORE_RAW_JSON`, `RETAIN_EDIT_HISTORY`, `RETAIN_DELETED_CONTENT`, and
    `ATTACHMENT_MODE`.
 3. Check local and off-host backup retention separately.
 4. Confirm `LLM_PROVIDER` and `LLM_MODEL`. When both are unset, they default to
    `openai` and `gpt-5.6-terra`.
-5. Confirm `CASSANDRA_MODE` and `DIRECT_ANSWER_ENABLED`.
+5. Confirm `MNEME_MODE` and `DIRECT_ANSWER_ENABLED`.
 6. Name the secure review channel when review or autonomous mode is active.
 7. Give members a real contact and a deletion-request process.
 

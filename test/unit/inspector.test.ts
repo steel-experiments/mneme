@@ -239,7 +239,7 @@ describe('inspector route parsing — Section 32.6', () => {
     expect(presentedToken(['Bearer a', 'Bearer b'])).toBeNull();
     // Only the Basic challenge is advertised: a second comma-appended scheme
     // makes Chromium reject the challenge and skip the login dialog.
-    expect(INSPECTOR_WWW_AUTHENTICATE).toBe('Basic realm="Cassandra inspector", charset="UTF-8"');
+    expect(INSPECTOR_WWW_AUTHENTICATE).toBe('Basic realm="Mneme inspector", charset="UTF-8"');
     expect(INSPECTOR_WWW_AUTHENTICATE).not.toContain('Bearer');
   });
 

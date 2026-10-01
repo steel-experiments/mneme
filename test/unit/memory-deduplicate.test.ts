@@ -76,7 +76,7 @@ function makeMemory(
 describe('statement normalization', () => {
   it('lowercases, strips apostrophes and punctuation, and collapses whitespace', () => {
     expect(normalizeStatement('We decided to Adopt the Trial!')).toBe('we decided to adopt the trial');
-    expect(normalizeStatement("Cassandra's  plan… (v2)")).toBe('cassandras plan v2');
+    expect(normalizeStatement("Mneme's  plan… (v2)")).toBe('mnemes plan v2');
     expect(normalizeStatement('  Multiple   spaces\tand\nnewlines  ')).toBe('multiple spaces and newlines');
     expect(normalizeStatement('')).toBe('');
   });

@@ -23,7 +23,7 @@ function readPrompt(...parts: string[]): string {
 }
 
 function readSpec(): string {
-  return readFileSync(path.join(root, 'CASSANDRA_IMPLEMENTATION_SPEC.md'), 'utf8');
+  return readFileSync(path.join(root, 'MNEME_IMPLEMENTATION_SPEC.md'), 'utf8');
 }
 
 /**
@@ -62,7 +62,7 @@ const personality = {
 };
 
 const baseContext = {
-  agent: { name: 'Cassandra', role: 'organizational memory and constructive dissenter' },
+  agent: { name: 'Mneme', role: 'organizational memory and constructive dissenter' },
   organization: { name: 'Test Co', timezone: 'UTC' },
   runtime: {
     nowIso: '2026-08-11T09:00:00.000Z',
@@ -192,7 +192,7 @@ describe('prompt templates compile and preserve safeguards', () => {
     expect(out).toContain('You must finish by calling the terminal tool specified for this task.'); // terminal
     expect(out).toContain('Do not infer motives'); // epistemic
     // Rendered agent identity lines.
-    expect(out).toContain('You are Cassandra, organizational memory and constructive dissenter for Test Co.');
+    expect(out).toContain('You are Mneme, organizational memory and constructive dissenter for Test Co.');
     // Personality partial was composed.
     expect(out).toContain('- Be calm.');
     expect(out).toContain('- sarcasm.');

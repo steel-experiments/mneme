@@ -1,4 +1,4 @@
-# Cassandra production image (Section 38).
+# Mneme production image (Section 38).
 #
 # Multi-stage build: the build stage installs dependencies, compiles TypeScript,
 # and prunes dev dependencies; the runtime stage copies only what the application
@@ -26,17 +26,17 @@ FROM node:24.21-bookworm-slim AS runtime
 # Recorded source revision (Section 38.7). The release workflow passes the git
 # SHA of the tagged release. Empty in local builds; build-info treats an empty
 # value as unset and falls back.
-ARG CASSANDRA_SOURCE_REVISION=""
+ARG MNEME_SOURCE_REVISION=""
 ENV NODE_ENV=production \
     HOME=/tmp \
     PORT=3000 \
     DATA_DIR=/app/data \
-    DATABASE_PATH=/app/data/cassandra.sqlite \
+    DATABASE_PATH=/app/data/mneme.sqlite \
     PROMPT_DIR=/app/prompts \
     DOCS_DIR=/app/docs \
-    CASSANDRA_CONFIG_PATH=/app/config/cassandra.yml \
+    MNEME_CONFIG_PATH=/app/config/mneme.yml \
     CHANNEL_POLICY_PATH=/app/config/channel-policy.yml \
-    CASSANDRA_SOURCE_REVISION=${CASSANDRA_SOURCE_REVISION}
+    MNEME_SOURCE_REVISION=${MNEME_SOURCE_REVISION}
 
 WORKDIR /app
 
@@ -52,8 +52,8 @@ COPY --from=build /app/prompts ./prompts
 COPY --from=build /app/docs ./docs
 COPY --from=build /app/config ./config
 
-COPY docker/entrypoint.sh /usr/local/bin/cassandra-entrypoint
-RUN chmod 0755 /usr/local/bin/cassandra-entrypoint \
+COPY docker/entrypoint.sh /usr/local/bin/mneme-entrypoint
+RUN chmod 0755 /usr/local/bin/mneme-entrypoint \
     && mkdir -p /app/data \
     && chown -R node:node /app
 
@@ -64,5 +64,5 @@ STOPSIGNAL SIGTERM
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD ["node", "dist/healthcheck.js"]
 
-ENTRYPOINT ["tini", "-s", "--", "/usr/local/bin/cassandra-entrypoint"]
+ENTRYPOINT ["tini", "-s", "--", "/usr/local/bin/mneme-entrypoint"]
 CMD ["node", "--enable-source-maps", "dist/main.js"]

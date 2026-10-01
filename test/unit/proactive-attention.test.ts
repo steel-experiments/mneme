@@ -42,7 +42,7 @@ import {
 const GUILD = '100000000000000001';
 const USER = '100000000000000003';
 const CHANNEL = '100000000000000002';
-const CASSANDRA = '100000000000000099';
+const MNEME = '100000000000000099';
 const NOW = 1_700_000_000_000;
 const WINDOW = DEFAULT_ATTENTION_WINDOW_MS;
 
@@ -240,7 +240,7 @@ describe('trigger evidence validation', () => {
     addMessage('t-1', 'the gateway cutover moved to Friday', NOW - 60_000);
     const result = validateTriggerEvidence(env.db, {
       guildId: GUILD,
-      cassandraId: CASSANDRA,
+      mnemeId: MNEME,
       evidence: [{ messageId: 't-1', quote: 'moved to Friday' }],
       now: NOW,
       windowMs: WINDOW,
@@ -258,7 +258,7 @@ describe('trigger evidence validation', () => {
     for (const messageId of ['t-missing', 't-del']) {
       const result = validateTriggerEvidence(env.db, {
         guildId: GUILD,
-        cassandraId: CASSANDRA,
+        mnemeId: MNEME,
         evidence: [{ messageId, quote: 'x' }],
         now: NOW,
         windowMs: WINDOW,
@@ -268,16 +268,16 @@ describe('trigger evidence validation', () => {
     }
   });
 
-  it('rejects bot authors, Cassandra authors, and missing authors', () => {
-    seedBot(CASSANDRA);
+  it('rejects bot authors, Mneme authors, and missing authors', () => {
+    seedBot(MNEME);
     seedBot('100000000000000077');
-    addMessage('t-cass', 'cassandra note', NOW - 60_000, CASSANDRA);
+    addMessage('t-cass', 'mneme note', NOW - 60_000, MNEME);
     addMessage('t-bot', 'other bot note', NOW - 60_000, '100000000000000077');
     addMessage('t-unknown', 'no author row', NOW - 60_000, null);
     for (const messageId of ['t-cass', 't-bot', 't-unknown']) {
       const result = validateTriggerEvidence(env.db, {
         guildId: GUILD,
-        cassandraId: CASSANDRA,
+        mnemeId: MNEME,
         evidence: [{ messageId, quote: 'note' }],
         now: NOW,
         windowMs: WINDOW,
@@ -290,7 +290,7 @@ describe('trigger evidence validation', () => {
   it('rejects future timestamps and sources outside the attention window by creation time', () => {
     addMessage('t-edge', 'exactly seven days old', NOW - WINDOW);
     const edge = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: CASSANDRA,
+      guildId: GUILD, mnemeId: MNEME,
       evidence: [{ messageId: 't-edge', quote: 'seven days old' }],
       now: NOW, windowMs: WINDOW,
     });
@@ -300,7 +300,7 @@ describe('trigger evidence validation', () => {
     for (const messageId of ['t-future', 't-old']) {
       const result = validateTriggerEvidence(env.db, {
         guildId: GUILD,
-        cassandraId: CASSANDRA,
+        mnemeId: MNEME,
         evidence: [{ messageId, quote: 'from' }],
         now: NOW,
         windowMs: WINDOW,
@@ -314,7 +314,7 @@ describe('trigger evidence validation', () => {
     addMessage('t-quote', 'exact body text', NOW - 60_000);
     const result = validateTriggerEvidence(env.db, {
       guildId: GUILD,
-      cassandraId: CASSANDRA,
+      mnemeId: MNEME,
       evidence: [{ messageId: 't-quote', quote: 'body text roughly' }],
       now: NOW,
       windowMs: WINDOW,
@@ -328,7 +328,7 @@ describe('trigger evidence validation', () => {
     env.db.prepare('UPDATE channels SET ingest_enabled = 0 WHERE id = ?').run(CHANNEL);
     const result = validateTriggerEvidence(env.db, {
       guildId: GUILD,
-      cassandraId: CASSANDRA,
+      mnemeId: MNEME,
       evidence: [{ messageId: 't-gone', quote: 'channel gone' }],
       now: NOW,
       windowMs: WINDOW,
@@ -362,7 +362,7 @@ describe('subjects, revisions, and consumption', () => {
     const subjectId = ensureSubjectForMember(env.db, { guildId: GUILD, memoryId: memory, now: NOW });
     addMessage('t-a', 'we changed the plan', NOW - 1000);
     const records = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: CASSANDRA,
+      guildId: GUILD, mnemeId: MNEME,
       evidence: [{ messageId: 't-a', quote: 'changed the plan' }],
       now: NOW, windowMs: WINDOW,
     });
@@ -382,7 +382,7 @@ describe('subjects, revisions, and consumption', () => {
     const subjectId = ensureSubjectForMember(env.db, { guildId: GUILD, memoryId: memory, now: NOW });
     addMessage('t-a', 'we changed the plan', NOW - 1000);
     const records = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: CASSANDRA,
+      guildId: GUILD, mnemeId: MNEME,
       evidence: [{ messageId: 't-a', quote: 'changed the plan' }],
       now: NOW, windowMs: WINDOW,
     });
@@ -406,7 +406,7 @@ describe('subjects, revisions, and consumption', () => {
     const subjectId = ensureSubjectForMember(env.db, { guildId: GUILD, memoryId: memory, now: NOW });
     addMessage('t-a', 'we changed the plan', NOW - 1000);
     const records = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: CASSANDRA,
+      guildId: GUILD, mnemeId: MNEME,
       evidence: [{ messageId: 't-a', quote: 'changed the plan' }],
       now: NOW, windowMs: WINDOW,
     });
@@ -462,7 +462,7 @@ describe('subjects, revisions, and consumption', () => {
       .toEqual({ review_after_ms: NOW - 1000 });
 
     const trigger = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: CASSANDRA,
+      guildId: GUILD, mnemeId: MNEME,
       evidence: [{ messageId: 'e-march', quote: 'planned the migration' }],
       now: NOW + 1, windowMs: WINDOW,
     });
@@ -483,7 +483,7 @@ describe('second conservative consumption check', () => {
     addMessage('newer-event', 'We corrected the canary configuration.', NOW - 1000);
     const records = (id: string, quote: string) => {
       const validated = validateTriggerEvidence(env.db, {
-        guildId: GUILD, cassandraId: CASSANDRA, evidence: [{ messageId: id, quote }], now: NOW, windowMs: WINDOW,
+        guildId: GUILD, mnemeId: MNEME, evidence: [{ messageId: id, quote }], now: NOW, windowMs: WINDOW,
       });
       if (!validated.ok) throw new Error('expected valid evidence');
       return validated.records;
@@ -512,7 +512,7 @@ describe('second conservative consumption check', () => {
     const ids = ['first-event', 'correction-event'].map((id, index) => {
       addMessage(id, `Human event ${index}`, NOW - 2000 + index * 1000);
       const validated = validateTriggerEvidence(env.db, {
-        guildId: GUILD, cassandraId: CASSANDRA, evidence: [{ messageId: id, quote: `Human event ${index}` }],
+        guildId: GUILD, mnemeId: MNEME, evidence: [{ messageId: id, quote: `Human event ${index}` }],
         now: NOW, windowMs: WINDOW,
       });
       if (!validated.ok) throw new Error('expected valid evidence');
@@ -530,7 +530,7 @@ describe('second conservative consumption check', () => {
     const subjectId = ensureSubjectForMember(env.db, { guildId: GUILD, memoryId: memory, now: NOW });
     addMessage('second-trigger', 'We moved the canary.', NOW - 1000);
     const validated = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: CASSANDRA,
+      guildId: GUILD, mnemeId: MNEME,
       evidence: [{ messageId: 'e-1', quote: 'we decided' }, { messageId: 'second-trigger', quote: 'We moved the canary.' }],
       now: NOW, windowMs: WINDOW,
     });
@@ -547,7 +547,7 @@ describe('second conservative consumption check', () => {
     const subjectId = ensureSubjectForMember(env.db, { guildId: GUILD, memoryId: memory, now: NOW });
     addMessage('t-a', 'canary at ten percent', NOW - 2000);
     const records = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: CASSANDRA,
+      guildId: GUILD, mnemeId: MNEME,
       evidence: [{ messageId: 't-a', quote: 'canary at ten percent' }],
       now: NOW, windowMs: WINDOW,
     });
@@ -607,7 +607,7 @@ describe('selection and expiry', () => {
     const subjectId = ensureSubjectForMember(env.db, { guildId: GUILD, memoryId: memory, now: NOW });
     addMessage('t-a', 'we changed the plan', NOW - 1000);
     const records = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: CASSANDRA,
+      guildId: GUILD, mnemeId: MNEME,
       evidence: [{ messageId: 't-a', quote: 'changed the plan' }],
       now: NOW, windowMs: WINDOW,
     });
@@ -633,7 +633,7 @@ describe('selection and expiry', () => {
     const staleEvent = NOW - WINDOW - 5000;
     addMessage('t-old', 'we promised a report', staleEvent);
     const records = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: CASSANDRA,
+      guildId: GUILD, mnemeId: MNEME,
       evidence: [{ messageId: 't-old', quote: 'promised a report' }],
       now: staleEvent + 1000, windowMs: WINDOW,
     });
@@ -659,7 +659,7 @@ describe('selection and expiry', () => {
     const oldEvent = NOW - WINDOW - 5000;
     addMessage('t-old', 'we changed the plan', oldEvent);
     const records = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: CASSANDRA,
+      guildId: GUILD, mnemeId: MNEME,
       evidence: [{ messageId: 't-old', quote: 'changed the plan' }],
       now: oldEvent + 1000, windowMs: WINDOW,
     });
@@ -668,7 +668,7 @@ describe('selection and expiry', () => {
 
     const later = NOW + 1;
     const result = expireClosedAttentionRevisions(env.db, {
-      now: later, windowMs: WINDOW, guildId: GUILD, actorUserId: CASSANDRA,
+      now: later, windowMs: WINDOW, guildId: GUILD, actorUserId: MNEME,
     });
     expect(result.expiredRevisionIds).toEqual([revisionId]);
     expect(getRevision(env.db, revisionId)?.state).toBe('invalidated');
@@ -681,7 +681,7 @@ describe('selection and expiry', () => {
     expect(events).toHaveLength(1);
     // Idempotent: a second sweep changes nothing.
     expect(expireClosedAttentionRevisions(env.db, {
-      now: later + 1, windowMs: WINDOW, guildId: GUILD, actorUserId: CASSANDRA,
+      now: later + 1, windowMs: WINDOW, guildId: GUILD, actorUserId: MNEME,
     }).expiredRevisionIds).toEqual([]);
   });
 
@@ -691,7 +691,7 @@ describe('selection and expiry', () => {
     const oldEvent = NOW - WINDOW - 5000;
     addMessage('t-old', 'we promised a report', oldEvent);
     const records = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: CASSANDRA,
+      guildId: GUILD, mnemeId: MNEME,
       evidence: [{ messageId: 't-old', quote: 'promised a report' }],
       now: oldEvent + 1000, windowMs: WINDOW,
     });
@@ -706,7 +706,7 @@ describe('selection and expiry', () => {
     });
 
     expect(expireClosedAttentionRevisions(env.db, {
-      now: NOW + 1, windowMs: WINDOW, guildId: GUILD, actorUserId: CASSANDRA,
+      now: NOW + 1, windowMs: WINDOW, guildId: GUILD, actorUserId: MNEME,
     }).expiredRevisionIds).toEqual([]);
     expect(getRevision(env.db, revisionId)?.state).toBe('current');
   });
@@ -718,7 +718,7 @@ describe('forgetting', () => {
     const subjectId = ensureSubjectForMember(env.db, { guildId: GUILD, memoryId: memory, now: NOW });
     addMessage('t-a', 'we changed the plan', NOW - 1000);
     const records = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: CASSANDRA,
+      guildId: GUILD, mnemeId: MNEME,
       evidence: [{ messageId: 't-a', quote: 'changed the plan' }],
       now: NOW, windowMs: WINDOW,
     });
@@ -741,7 +741,7 @@ describe('forgetting', () => {
     const subjectId = ensureSubjectForMember(env.db, { guildId: GUILD, memoryId: memory, now: NOW });
     addMessage('t-a', 'we changed the plan', NOW - 1000);
     const records = validateTriggerEvidence(env.db, {
-      guildId: GUILD, cassandraId: CASSANDRA,
+      guildId: GUILD, mnemeId: MNEME,
       evidence: [{ messageId: 't-a', quote: 'changed the plan' }],
       now: NOW, windowMs: WINDOW,
     });

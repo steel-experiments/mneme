@@ -16,8 +16,8 @@ import { makeTempDir } from '../helpers/db.js';
  *
  * Module surface pinned by this suite:
  * - buildBasicChannelPolicy(env) reads ORG_VISIBLE_CHANNEL_IDS,
- *   RESTRICTED_CHANNEL_IDS, CASSANDRA_REVIEW_CHANNEL_ID and
- *   CASSANDRA_REVIEW_CHANNEL_SECURE from the given env object. An unset or
+ *   RESTRICTED_CHANNEL_IDS, MNEME_REVIEW_CHANNEL_ID and
+ *   MNEME_REVIEW_CHANNEL_SECURE from the given env object. An unset or
  *   blank value behaves as absent. It throws ChannelPolicyError.
  * - loadInitialSnapshot(paths, now) is the production startup path. The
  *   source 'file' rejects non-empty basic lists first, then reads
@@ -73,7 +73,7 @@ describe('buildBasicChannelPolicy', () => {
       {},
       { ORG_VISIBLE_CHANNEL_IDS: '', RESTRICTED_CHANNEL_IDS: '' },
       { ORG_VISIBLE_CHANNEL_IDS: ' , ' },
-      { CASSANDRA_REVIEW_CHANNEL_ID: REVIEW_ID, CASSANDRA_REVIEW_CHANNEL_SECURE: 'true' },
+      { MNEME_REVIEW_CHANNEL_ID: REVIEW_ID, MNEME_REVIEW_CHANNEL_SECURE: 'true' },
     ]) {
       expectPolicyError(() => buildBasicChannelPolicy(env), EMPTY_SELECTION_ERROR);
     }
@@ -129,29 +129,29 @@ describe('buildBasicChannelPolicy', () => {
   describe('review channel matrix', () => {
     it('rejects a review channel id without SECURE exactly true', () => {
       const pinned =
-        'channel policy: CASSANDRA_REVIEW_CHANNEL_ID requires CASSANDRA_REVIEW_CHANNEL_SECURE=true '
+        'channel policy: MNEME_REVIEW_CHANNEL_ID requires MNEME_REVIEW_CHANNEL_SECURE=true '
         + '(verify the channel audience before enabling)';
       expectPolicyError(
         () => buildBasicChannelPolicy({
           ORG_VISIBLE_CHANNEL_IDS: ORG_ID,
-          CASSANDRA_REVIEW_CHANNEL_ID: REVIEW_ID,
+          MNEME_REVIEW_CHANNEL_ID: REVIEW_ID,
         }),
         pinned,
       );
       expectPolicyError(
         () => buildBasicChannelPolicy({
           ORG_VISIBLE_CHANNEL_IDS: ORG_ID,
-          CASSANDRA_REVIEW_CHANNEL_ID: REVIEW_ID,
-          CASSANDRA_REVIEW_CHANNEL_SECURE: 'false',
+          MNEME_REVIEW_CHANNEL_ID: REVIEW_ID,
+          MNEME_REVIEW_CHANNEL_SECURE: 'false',
         }),
         pinned,
       );
       expectPolicyError(
         () => buildBasicChannelPolicy({
           ORG_VISIBLE_CHANNEL_IDS: ORG_ID,
-          CASSANDRA_REVIEW_CHANNEL_ID: REVIEW_ID,
+          MNEME_REVIEW_CHANNEL_ID: REVIEW_ID,
           // Not exactly 'true': the check is case sensitive on purpose.
-          CASSANDRA_REVIEW_CHANNEL_SECURE: 'True',
+          MNEME_REVIEW_CHANNEL_SECURE: 'True',
         }),
         pinned,
       );
@@ -161,17 +161,17 @@ describe('buildBasicChannelPolicy', () => {
       expectPolicyError(
         () => buildBasicChannelPolicy({
           ORG_VISIBLE_CHANNEL_IDS: ORG_ID,
-          CASSANDRA_REVIEW_CHANNEL_SECURE: 'true',
+          MNEME_REVIEW_CHANNEL_SECURE: 'true',
         }),
-        'channel policy: CASSANDRA_REVIEW_CHANNEL_SECURE=true requires CASSANDRA_REVIEW_CHANNEL_ID',
+        'channel policy: MNEME_REVIEW_CHANNEL_SECURE=true requires MNEME_REVIEW_CHANNEL_ID',
       );
     });
 
     it('registers the review channel when both variables are set', () => {
       const policy = buildBasicChannelPolicy({
         ORG_VISIBLE_CHANNEL_IDS: ORG_ID,
-        CASSANDRA_REVIEW_CHANNEL_ID: REVIEW_ID,
-        CASSANDRA_REVIEW_CHANNEL_SECURE: 'true',
+        MNEME_REVIEW_CHANNEL_ID: REVIEW_ID,
+        MNEME_REVIEW_CHANNEL_SECURE: 'true',
       });
       // Both modes accept the same scope set as the file-mode sample, so a
       // review_only proposal stays cardable in basic mode too.
@@ -185,8 +185,8 @@ describe('buildBasicChannelPolicy', () => {
     it('leaves the review channel unset when neither variable is set', () => {
       const policy = buildBasicChannelPolicy({
         ORG_VISIBLE_CHANNEL_IDS: ORG_ID,
-        CASSANDRA_REVIEW_CHANNEL_ID: '',
-        CASSANDRA_REVIEW_CHANNEL_SECURE: '',
+        MNEME_REVIEW_CHANNEL_ID: '',
+        MNEME_REVIEW_CHANNEL_SECURE: '',
       });
       expect(policy.review_channel).toBeUndefined();
     });
@@ -198,16 +198,16 @@ describe('buildBasicChannelPolicy', () => {
     expectPolicyError(
       () => buildBasicChannelPolicy({
         ORG_VISIBLE_CHANNEL_IDS: REVIEW_ID,
-        CASSANDRA_REVIEW_CHANNEL_ID: REVIEW_ID,
-        CASSANDRA_REVIEW_CHANNEL_SECURE: 'true',
+        MNEME_REVIEW_CHANNEL_ID: REVIEW_ID,
+        MNEME_REVIEW_CHANNEL_SECURE: 'true',
       }),
       pinned,
     );
     expectPolicyError(
       () => buildBasicChannelPolicy({
         RESTRICTED_CHANNEL_IDS: REVIEW_ID,
-        CASSANDRA_REVIEW_CHANNEL_ID: REVIEW_ID,
-        CASSANDRA_REVIEW_CHANNEL_SECURE: 'true',
+        MNEME_REVIEW_CHANNEL_ID: REVIEW_ID,
+        MNEME_REVIEW_CHANNEL_SECURE: 'true',
       }),
       pinned,
     );

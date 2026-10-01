@@ -40,7 +40,7 @@ async function main(): Promise<void> {
       build: buildInfo,
       shutdownTimeoutSeconds: config.maintenance.shutdownTimeoutSeconds,
     },
-    'cassandra starting',
+    'mneme starting',
   );
   try {
     await bootstrapApplication({ config, buildInfo, logger: log });

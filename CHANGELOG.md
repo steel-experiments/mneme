@@ -9,6 +9,17 @@ and this project adheres to
 This changelog starts at the launch baseline. Changes before that point are
 not recorded.
 
+## [Unreleased]
+
+### Changed
+
+- **Project name.** The project is now Mneme, named after the Greek muse of
+  memory. The repository, package, container image
+  (`ghcr.io/steel-experiments/mneme`), environment variables (`MNEME_*`),
+  configuration file (`config/mneme.yml`), slash command (`/mneme`), and the
+  test-surface rule for channel names that contain `mneme` use the new name.
+  Old names are not supported.
+
 ## [1.0.0] - 2026-09-16
 
 First public release. The container image is published at

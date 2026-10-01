@@ -1,6 +1,6 @@
 import type { DatabaseSync } from '../db/database.js';
 import { getChannel, resolveRetrievableChannelScope, type VisibilityClass } from '../db/repositories/channels.js';
-import { isCassandraTestSurface } from '../discord/test-channels.js';
+import { isMnemeTestSurface } from '../discord/test-channels.js';
 import { getMemory } from './repository.js';
 import { recomputeMemoryScopes } from './search.js';
 
@@ -139,7 +139,7 @@ export function resolveScheduledMemoryRoute(
     targetChannelId = origin.channel_id;
   }
   if (!targetChannelId) return fallback(db, effective.scopeType, 'no_origin', options);
-  if (targetChannelId === options.reviewChannelId || isCassandraTestSurface(db, targetChannelId)) {
+  if (targetChannelId === options.reviewChannelId || isMnemeTestSurface(db, targetChannelId)) {
     return fallback(db, effective.scopeType, 'control_surface', options);
   }
 

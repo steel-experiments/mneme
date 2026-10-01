@@ -8,13 +8,13 @@ import { discordCallbackUrl } from './authorize.js';
  *
  * Two calls, both server to server, both bounded by a timeout: exchange Discord's
  * authorization code for a short-lived user access token, then read that user's
- * membership in the one guild Cassandra serves. The membership response carries
+ * membership in the one guild Mneme serves. The membership response carries
  * the role ids, which is the whole basis of the authorization decision — a person
  * who is not in the guild, or whose roles cannot be read, is not authorized.
  *
  * The Discord access token obtained here is used once, immediately, and then
  * dropped. It is never stored, never logged, and never handed to a client; the
- * credential a client receives is minted by Cassandra and means something else
+ * credential a client receives is minted by Mneme and means something else
  * entirely.
  *
  * Everything is expressed through an injectable {@link DiscordIdentityClient} so
@@ -62,9 +62,9 @@ export interface DiscordIdentityClient {
 export interface DiscordIdentityConfig {
   clientId: string;
   clientSecret: string;
-  /** Cassandra's public origin; the callback URL is derived from it. */
+  /** Mneme's public origin; the callback URL is derived from it. */
   publicBaseUrl: string;
-  /** The one guild Cassandra serves. */
+  /** The one guild Mneme serves. */
   guildId: string;
 }
 
@@ -86,7 +86,7 @@ export function createDiscordIdentityClient(config: DiscordIdentityConfig): Disc
 /**
  * Exchange Discord's authorization code for a user access token. The redirect URI
  * is sent again because Discord binds the code to it, and the client secret
- * authenticates Cassandra as the application that started the flow. Returns null
+ * authenticates Mneme as the application that started the flow. Returns null
  * on any failure; the token is returned to the caller and never stored.
  */
 async function exchangeCode(config: DiscordIdentityConfig, code: string): Promise<string | null> {

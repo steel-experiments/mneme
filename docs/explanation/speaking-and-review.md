@@ -1,19 +1,19 @@
-# How Cassandra decides whether to speak
+# How Mneme decides whether to speak
 
-Cassandra continuously builds organizational memory from permitted Discord
+Mneme continuously builds organizational memory from permitted Discord
 conversations. Building memory and sending a message are separate decisions:
-Cassandra may create or update memories while remaining completely silent.
+Mneme may create or update memories while remaining completely silent.
 
 This page explains proactive interventions. A direct answer to an explicit
 Discord mention follows a separate path described below.
 
 ## The short version
 
-Cassandra first decides whether a proactive message is useful and adequately
+Mneme first decides whether a proactive message is useful and adequately
 supported. Host code then validates its evidence, visibility, target, content,
 and routing policy. Only a proposal that passes those checks is eligible.
 
-Proactive speech also requires **current work**. Cassandra proposes an
+Proactive speech also requires **current work**. Mneme proposes an
 unsolicited message only when a meaningful human message about the subject was
 written within the last seven days — a new commitment, a changed decision, a
 reopened question, a specific outcome, or a contradiction of a stored decision —
@@ -28,7 +28,7 @@ The configured operating mode determines what happens next:
 | Mode | Eligible proactive proposal |
 | --- | --- |
 | `observe` | Store it as `observed`; send nothing. |
-| `review` | Send it to the secure review channel for approval, even when Cassandra is confident. |
+| `review` | Send it to the secure review channel for approval, even when Mneme is confident. |
 | `autonomous` | Send it to the target channel unless a sensitive or uncertain condition forces human review. |
 
 Review mode is therefore not an uncertainty detector. It is a deployment policy:
@@ -55,7 +55,7 @@ uncertainty.
 There are also two kinds of uncertainty. If the model is not confident that an
 intervention is worthwhile or supported, it should not recommend one and the
 proposal remains `observed`. If host validation cannot safely resolve scope or
-provenance, Cassandra routes the otherwise eligible proposal to secure review or
+provenance, Mneme routes the otherwise eligible proposal to secure review or
 suppresses it. A definite violation is never converted into a reviewable proposal.
 
 Scheduled-memory review cards use the categorical assessment `Recommended
@@ -78,13 +78,13 @@ scheduled review` instead of a synthetic `Score: 1.00`.
 | Explicit direct question | Answered without proposal approval when enabled, but still subject to scope, evidence, mention-safety, and rate checks. |
 | Subject revision eligible for scheduled review | Proposed in the secure review channel in both `review` and `autonomous` modes; never sent autonomously. |
 
-`observed` means "stored but not sent," not necessarily "Cassandra saw a message."
+`observed` means "stored but not sent," not necessarily "Mneme saw a message."
 It is intentionally broad so suppressed decisions remain auditable.
 
 ## What approval does
 
 An approval is permission to attempt delivery; it is not permission to bypass
-safety controls. Cassandra verifies the administrator's role and rechecks the
+safety controls. Mneme verifies the administrator's role and rechecks the
 current target, evidence, visibility, cooldown, global limit, duplicate state, and
 attention ownership — the proposal must still own its subject revision and be inside
 its attention window. It then atomically records the approval and reviewer and queues
@@ -109,7 +109,7 @@ administrator. The proposal must be corrected or regenerated from permitted
 evidence.
 
 For episode and scheduled-review proposals, every cited message ID must have been
-exposed during the originating model run. Cassandra verifies those IDs and their current
+exposed during the originating model run. Mneme verifies those IDs and their current
 scope when creating the proposal and again when approval is attempted. Exact
 ID-to-fingerprint revalidation of every exposed row is the automatic direct-answer path's
 stronger freshness mechanism; a human-reviewed proposal instead relies on its persisted
@@ -137,11 +137,11 @@ become due. The review date on a memory is semantic bookkeeping; it never makes 
 memory eligible for a reminder by itself, and a reminder can never repeat without a
 new human development.
 
-The secure review channel is the approval inbox only. Cassandra derives one exact working
+The secure review channel is the approval inbox only. Mneme derives one exact working
 channel from the memory's current origin evidence before the model runs. Approval queues
 the exact reviewed text to that channel, which must allow interventions. `#general` is not
 a fallback, and a thread is never replaced by its parent. If no unique safe target exists,
-Cassandra performs silent secure maintenance or suppresses the notification.
+Mneme performs silent secure maintenance or suppresses the notification.
 
 Use Discord's Reply action on the delivered working-channel message to provide an update.
 An exact reply can update or resolve the reviewed memory. Nearby text and ordinary messages
@@ -155,7 +155,7 @@ completed [backup](../how-to/backup-and-restore.md); these are forward-only sche
 changes, so an older image cannot run against the upgraded database without a restore.
 Follow the [migration compatibility rules](../how-to/deploy.md#migration-compatibility).
 
-Before workers and interactions start, Cassandra records previously surfaced legacy
+Before workers and interactions start, Mneme records previously surfaced legacy
 evidence as consumed, expires legacy pending proposals, cancels their queued deliveries,
 and retires old scheduled-review jobs. Uncertain sends are reconciled with Discord
 instead of being blindly resent. The cutover itself performs no Discord or model calls
@@ -168,7 +168,7 @@ seven days; see [Intervention and memory settings](../reference/configuration.md
 
 ## A useful mental model
 
-Cassandra remembers automatically when evidence validates. She proposes speaking
+Mneme remembers automatically when evidence validates. She proposes speaking
 only when the expected value exceeds the interruption cost. The operating mode
 decides whether an eligible proposal needs approval, while privacy, evidence, and
 visibility checks always remain mandatory.

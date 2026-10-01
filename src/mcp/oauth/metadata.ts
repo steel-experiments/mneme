@@ -17,9 +17,9 @@
  *   3. The client fetches that server's metadata (RFC 8414) to learn the
  *      authorization and token endpoint URLs.
  *
- * Cassandra is both roles at once: the resource server (`MCP_PATH`) and its own
+ * Mneme is both roles at once: the resource server (`MCP_PATH`) and its own
  * authorization server, on one origin, in one process. So `authorization_servers`
- * names Cassandra's own public origin and the two documents are consistent by
+ * names Mneme's own public origin and the two documents are consistent by
  * construction rather than by configuration.
  *
  * These documents are descriptive only — they hold no secret, and every value in
@@ -29,13 +29,13 @@
  */
 
 /**
- * The single scope Cassandra issues. Retrieval breadth is decided by the signed-in
+ * The single scope Mneme issues. Retrieval breadth is decided by the signed-in
  * Discord identity — guild membership and the channel-visibility rules in
  * Section 7.3 — never by what a client asks for, so there is no second scope for a
  * client to request. Advertising per-visibility scopes would imply a client could
  * elect to read restricted channels, which it cannot.
  */
-export const MCP_OAUTH_SCOPE = 'cassandra:read';
+export const MCP_OAUTH_SCOPE = 'mneme:read';
 
 /** Inputs for every document here: the public origin and the MCP request path. */
 export interface OAuthMetadataConfig {
@@ -119,7 +119,7 @@ export function protectedResourceMetadata(config: OAuthMetadataConfig): Protecte
 /**
  * Build the authorization server metadata.
  *
- * `token_endpoint_auth_methods_supported: ["none"]` states that Cassandra issues
+ * `token_endpoint_auth_methods_supported: ["none"]` states that Mneme issues
  * to **public** clients: a connector on a phone cannot keep a client secret, so
  * the flow is protected by PKCE rather than by a secret. `S256` is the only code
  * challenge method — OAuth 2.1 removes `plain`, and MCP clients send `S256`
@@ -128,7 +128,7 @@ export function protectedResourceMetadata(config: OAuthMetadataConfig): Protecte
  * There is deliberately no `registration_endpoint`. Dynamic Client Registration is
  * deprecated in the current MCP authorization draft, and an open registration
  * endpoint is an unauthenticated write path that grows rows and lets a caller
- * choose the name and redirect a consent screen would display. Cassandra instead
+ * choose the name and redirect a consent screen would display. Mneme instead
  * recognizes a client id an operator configures once (`MCP_OAUTH_CLIENT_ID`) and
  * pastes into the connector dialog.
  */
@@ -159,7 +159,7 @@ export function authorizationServerMetadata(
  *
  * `error="invalid_token"` is emitted for every credential failure, including a
  * request that carried no credential at all. RFC 6750 Section 3 would omit the
- * error code in that one case, but Cassandra deliberately does not distinguish
+ * error code in that one case, but Mneme deliberately does not distinguish
  * missing from invalid from expired (Section 32.5.2) — a varying challenge would
  * let a prober oracle token state. A constant challenge reveals nothing, and the
  * fixed string is what MCP clients expect to parse.

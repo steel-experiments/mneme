@@ -2,7 +2,7 @@
  * Per-token MCP request rate limiting (Section 32.5.4; task T100).
  *
  * Section 32.5.4 sets a per-token limit of `60` requests per minute; excess
- * returns `429`. Cassandra is one process, so a bounded in-process limiter is
+ * returns `429`. Mneme is one process, so a bounded in-process limiter is
  * sufficient and avoids extra infrastructure: a fixed window per token id, held
  * in a `Map` that is pruned of stale windows on demand. The window is keyed on
  * the authenticated token id (never the plaintext token), so the limiter state

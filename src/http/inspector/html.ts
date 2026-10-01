@@ -250,12 +250,12 @@ export function layout(args: { title: string; body: string; basePath: string; cu
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>${h(args.title)} · Cassandra inspector</title>
+<title>${h(args.title)} · Mneme inspector</title>
 <style>${INSPECTOR_CSS}</style>
 </head>
 <body>
 <header class="inspector">
-  <h1>Cassandra inspector</h1>
+  <h1>Mneme inspector</h1>
   <nav>${nav}</nav>
 </header>
 <main>

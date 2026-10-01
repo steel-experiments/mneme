@@ -18,12 +18,12 @@ describe('build identity resolution', () => {
 
   it('uses explicit source metadata before Railway and recognized CI metadata', () => {
     const info = resolveBuildInfo({
-      CASSANDRA_SOURCE_REVISION: 'aaaaaaaa',
+      MNEME_SOURCE_REVISION: 'aaaaaaaa',
       RAILWAY_GIT_COMMIT_SHA: 'b'.repeat(40),
       GITHUB_SHA: 'c'.repeat(40),
       CI_COMMIT_SHA: 'd'.repeat(40),
       RAILWAY_DEPLOYMENT_ID: 'railway-deploy-123',
-      CASSANDRA_BUILD_ID: 'release-42',
+      MNEME_BUILD_ID: 'release-42',
     });
 
     expect(info.sourceRevision).toBe('aaaaaaaa');
@@ -42,7 +42,7 @@ describe('build identity resolution', () => {
 
   it('skips an invalid explicit revision and uses valid Railway Git metadata', () => {
     expect(resolveBuildInfo({
-      CASSANDRA_SOURCE_REVISION: '<@everyone>',
+      MNEME_SOURCE_REVISION: '<@everyone>',
       RAILWAY_GIT_COMMIT_SHA: 'd'.repeat(40),
     }).sourceRevision).toBe('d'.repeat(40));
   });
@@ -52,9 +52,9 @@ describe('build identity resolution', () => {
       BUILD_ID: 'ambient-build',
       SOURCE_VERSION: 'd'.repeat(40),
       COMMIT_SHA: 'e'.repeat(40),
-      CASSANDRA_SOURCE_REVISION: '<@everyone>',
+      MNEME_SOURCE_REVISION: '<@everyone>',
       RAILWAY_DEPLOYMENT_ID: 'deploy/with/slashes',
-      CASSANDRA_BUILD_ID: 'build\nsecret',
+      MNEME_BUILD_ID: 'build\nsecret',
     });
 
     expect(info).toEqual({

@@ -315,9 +315,9 @@ function makeDeps(over: Partial<ReviewEpisodeHandlerDeps> = {}): ReviewEpisodeHa
   return {
     db: env.db,
     guildId: GUILD,
-    cassandraId: CASS,
+    mnemeId: CASS,
     promptCompiler: compiler,
-    systemPrompt: 'Cassandra system prompt.',
+    systemPrompt: 'Mneme system prompt.',
     resolveChannelScope: () => ({
       grant: ORG_GRANT,
       target: { label: '#general', visibility: 'restricted' },
@@ -481,7 +481,7 @@ describe('review_episode — orchestration (stubbed executor)', () => {
     expect(out.kind).toBe('reviewed');
     expect(captured?.promptText).toContain('done, DNS is updated');
     expect(captured?.cacheProfile).toBe('episode');
-    expect(captured?.sessionId).toBe(`cassandra:episode:${episodeId}`);
+    expect(captured?.sessionId).toBe(`mneme:episode:${episodeId}`);
     expect(captured?.promptText).not.toContain('automated status');
     expect(captured?.initialProvenanceMessages?.map((message) => message.messageId)).toContain('m-done');
   });
@@ -515,7 +515,7 @@ describe('review_episode — orchestration (stubbed executor)', () => {
     expect(calls).toBe(0); // the run never executed
   });
 
-  it('skips a queued thread episode when its parent is renamed as a Cassandra test surface', async () => {
+  it('skips a queued thread episode when its parent is renamed as a Mneme test surface', async () => {
     const parentId = '100000000000000020';
     const threadId = '100000000000000021';
     seedChannel(parentId, { name: 'project-history' });
@@ -525,7 +525,7 @@ describe('review_episode — orchestration (stubbed executor)', () => {
       { id: 'm-test-surface-2', content: 'Agreed, do not extract it.' },
     ]);
     env.db.prepare('UPDATE channels SET name=?,updated_at_ms=? WHERE id=?')
-      .run('cassandra-project-history', NOW + 1, parentId);
+      .run('mneme-project-history', NOW + 1, parentId);
     let calls = 0;
     const handler = createReviewEpisodeHandler(makeDeps({
       now: () => NOW + 1,
@@ -553,7 +553,7 @@ describe('review_episode — orchestration (stubbed executor)', () => {
       now: () => NOW + 1,
       executeRun: async () => {
         env.db.prepare('UPDATE channels SET name=?,updated_at_ms=? WHERE id=?')
-          .run('cassandra-project-history', NOW + 1, parentId);
+          .run('mneme-project-history', NOW + 1, parentId);
         return runResult({
           runId: 'discarded-test-surface-run',
           finalProposal: { kind: 'episode_review', proposal: episodeProposal(threadId) },
@@ -725,9 +725,9 @@ describe('review_episode — orchestration (stubbed executor)', () => {
     expect(outboxCount()).toBe(0);
   });
 
-  it('the pre-filter never skips a Cassandra mention', async () => {
+  it('the pre-filter never skips a Mneme mention', async () => {
     const episodeId = queuedEpisode(CHANNEL, [
-      { id: 'm1', content: `<@${CASS}> what do you think?` }, // single message, but mentions Cassandra
+      { id: 'm1', content: `<@${CASS}> what do you think?` }, // single message, but mentions Mneme
     ]);
     let calls = 0;
     const handler = createReviewEpisodeHandler(
@@ -874,7 +874,7 @@ describe('episode intervention citation exposure', () => {
       const memoryId = seedOrgMemory(sourceChannelId, `memory-message-${suffix}`);
       if (mutation === 'test_surface') {
         env.db.prepare('UPDATE channels SET name = ? WHERE id = ?')
-          .run('cassandra-memory-source', sourceChannelId);
+          .run('mneme-memory-source', sourceChannelId);
       } else {
         env.db.prepare('UPDATE channels SET visibility_class = ? WHERE id = ?')
           .run(expectedScope, sourceChannelId);
@@ -1206,7 +1206,7 @@ describe('episode intervention citation exposure', () => {
 
       if (mutation === 'test_surface') {
         env.db.prepare('UPDATE channels SET name = ? WHERE id = ?')
-          .run('cassandra-memory-source', sourceChannelId);
+          .run('mneme-memory-source', sourceChannelId);
       } else {
         env.db.prepare('UPDATE channels SET visibility_class = ? WHERE id = ?')
           .run(expectedScope, sourceChannelId);
@@ -1323,11 +1323,11 @@ describe('episode intervention citation exposure', () => {
     expect(getOutboxByDedupeKey(env.db, `proposal:${proposalId}`)).toBeUndefined();
   });
 
-  it('rejects exposed citations that currently resolve to a Cassandra test surface or another guild', async () => {
+  it('rejects exposed citations that currently resolve to a Mneme test surface or another guild', async () => {
     const testChannelId = '100000000000000030';
     const foreignGuildId = '100000000000000031';
     const foreignChannelId = '100000000000000032';
-    seedChannel(testChannelId, { name: 'cassandra-playground' });
+    seedChannel(testChannelId, { name: 'mneme-playground' });
     env.db.prepare(
       `INSERT INTO guilds
          (id, name, owner_id, joined_at_ms, discovered_at_ms, updated_at_ms, raw_json)

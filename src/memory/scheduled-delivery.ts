@@ -10,7 +10,7 @@ import {
   type MessageLink,
   type SourceLinkContext,
 } from '../discord/message-safety.js';
-import { isCassandraTestSurface } from '../discord/test-channels.js';
+import { isMnemeTestSurface } from '../discord/test-channels.js';
 import { getMemory } from './repository.js';
 import { getScheduledProposalSubjects } from './scheduled-notifications.js';
 import { resolveScheduledMemoryRoute, type ScheduledRouteOptions } from './scheduled-routing.js';
@@ -55,7 +55,7 @@ export function scheduledSourceLinkContext(db: DatabaseSync, guildId: string): S
         !message
         || message.guild_id !== guildId
         || message.deleted_at_ms !== null
-        || isCassandraTestSurface(db, message.channel_id)
+        || isMnemeTestSurface(db, message.channel_id)
       ) return undefined;
       return resolveRetrievableChannelScope(db, message.channel_id)
         ? message.channel_id

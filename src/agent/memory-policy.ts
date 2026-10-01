@@ -207,8 +207,8 @@ export interface ApplyMemoryProposalsDeps {
   attentionWindowMs?: number;
   /** Organization timezone captured with accepted deadline authority. */
   attentionTimezone?: string;
-  /** Discord application id; Cassandra's own messages are never triggers. */
-  cassandraId?: string;
+  /** Discord application id; Mneme's own messages are never triggers. */
+  mnemeId?: string;
   logger?: Pick<Logger, 'info' | 'warn'>;
 }
 
@@ -774,7 +774,7 @@ function registerAttentionChange(
     }
     const validation = validateTriggerEvidence(deps.db, {
       guildId: deps.guildId,
-      cassandraId: deps.cassandraId ?? '',
+      mnemeId: deps.mnemeId ?? '',
       evidence,
       now: deps.now,
       windowMs: deps.attentionWindowMs ?? DEFAULT_ATTENTION_WINDOW_MS,
@@ -1001,7 +1001,7 @@ function validateTriggerEvidenceWithoutWindow(
     ? undefined
     : prepareCached(deps.db, 'attention.author', 'SELECT is_bot FROM users WHERE id = ?')
         .get(message.author_id) as { is_bot: number } | undefined;
-  if (!author || author.is_bot === 1 || message.author_id === deps.cassandraId) {
+  if (!author || author.is_bot === 1 || message.author_id === deps.mnemeId) {
     return { ok: false, reason: 'no_recent_human_trigger' };
   }
   const offset = findQuoteOffset(message.content, quote);

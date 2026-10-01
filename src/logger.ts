@@ -83,7 +83,7 @@ export interface CreateLoggerOptions {
  */
 export function createLogger(options: CreateLoggerOptions = {}): Logger {
   const config: LoggerOptions = {
-    name: options.name ?? 'cassandra',
+    name: options.name ?? 'mneme',
     level: options.level ?? process.env.LOG_LEVEL ?? 'info',
     redact: {
       paths: [...REDACT_PATHS],

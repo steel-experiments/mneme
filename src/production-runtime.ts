@@ -74,7 +74,7 @@ import { createPurgeAttachmentFileHandler } from './jobs/handlers/purge-attachme
 import { createDiscordSender } from './discord/sender.js';
 import { createDiscordMessageFetcher, fetchDiscoveryDescriptors, createDiscordThreadArchiveSource } from './discord/production-adapters.js';
 import { runStartupSync } from './discord/sync.js';
-import { isCassandraTestSurface } from './discord/test-channels.js';
+import { isMnemeTestSurface } from './discord/test-channels.js';
 import { PeriodicScheduler, buildSchedules, nodeTimerDriver } from './jobs/scheduler.js';
 import { isPaused } from './runtime-state.js';
 import { defaultModelLookup, resolveAgentModels } from './agent/model.js';
@@ -164,7 +164,7 @@ export function scheduledIngestionChannelIds(db: DatabaseSync): string[] {
     'SELECT id FROM channels WHERE ingest_enabled = 1 AND deleted_at_ms IS NULL',
   ).all() as Array<{ id: string }>)
     .map((row) => row.id)
-    .filter((channelId) => !isCassandraTestSurface(db, channelId));
+    .filter((channelId) => !isMnemeTestSurface(db, channelId));
 }
 
 /**
@@ -317,7 +317,7 @@ export function resolveScheduledWorkingScope(
     || !channel
     || channel.allow_interventions !== 1
     || channel.visibility_class === 'excluded'
-    || isCassandraTestSurface(db, targetChannelId)
+    || isMnemeTestSurface(db, targetChannelId)
   ) {
     throw new PermanentJobError(`scheduled working target ${targetChannelId} is unavailable`);
   }
@@ -588,7 +588,7 @@ export function buildApprovalRecheck(
     requireInterventionsEnabled: true,
   }, {
     resolveMessage: (id) => { const m = getMessage(ctx.db, id); if (!m) return undefined;
-      if ((runGuildId !== undefined && m.guild_id !== runGuildId) || isCassandraTestSurface(ctx.db, m.channel_id)) {
+      if ((runGuildId !== undefined && m.guild_id !== runGuildId) || isMnemeTestSurface(ctx.db, m.channel_id)) {
         return undefined;
       }
       const scope = resolveRetrievableChannelScope(ctx.db, m.channel_id);
@@ -802,7 +802,7 @@ function computeEpisodeAttentionAdmission(
   }
   const validation = validateTriggerEvidence(ctx.db, {
     guildId: ctx.config.discord.guildId,
-    cassandraId: ctx.config.discord.applicationId,
+    mnemeId: ctx.config.discord.applicationId,
     evidence,
     now: input.now,
     windowMs,
@@ -921,7 +921,7 @@ export async function routeEpisodeIntervention(
     if (
       !stored
       || stored.guild_id !== ctx.config.discord.guildId
-      || isCassandraTestSurface(ctx.db, stored.channel_id)
+      || isMnemeTestSurface(ctx.db, stored.channel_id)
     ) return undefined;
     const scope = resolveRetrievableChannelScope(ctx.db, stored.channel_id);
     return scope ? { stored, scope } : undefined;
@@ -1236,7 +1236,7 @@ export async function createProductionJobRuntime(
   const modelGate = new ModelBudgetGate({ dailyBudgetUsd: ctx.config.llm.dailyBudgetUsd ?? null,
     timeZone: ctx.config.organization.timezone }, ctx.now());
   // The cap is operational policy, not process-local state. Hydrate today's
-  // persisted spend so restarting Cassandra cannot reset or bypass the budget.
+  // persisted spend so restarting Mneme cannot reset or bypass the budget.
   const persistedSpend = ctx.db.prepare(
     'SELECT COALESCE(SUM(cost_usd), 0) AS total FROM agent_runs WHERE started_at_ms >= ? AND cost_usd IS NOT NULL',
   ).get(orgDayStartMs(ctx.now(), ctx.config.organization.timezone)) as { total: number };
@@ -1396,13 +1396,13 @@ export async function createProductionJobRuntime(
   });
   const reviewSecret = createHash('sha256').update(ctx.config.discord.token).update(':review-components').digest('hex');
   const limits = configuredRunLimits(ctx.config.agentRuntime);
-  // Cassandra's own documentation, scanned one time: a direct-answer run reads it
+  // Mneme's own documentation, scanned one time: a direct-answer run reads it
   // through `list_docs` / `read_doc` (Section 22.7).
   const docsIndex = loadDocsIndex(ctx.config.docsDir, ctx.config.docsPublicUrl);
   if (docsIndex.size === 0) {
     ctx.logger.warn(
       { docsDir: ctx.config.docsDir },
-      'documentation index is empty; Cassandra cannot answer questions about herself',
+      'documentation index is empty; Mneme cannot answer questions about herself',
     );
   }
   const scope = (channelId: string) => {
@@ -1422,7 +1422,7 @@ export async function createProductionJobRuntime(
 
   const worker = createJobWorker({
     db: ctx.db,
-    owner: `cassandra:${process.pid}`,
+    owner: `mneme:${process.pid}`,
     leaseMs: productionJobLeaseMs(ctx.config.agentRuntime.timeoutSeconds),
     pollIntervalMs: 1_000,
     shutdownTimeoutMs: ctx.config.maintenance.shutdownTimeoutSeconds * 1000,
@@ -1463,7 +1463,7 @@ export async function createProductionJobRuntime(
   worker.register('close_episode', 1, createCloseEpisodeHandler({ db: ctx.db, timing: ctx.config.episodes, now: ctx.now, logger: ctx.logger }));
   worker.register('direct_answer', ctx.config.agentRuntime.maxConcurrency, createDirectAnswerHandler({
     db: ctx.db, guildId: ctx.config.discord.guildId, promptCompiler: () => snapshot().promptCompiler,
-    channelPolicyYml: () => snapshot().channelPolicyYml, cassandraYml: safeRead(ctx.config.cassandraConfigPath),
+    channelPolicyYml: () => snapshot().channelPolicyYml, mnemeYml: safeRead(ctx.config.mnemeConfigPath),
     systemPrompt, resolveChannelScope: scope, rateChecks: (channelId, content, now) => recentChecks(ctx, channelId, content, now),
     mode: () => ctx.config.mode, agent, docs: docsIndex, executeRun: gatedExecute, now: ctx.now, limits, logger: ctx.logger,
   }));
@@ -1485,9 +1485,9 @@ export async function createProductionJobRuntime(
     logger: ctx.logger,
   }));
   const reviewEpisode = createReviewEpisodeHandler({
-    db: ctx.db, guildId: ctx.config.discord.guildId, cassandraId: ctx.config.discord.applicationId,
+    db: ctx.db, guildId: ctx.config.discord.guildId, mnemeId: ctx.config.discord.applicationId,
     promptCompiler: () => snapshot().promptCompiler, channelPolicyYml: () => snapshot().channelPolicyYml,
-    cassandraYml: safeRead(ctx.config.cassandraConfigPath), systemPrompt,
+    mnemeYml: safeRead(ctx.config.mnemeConfigPath), systemPrompt,
     resolveChannelScope: (channelId) => {
       const s = scope(channelId);
       const channel = getChannel(ctx.db, channelId);
@@ -1554,7 +1554,7 @@ export async function createProductionJobRuntime(
       base: {
         promptCompiler: () => snapshot().promptCompiler,
         channelPolicyYml: () => snapshot().channelPolicyYml,
-        cassandraYml: safeRead(ctx.config.cassandraConfigPath),
+        mnemeYml: safeRead(ctx.config.mnemeConfigPath),
         systemPrompt,
         mode: () => ctx.config.mode,
         agent,
@@ -1567,7 +1567,7 @@ export async function createProductionJobRuntime(
         scheduledReminderIntervalMs: ctx.config.memory.scheduledReviewReminderDays * 86_400_000,
         attentionWindowMs: ctx.config.intervention.attentionWindowDays * 86_400_000,
         attentionTimezone: ctx.config.organization.timezone,
-        cassandraId: ctx.config.discord.applicationId,
+        mnemeId: ctx.config.discord.applicationId,
       },
       resolveWorkingScope: (targetChannelId) => resolveScheduledWorkingScope(
         ctx.db,
@@ -1689,7 +1689,7 @@ export async function createProductionJobRuntime(
     notifyCompleted: async ({ requesterUserId, file, bytes }) => {
       const user = await client.users.fetch(requesterUserId);
       await user.send({
-        content: `Cassandra backup completed: ${file} (${bytes} bytes), integrity_check: ok.\n\nCassandra doesn't answer questions in DMs. Ask me in the Discord server by mentioning @Cassandra in a channel I can access.`,
+        content: `Mneme backup completed: ${file} (${bytes} bytes), integrity_check: ok.\n\nMneme doesn't answer questions in DMs. Ask me in the Discord server by mentioning @Mneme in a channel I can access.`,
         allowedMentions: { parse: [] },
       });
     },

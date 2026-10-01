@@ -13,7 +13,7 @@ function seed() {
   env.db.prepare('UPDATE channels SET visibility_class=\'org\',allow_interventions=1 WHERE id=?').run(CHANNEL);
   env.db.prepare(`INSERT INTO users
     (id,username,global_name,is_bot,first_seen_at_ms,last_seen_at_ms)
-    VALUES (?,?,?,1,?,?)`).run(BOT, 'cassandra', 'Cassandra', NOW, NOW);
+    VALUES (?,?,?,1,?,?)`).run(BOT, 'mneme', 'Mneme', NOW, NOW);
   env.db.prepare(`INSERT INTO messages
     (id,guild_id,channel_id,author_id,author_display_name,content,created_at_ms,ingested_at_ms,updated_at_ms)
     VALUES ('origin',?,?,?,?,?,?,?,?)`).run(GUILD, CHANNEL, HUMAN, 'Human', 'Original decision', NOW - 10, NOW, NOW);
@@ -62,7 +62,7 @@ describe('scheduled notification feedback', () => {
   it('associates one exact same-channel human reply with its subjects', () => {
     reply();
     const result = resolveScheduledFeedback(env.db, {
-      guildId: GUILD, channelId: CHANNEL, messageIds: ['reply'], cassandraId: BOT,
+      guildId: GUILD, channelId: CHANNEL, messageIds: ['reply'], mnemeId: BOT,
     });
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
@@ -75,7 +75,7 @@ describe('scheduled notification feedback', () => {
   it('does not associate a top-level or cross-channel reply', () => {
     reply('top', CHANNEL, 'ordinary');
     expect(resolveScheduledFeedback(env.db, {
-      guildId: GUILD, channelId: CHANNEL, messageIds: ['top'], cassandraId: BOT,
+      guildId: GUILD, channelId: CHANNEL, messageIds: ['top'], mnemeId: BOT,
     })).toEqual([]);
   });
 
@@ -87,7 +87,7 @@ describe('scheduled notification feedback', () => {
       .run(CHANNEL, NOW, NOW, NOW, NOW);
     reply();
     expect(resolveScheduledFeedback(env.db, {
-      guildId: GUILD, channelId: CHANNEL, messageIds: ['reply'], cassandraId: BOT,
+      guildId: GUILD, channelId: CHANNEL, messageIds: ['reply'], mnemeId: BOT,
     })).toEqual([]);
   });
 
@@ -95,7 +95,7 @@ describe('scheduled notification feedback', () => {
     env.db.prepare("UPDATE outbox SET content='Different text' WHERE id='outbox'").run();
     reply();
     expect(resolveScheduledFeedback(env.db, {
-      guildId: GUILD, channelId: CHANNEL, messageIds: ['reply'], cassandraId: BOT,
+      guildId: GUILD, channelId: CHANNEL, messageIds: ['reply'], mnemeId: BOT,
     })).toEqual([]);
   });
 
@@ -104,7 +104,7 @@ describe('scheduled notification feedback', () => {
       .run(JSON.stringify({ channels: [], memoryScopes: [], messageIds: [] }));
     reply();
     expect(resolveScheduledFeedback(env.db, {
-      guildId: GUILD, channelId: CHANNEL, messageIds: ['reply'], cassandraId: BOT,
+      guildId: GUILD, channelId: CHANNEL, messageIds: ['reply'], mnemeId: BOT,
     })).toEqual([]);
   });
 });

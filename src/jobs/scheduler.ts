@@ -5,7 +5,7 @@ import type { EnqueueInput, JobType } from './types.js';
 /**
  * Periodic operational scheduler (Sections 5.1, 9.6, 10, 12.4, 28, 42).
  *
- * Cassandra has no external cron. Recurring operational work — channel
+ * Mneme has no external cron. Recurring operational work — channel
  * reconciliation, thread discovery, due-memory review, backups, and the
  * maintenance bundle (WAL checkpoints, `PRAGMA optimize`, proposal expiry,
  * cache convergence) — is driven by in-process timers that *enqueue* durable,

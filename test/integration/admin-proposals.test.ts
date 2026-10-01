@@ -23,7 +23,7 @@ import {
 import { getOutbox } from '../../src/outbox/repository.js';
 
 /**
- * `/cassandra proposals | approve | dismiss` integration suite (Section 27).
+ * `/mneme proposals | approve | dismiss` integration suite (Section 27).
  *
  * The acceptance bar is parity: a slash command and a review-message button must
  * apply identical authorization, revalidation, idempotency, and audit behavior.
@@ -153,10 +153,10 @@ const adminInput = (memberRoleIds: readonly string[] | null, actor = ADMIN) => (
 });
 
 // ---------------------------------------------------------------------------
-// `/cassandra proposals` — bounded unexpired pending list with secure references.
+// `/mneme proposals` — bounded unexpired pending list with secure references.
 // ---------------------------------------------------------------------------
 
-describe('/cassandra proposals list', () => {
+describe('/mneme proposals list', () => {
   it('authorizes, then lists bounded unexpired pending proposals newest-first with short ids', () => {
     seedProposal({ now: NOW });
     seedProposal({ now: NOW + 60_000 });
@@ -257,10 +257,10 @@ describe('/cassandra proposals list', () => {
 });
 
 // ---------------------------------------------------------------------------
-// `/cassandra approve <id>` — resolution + delegation to the review workflow.
+// `/mneme approve <id>` — resolution + delegation to the review workflow.
 // ---------------------------------------------------------------------------
 
-describe('/cassandra approve delegates to the workflow and audits like the button', () => {
+describe('/mneme approve delegates to the workflow and audits like the button', () => {
   it('approves by full id: records reviewer, enqueues the outbox, audits proposal.approve', async () => {
     const proposalId = seedProposal();
     const outcome = await handleApproveCommand(
@@ -451,10 +451,10 @@ describe('/cassandra approve delegates to the workflow and audits like the butto
 });
 
 // ---------------------------------------------------------------------------
-// `/cassandra dismiss <id>` — resolution + delegation to the workflow.
+// `/mneme dismiss <id>` — resolution + delegation to the workflow.
 // ---------------------------------------------------------------------------
 
-describe('/cassandra dismiss delegates to the workflow and never enqueues', () => {
+describe('/mneme dismiss delegates to the workflow and never enqueues', () => {
   it('dismisses by short id, finalizes as dismissed, and creates no outbox row', async () => {
     const proposalId = seedProposal();
     const shortId = proposalId.slice(0, PROPOSAL_SHORT_ID_LENGTH);

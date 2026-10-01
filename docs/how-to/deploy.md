@@ -1,6 +1,6 @@
-# Deploy Cassandra
+# Deploy Mneme
 
-Cassandra supports any host that can run its container image with one
+Mneme supports any host that can run its container image with one
 persistent volume. The release contract is that every tagged release
 publishes a versioned image, so a source checkout is not needed to deploy;
 start with [Install with the released image](#install-with-the-released-image).
@@ -26,33 +26,33 @@ planning, and network access.
 - Let the application run migrations at startup.
 - Copy completed online backups off the application host.
 
-SQLite is the reason for the singleton rule. Cassandra uses WAL mode and durable
+SQLite is the reason for the singleton rule. Mneme uses WAL mode and durable
 jobs, but it is not a distributed database.
 
 ## Prepare the deployment
 
-1. Complete [Install Cassandra](../tutorials/getting-started.md).
+1. Complete [Install Mneme](../tutorials/getting-started.md).
 2. Set all required values from the
    [configuration reference](../reference/configuration.md) in the platform's
    secret and environment settings.
-3. Keep `CASSANDRA_MODE=observe` for the first deployment.
+3. Keep `MNEME_MODE=observe` for the first deployment.
 4. A synthetic sample policy ships at `config/channel-policy.yml`. With the
    default `CHANNEL_POLICY_SOURCE=basic`, skip the files and set the selection
    lists in the environment. With `CHANNEL_POLICY_SOURCE=file`, mount your
-   reviewed `config/channel-policy.yml` and `config/cassandra.yml` over the
+   reviewed `config/channel-policy.yml` and `config/mneme.yml` over the
    sample. Configuration comes from the environment or from mounted files; a
    rebuilt image is not a supported way to change configuration.
 5. Post the completed [privacy notice](publish-privacy-notice.md).
 
 The image starts as root so it can repair ownership on a mounted volume, then
-executes Cassandra as the `node` user through `gosu`.
+executes Mneme as the `node` user through `gosu`.
 
 ## Install with the released image
 
 The release contract is that every tagged release publishes a versioned image
-at `ghcr.io/steel-experiments/cassandra-discord`. This is the standard operator
+at `ghcr.io/steel-experiments/mneme`. This is the standard operator
 install: you pull a fixed version and run it. No source checkout is needed.
-Contributors who change Cassandra can use the source-build path in
+Contributors who change Mneme can use the source-build path in
 [Deploy with Docker Compose from source](#deploy-with-docker-compose-from-source)
 instead.
 
@@ -62,7 +62,7 @@ instead.
 Pull the version you selected:
 
 ```bash
-docker pull ghcr.io/steel-experiments/cassandra-discord:vX.Y.Z
+docker pull ghcr.io/steel-experiments/mneme:vX.Y.Z
 ```
 
 A release tag names one build. Branch tips and the floating `latest` tag are
@@ -73,13 +73,13 @@ not version publications.
 Resolve the digest that the tag points to, and record it:
 
 ```bash
-docker images --digests ghcr.io/steel-experiments/cassandra-discord
+docker images --digests ghcr.io/steel-experiments/mneme
 docker inspect --format='{{index .RepoDigests 0}}' \
-  ghcr.io/steel-experiments/cassandra-discord:vX.Y.Z
+  ghcr.io/steel-experiments/mneme:vX.Y.Z
 ```
 
 Then pull and run the image by digest, for example
-`ghcr.io/steel-experiments/cassandra-discord@sha256:<digest>`. A digest
+`ghcr.io/steel-experiments/mneme@sha256:<digest>`. A digest
 reference is immutable: the same string always runs the same image bytes. The
 release notes record the digest of every published tag.
 
@@ -88,19 +88,19 @@ release notes record the digest of every published tag.
 `docker-compose.image.example.yml` in the repository is a complete service
 definition for the released image. It carries the same contract as the
 repository Compose file: the same container-fixed environment set, the same
-`cassandra_data` volume at `/app/data`, the same health check, and the same
+`mneme_data` volume at `/app/data`, the same health check, and the same
 hardening. Port 3000 is exposed to sibling containers only; the file comments
 explain how to publish it on loopback for local checks.
 
 Save the file from the repository
-(https://github.com/steel-experiments/cassandra-discord) into one directory
+(https://github.com/steel-experiments/mneme) into one directory
 next to your `.env` file. Set the `image:` line to the version tag or digest
 you pinned. Then validate and start:
 
 ```bash
 docker compose -f docker-compose.image.example.yml config --quiet
 docker compose -f docker-compose.image.example.yml up -d
-docker compose -f docker-compose.image.example.yml logs -f cassandra
+docker compose -f docker-compose.image.example.yml logs -f mneme
 ```
 
 Configuration lives outside the image. All settings flow from `.env` or the
@@ -110,7 +110,7 @@ configuration and no stored data.
 
 ### Do not run unattended latest upgrades
 
-Cassandra is a stateful application with one SQLite database. Migrations are
+Mneme is a stateful application with one SQLite database. Migrations are
 forward-only and run at startup, and an image that lacks an applied migration
 refuses to start against the current database (see
 [Migration compatibility](#migration-compatibility)). An unattended
@@ -134,17 +134,17 @@ both.
 ## Deploy with Docker Compose from source
 
 This path builds the image from a source checkout. Use it when you change
-Cassandra, or when no released image is available.
+Mneme, or when no released image is available.
 
 You need Docker Compose v2.24 or later. The service block uses the `env_file`
 long syntax (`path` with a `required` flag), which that release introduced.
 
-The base Compose file creates one service and a named `cassandra_data` volume.
+The base Compose file creates one service and a named `mneme_data` volume.
 It exposes port 3000 to sibling containers but does not publish it to the host.
 
 The service reads the repository `.env` file through
 `env_file: [{path: .env, required: false}]`. When the file is absent, Compose
-still starts the service, and Cassandra reports every missing value with its
+still starts the service, and Mneme reports every missing value with its
 own configuration error. Compose performs no required-variable checks of its
 own; the application is the single source of truth for validation messages.
 
@@ -154,10 +154,10 @@ container:
 - `NODE_ENV=production`
 - `HOME=/tmp`
 - `DATA_DIR=/app/data`
-- `DATABASE_PATH=/app/data/cassandra.sqlite`
+- `DATABASE_PATH=/app/data/mneme.sqlite`
 - `PROMPT_DIR=/app/prompts`
 - `DOCS_DIR=/app/docs`
-- `CASSANDRA_CONFIG_PATH=/app/config/cassandra.yml`
+- `MNEME_CONFIG_PATH=/app/config/mneme.yml`
 - `CHANNEL_POLICY_PATH=/app/config/channel-policy.yml`
 
 These container-fixed values win over the env file. They exist because the
@@ -167,7 +167,7 @@ including `PORT`, flows from `.env` unchanged; `PORT` defaults to 3000 in the
 application when the file does not set it.
 
 Configuration and data survive an image replacement. `.env` is a host file
-that Compose reads at each start, the database lives in the `cassandra_data`
+that Compose reads at each start, the database lives in the `mneme_data`
 volume, and the pinned `/app` paths are the same in every image. Replacing the
 image therefore changes none of your configuration or stored data.
 
@@ -182,7 +182,7 @@ For local operation, publish the HTTP port with the example override:
 ```bash
 cp docker-compose.override.example.yml docker-compose.override.yml
 docker compose up --build -d
-docker compose logs -f cassandra
+docker compose logs -f mneme
 ```
 
 The example override binds `127.0.0.1:3000:3000`, so the published port is
@@ -196,9 +196,9 @@ health checker, `/status` client, or MCP client needs it.
 1. Create an application from the repository.
 2. Select the Docker Compose build pack.
 3. Add the required environment variables in Coolify.
-4. Confirm the `cassandra_data` volume is mounted at `/app/data`.
+4. Confirm the `mneme_data` volume is mounted at `/app/data`.
 5. Keep the service at one replica. Coolify does not use rolling updates for
-   Docker Compose deployments, which matches Cassandra's singleton requirement.
+   Docker Compose deployments, which matches Mneme's singleton requirement.
 6. Deploy and watch the application logs.
 
 Treat the Compose file as the source of truth for service settings, storage,
@@ -221,18 +221,18 @@ provision from the released image with the Railway template instead, see
 4. Add the required environment variables.
 5. Keep the service at one replica.
 6. Do not add a pre-deploy migration command. Railway does not mount the volume
-   during that phase; Cassandra migrates after the container starts.
+   during that phase; Mneme migrates after the container starts.
 7. `railway.json` pins `deploy.drainingSeconds` to 45, so the old deployment
-   has time to finish Cassandra's default 30-second shutdown drain. You do not
+   has time to finish Mneme's default 30-second shutdown drain. You do not
    set the drain by hand.
 8. Deploy and wait for Railway's `/readyz` health check.
 
-Railway supplies `PORT`; Cassandra uses it automatically.
+Railway supplies `PORT`; Mneme uses it automatically.
 
 ### Migration compatibility
 
 Applied migration files are immutable. A starting image must contain every migration
-already recorded by the persistent database, with the same checksum. Cassandra refuses
+already recorded by the persistent database, with the same checksum. Mneme refuses
 to start when an image is older than the database or an applied migration changed.
 
 Before deploying a release that adds a migration, verify a completed backup. A queued
@@ -245,8 +245,8 @@ stop the service and restore a verified backup from before the missing migration
 Check liveness and readiness from a network location that can reach the service:
 
 ```bash
-curl --fail http://cassandra.example.internal/livez
-curl --fail http://cassandra.example.internal/readyz
+curl --fail http://mneme.example.internal/livez
+curl --fail http://mneme.example.internal/readyz
 ```
 
 If `HTTP_ADMIN_TOKEN` is set, inspect status:
@@ -254,14 +254,14 @@ If `HTTP_ADMIN_TOKEN` is set, inspect status:
 ```bash
 curl --fail \
   -H "Authorization: Bearer $HTTP_ADMIN_TOKEN" \
-  http://cassandra.example.internal/status
+  http://mneme.example.internal/status
 ```
 
 In Discord, run:
 
 ```text
-/cassandra status
-/cassandra channels
+/mneme status
+/mneme channels
 ```
 
 Confirm:
@@ -293,14 +293,14 @@ safe after a newer migration has committed.
 
 1. Record the attempted source revision and platform deployment identifier.
 2. Inspect deployment and build logs without printing environment variables.
-3. If the process is healthy but behavior is unsafe, switch Cassandra to
+3. If the process is healthy but behavior is unsafe, switch Mneme to
    `observe` with the Discord mode command.
 4. Determine whether the failed release applied a migration and confirm a usable
    backup before selecting older code.
 5. Prefer a forward corrective release. Use an older image only after verifying that it
    contains every migration
    recorded in the database. A previous-image redeploy does not revert the volume schema.
-6. Repeat `/livez`, `/readyz`, `bootstrap.complete`, and `/cassandra status`
+6. Repeat `/livez`, `/readyz`, `bootstrap.complete`, and `/mneme status`
    verification after recovery.
 
 ## Platform documentation

@@ -114,15 +114,15 @@ export function channelVisibilityPredicate(grant: RetrievalGrant): {
 } {
   const conds: string[] = [];
   const params: SQLInputValue[] = [];
-  const outsideCassandraTestSurface = `
-    INSTR(LOWER(COALESCE(c.name, '')), 'cassandra') = 0
+  const outsideMnemeTestSurface = `
+    INSTR(LOWER(COALESCE(c.name, '')), 'mneme') = 0
     AND (c.is_thread = 0 OR NOT EXISTS (
       SELECT 1 FROM channels test_parent
        WHERE test_parent.id = c.parent_id
-         AND INSTR(LOWER(COALESCE(test_parent.name, '')), 'cassandra') > 0
+         AND INSTR(LOWER(COALESCE(test_parent.name, '')), 'mneme') > 0
     ))`;
   const current = `c.ingest_enabled = 1 AND c.deleted_at_ms IS NULL
-    AND ${outsideCassandraTestSurface}`;
+    AND ${outsideMnemeTestSurface}`;
   const liveThreadParent = `(SELECT parent.id
       FROM channels parent
      WHERE parent.id = c.parent_id

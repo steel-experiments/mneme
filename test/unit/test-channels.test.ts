@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { isCassandraTestChannelName } from '../../src/discord/test-channels.js';
+import { isMnemeTestChannelName } from '../../src/discord/test-channels.js';
 
-describe('Cassandra test channels', () => {
-  it('matches cassandra anywhere in a channel name, case-insensitively', () => {
-    expect(isCassandraTestChannelName('cassandra-test')).toBe(true);
-    expect(isCassandraTestChannelName('qa-CASSANDRA-sandbox')).toBe(true);
-    expect(isCassandraTestChannelName('product')).toBe(false);
-    expect(isCassandraTestChannelName(null)).toBe(false);
+describe('Mneme test channels', () => {
+  it('matches mneme anywhere in a channel name, case-insensitively', () => {
+    expect(isMnemeTestChannelName('mneme-test')).toBe(true);
+    expect(isMnemeTestChannelName('qa-MNEME-sandbox')).toBe(true);
+    expect(isMnemeTestChannelName('product')).toBe(false);
+    expect(isMnemeTestChannelName(null)).toBe(false);
   });
 });

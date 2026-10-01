@@ -18,7 +18,7 @@ const base: PromptVersionParts = {
   system: 'system-v1',
   taskTemplate: 'review-v1',
   partials: ['personality-v1', 'boundaries-v1', 'memory-taxonomy-v1'],
-  cassandraYml: 'cassandra: v1',
+  mnemeYml: 'mneme: v1',
   channelPolicyYml: 'default: restricted',
 };
 
@@ -38,7 +38,7 @@ describe('computePromptVersion — changes on any single input', () => {
   it.each([
     ['system', { system: 'system-v2' }],
     ['taskTemplate', { taskTemplate: 'review-v2' }],
-    ['cassandraYml', { cassandraYml: 'cassandra: v2' }],
+    ['mnemeYml', { mnemeYml: 'mneme: v2' }],
     ['channelPolicyYml', { channelPolicyYml: 'default: org' }],
   ] as const)('changes when %s changes', (_name, over) => {
     expect(computePromptVersion({ ...base, ...over })).not.toBe(v);
@@ -89,7 +89,7 @@ describe('computePromptVersion — boundary collisions', () => {
       system: 's',
       taskTemplate: 't',
       partials: [],
-      cassandraYml: '',
+      mnemeYml: '',
       channelPolicyYml: '',
     });
     expect(absent).toBe(empty);
@@ -132,12 +132,12 @@ describe('PromptCompiler.versionFor', () => {
     expect(c1.versionFor('episode-review')).not.toBe(c2.versionFor('episode-review'));
   });
 
-  it('integrates cassandraYml and channelPolicyYml into the version', () => {
+  it('integrates mnemeYml and channelPolicyYml into the version', () => {
     const c = new PromptCompiler(files());
     const v = c.versionFor('episode-review');
-    expect(c.versionFor('episode-review', { cassandraYml: 'C' })).not.toBe(v);
+    expect(c.versionFor('episode-review', { mnemeYml: 'C' })).not.toBe(v);
     expect(c.versionFor('episode-review', { channelPolicyYml: 'CP' })).not.toBe(v);
-    expect(c.versionFor('episode-review', { cassandraYml: 'C', channelPolicyYml: 'CP' })).not.toBe(v);
+    expect(c.versionFor('episode-review', { mnemeYml: 'C', channelPolicyYml: 'CP' })).not.toBe(v);
   });
 
   it('is stable across compiler instances built from the same files, for every task', () => {

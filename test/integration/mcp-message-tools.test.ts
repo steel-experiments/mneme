@@ -223,7 +223,7 @@ describe('tools/call message tools are scoped to the token grant', () => {
     expect(idsIn(text)).toEqual(new Set(['m-org-newest', 'm-org']));
     expect(text).not.toContain('m-ra');
     expect((body.result as Record<string, unknown>)._meta).toEqual({
-      'io.cassandra/untrustedContent': { note: MCP_UNTRUSTED_CONTENT_NOTE },
+      'io.mneme/untrustedContent': { note: MCP_UNTRUSTED_CONTENT_NOTE },
     });
   });
 
@@ -255,7 +255,7 @@ describe('tools/call message tools are scoped to the token grant', () => {
     expect(result.resultType).toBe('complete');
     expect(result.isError).toBe(false);
     expect(result._meta).toEqual({
-      'io.cassandra/untrustedContent': { note: MCP_UNTRUSTED_CONTENT_NOTE },
+      'io.mneme/untrustedContent': { note: MCP_UNTRUSTED_CONTENT_NOTE },
     });
   });
 
@@ -363,7 +363,7 @@ describe('tools/call message tools are scoped to the token grant', () => {
     const ids = idsIn(textOf(body.result as Record<string, unknown>));
     expect(ids.has('m-org')).toBe(true);
     expect((body.result as Record<string, unknown>)._meta).toEqual({
-      'io.cassandra/untrustedContent': { note: MCP_UNTRUSTED_CONTENT_NOTE },
+      'io.mneme/untrustedContent': { note: MCP_UNTRUSTED_CONTENT_NOTE },
     });
   });
 

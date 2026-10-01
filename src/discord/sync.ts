@@ -11,7 +11,7 @@ import {
 import { getSyncCursor } from '../db/repositories/sync-cursors.js';
 import type { ChannelPolicy } from './channel-policy.js';
 import type { ChannelPolicySource } from '../config.js';
-import { isCassandraTestSurface } from './test-channels.js';
+import { isMnemeTestSurface } from './test-channels.js';
 
 /**
  * Startup sync scheduling (Sections 9.2, 46.2).
@@ -151,7 +151,7 @@ export async function runStartupSync(deps: StartupSyncDeps): Promise<StartupSync
   const backfillEnqueued: string[] = [];
   const alreadyEnqueued = new Set<string>();
   for (const channel of discovery.channels) {
-    if (!isCassandraTestSurface(deps.db, channel.id) && deps.enqueueHistoricalBackfill !== false && enqueueBackfillIfIncomplete(deps, channel.id)) {
+    if (!isMnemeTestSurface(deps.db, channel.id) && deps.enqueueHistoricalBackfill !== false && enqueueBackfillIfIncomplete(deps, channel.id)) {
       backfillEnqueued.push(channel.id);
     }
     alreadyEnqueued.add(channel.id);
@@ -233,7 +233,7 @@ export async function runStartupSync(deps: StartupSyncDeps): Promise<StartupSync
     record('enqueue-archived-backfill');
     for (const thread of archived.threads) {
       if (alreadyEnqueued.has(thread.id)) continue; // discovered as active already
-      if (isCassandraTestSurface(deps.db, thread.id)) continue;
+      if (isMnemeTestSurface(deps.db, thread.id)) continue;
       if (deps.enqueueHistoricalBackfill !== false && enqueueBackfillIfIncomplete(deps, thread.id)) {
         archivedBackfillEnqueued.push(thread.id);
       }

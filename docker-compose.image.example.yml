@@ -1,14 +1,14 @@
-# Cassandra service from the released image (Sections 38.7 and 39).
+# Mneme service from the released image (Sections 38.7 and 39).
 #
 # This is a complete service file for a host operator. It runs the published
 # image and needs no source checkout. The repository docker-compose.yml is the
 # equivalent definition that builds from source. Both files keep the same
 # contract: env_file carries ./.env, the environment block holds only the
-# container-fixed override set, the cassandra_data volume mounts at /app/data,
+# container-fixed override set, the mneme_data volume mounts at /app/data,
 # and port 3000 is exposed to sibling services but never published to the host.
 #
 # Replace vX.Y.Z below with the released version tag, or with the digest form
-# ghcr.io/steel-experiments/cassandra-discord@sha256:<digest>, at install
+# ghcr.io/steel-experiments/mneme@sha256:<digest>, at install
 # time. The release notes record the digest of each published tag. Do not
 # point this at the floating latest tag. Migrations are forward-only, so an
 # upgrade must be a deliberate operator action, not an automatic pull.
@@ -25,8 +25,8 @@
 #   docker compose -f docker-compose.image.example.yml config --quiet
 #   docker compose -f docker-compose.image.example.yml up -d
 services:
-  cassandra:
-    image: ghcr.io/steel-experiments/cassandra-discord:vX.Y.Z
+  mneme:
+    image: ghcr.io/steel-experiments/mneme:vX.Y.Z
 
     restart: unless-stopped
 
@@ -38,14 +38,14 @@ services:
       NODE_ENV: production
       HOME: /tmp
       DATA_DIR: /app/data
-      DATABASE_PATH: /app/data/cassandra.sqlite
+      DATABASE_PATH: /app/data/mneme.sqlite
       PROMPT_DIR: /app/prompts
       DOCS_DIR: /app/docs
-      CASSANDRA_CONFIG_PATH: /app/config/cassandra.yml
+      MNEME_CONFIG_PATH: /app/config/mneme.yml
       CHANNEL_POLICY_PATH: /app/config/channel-policy.yml
 
     volumes:
-      - cassandra_data:/app/data
+      - mneme_data:/app/data
 
     expose:
       - "3000"
@@ -68,4 +68,4 @@ services:
       - no-new-privileges:true
 
 volumes:
-  cassandra_data:
+  mneme_data:

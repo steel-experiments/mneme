@@ -13,7 +13,7 @@ import {
 } from '../../src/discord/commands/memory-search.js';
 
 /**
- * `/cassandra memory-search` integration suite (Sections 7.3, 27).
+ * `/mneme memory-search` integration suite (Sections 7.3, 27).
  *
  * Acceptance: invoking the command outside the secure review channel cannot
  * disclose broader restricted or review-only memory. The host builds the
@@ -172,7 +172,7 @@ const adminInput = (memberRoleIds: readonly string[] | null, actor = ADMIN) => (
   memberRoleIds,
 });
 
-describe('/cassandra memory-search outside the secure review channel (org only)', () => {
+describe('/mneme memory-search outside the secure review channel (org only)', () => {
   it('discloses only org memories: restricted-channel and review-only memories are never returned', () => {
     const ids = seedMemorySet();
     const outcome = handleMemorySearchCommand(
@@ -242,7 +242,7 @@ describe('/cassandra memory-search outside the secure review channel (org only)'
   });
 });
 
-describe('/cassandra memory-search inside the secure review channel (all scopes)', () => {
+describe('/mneme memory-search inside the secure review channel (all scopes)', () => {
   it('discloses org, restricted-channel, and review-only memories', () => {
     const ids = seedMemorySet();
     const outcome = handleMemorySearchCommand(
@@ -258,7 +258,7 @@ describe('/cassandra memory-search inside the secure review channel (all scopes)
   });
 });
 
-describe('/cassandra memory-get', () => {
+describe('/mneme memory-get', () => {
   it('returns the complete statement and canonical source links', () => {
     const ids = seedMemorySet();
     const outcome = handleMemoryGetCommand(

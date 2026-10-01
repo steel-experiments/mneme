@@ -34,7 +34,7 @@ jobs:
         run: npm run verify
 
       - name: Build production image
-        run: docker build --tag cassandra:ci .
+        run: docker build --tag mneme:ci .
 
   # Container smoke test (Sections 38.7 and 46.6): build the image, run the
   # compiled fixture entry point inside it with no network and no credentials,
@@ -77,7 +77,7 @@ jobs:
           test -z "${GOOGLE_API_KEY:-}"
 
       - name: Build production image
-        run: docker build --platform "${{ matrix.platform }}" --tag cassandra:ci-smoke .
+        run: docker build --platform "${{ matrix.platform }}" --tag mneme:ci-smoke .
 
       - name: Write the fixture report checker
         run: |
@@ -111,15 +111,15 @@ jobs:
       # (Section 38). The fixture removes its scratch directory when it ends.
       - name: Run fixture mode in the container (first start)
         run: |
-          docker volume create cassandra-smoke-data
+          docker volume create mneme-smoke-data
           set +e
           docker run \
-            --name cassandra-smoke \
+            --name mneme-smoke \
             --network none \
             --platform "${{ matrix.platform }}" \
-            --mount source=cassandra-smoke-data,target=/app/data \
+            --mount source=mneme-smoke-data,target=/app/data \
             --env TMPDIR=/app/data \
-            cassandra:ci-smoke node dist/fixture-mode.js \
+            mneme:ci-smoke node dist/fixture-mode.js \
             > "$RUNNER_TEMP/first-run-report.json"
           code=$?
           set -e
@@ -135,8 +135,8 @@ jobs:
       - name: Seed a restart marker on the data volume
         run: |
           docker run --rm --network none --platform "${{ matrix.platform }}" \
-            --mount source=cassandra-smoke-data,target=/app/data \
-            cassandra:ci-smoke \
+            --mount source=mneme-smoke-data,target=/app/data \
+            mneme:ci-smoke \
             node -e 'require("node:fs").writeFileSync("/app/data/ci-restart-marker", "present-before-restart")'
 
       # Restart means: the SAME container, with the SAME command and the SAME
@@ -146,7 +146,7 @@ jobs:
       - name: Restart the same container and volume
         run: |
           set +e
-          docker start --attach cassandra-smoke \
+          docker start --attach mneme-smoke \
             > "$RUNNER_TEMP/restart-report.json"
           code=$?
           set -e
@@ -159,6 +159,6 @@ jobs:
       - name: Assert the restart kept the data on the volume
         run: |
           docker run --rm --network none --platform "${{ matrix.platform }}" \
-            --mount source=cassandra-smoke-data,target=/app/data \
-            cassandra:ci-smoke \
+            --mount source=mneme-smoke-data,target=/app/data \
+            mneme:ci-smoke \
             node -e 'const m = require("node:fs").readFileSync("/app/data/ci-restart-marker", "utf8"); if (m !== "present-before-restart") { throw new Error("restart marker lost: " + m); } console.log("restart marker survived the restart")'

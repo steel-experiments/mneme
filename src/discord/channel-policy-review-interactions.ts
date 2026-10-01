@@ -198,7 +198,7 @@ export function createChannelPolicyReviewButtonHandler(deps: {
     const parsed = parseChannelPolicyReviewComponent(interaction.customId, deps.secret);
     if (!parsed) return;
     if (!interaction.guildId) {
-      await replySafe(interaction, 'Cassandra channel controls only work inside a server.');
+      await replySafe(interaction, 'Mneme channel controls only work inside a server.');
       return;
     }
     if (interaction.guildId !== deps.guildId) {
@@ -232,7 +232,7 @@ export function createChannelPolicyReviewButtonHandler(deps: {
         },
         createdAtMs: (deps.now ?? Date.now)(),
       });
-      await replySafe(interaction, 'This control is not in Cassandra’s secure review channel.');
+      await replySafe(interaction, 'This control is not in Mneme’s secure review channel.');
       return;
     }
     const result = applyChannelPolicyReviewDecision({
@@ -261,12 +261,12 @@ export function createChannelPolicyReviewButtonHandler(deps: {
     }
     const labels: Record<ChannelPolicyReviewInteractionOutcome, string> = {
       decided: 'Channel classification saved.',
-      unauthorized: 'You are not authorized to classify Cassandra channels.',
+      unauthorized: 'You are not authorized to classify Mneme channels.',
       stale: 'This channel review is stale or already resolved.',
       not_found: 'This channel review could not be found.',
       basic_mode:
         'This deployment selects channels with environment variables, so classification cards are disabled. '
-        + 'Change ORG_VISIBLE_CHANNEL_IDS or RESTRICTED_CHANNEL_IDS, or set CHANNEL_POLICY_SOURCE=file, then restart Cassandra.',
+        + 'Change ORG_VISIBLE_CHANNEL_IDS or RESTRICTED_CHANNEL_IDS, or set CHANNEL_POLICY_SOURCE=file, then restart Mneme.',
     };
     await replySafe(interaction, labels[result.outcome]);
   };

@@ -19,7 +19,7 @@ import { APP_VERSION } from '../../src/version.js';
 import { listPendingProposals } from '../../src/db/repositories/proposals.js';
 
 /**
- * `/cassandra status` and `/cassandra channels` (Sections 27, 33).
+ * `/mneme status` and `/mneme channels` (Sections 27, 33).
  *
  * Acceptance: commands respond quickly, expose all specified operational fields,
  * and contain no raw messages, prompts, or tokens. Every field is a count, state,
@@ -394,8 +394,8 @@ describe('collectStatusReport', () => {
     );
   });
 
-  it('does not present Cassandra-named control channels as incomplete sync work', () => {
-    seedChannel('c-control', 'review_only', 'cassandra-review');
+  it('does not present Mneme-named control channels as incomplete sync work', () => {
+    seedChannel('c-control', 'review_only', 'mneme-review');
     seedChannel('c-disabled', 'excluded', 'archive-disabled');
     const report = collectStatusReport(db, RUNTIME);
 
@@ -503,7 +503,7 @@ describe('handleStatusCommand', () => {
     );
     if (out.kind !== 'done') throw new Error('expected done');
     const text = formatStatusReply(out);
-    expect(text).toContain('**Cassandra status**');
+    expect(text).toContain('**Mneme status**');
     expect(text).toContain(`Build: v${APP_VERSION} · commit `);
     expect(text).toContain('Railway deploy `00000000-000`');
     expect(text).toContain('Mode: **review** · running');

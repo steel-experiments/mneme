@@ -5,5 +5,5 @@ The security design is described in
 sandbox around model proposals, and the fail-closed rules for channel scope.
 
 To report a vulnerability, read `SECURITY.md` in the repository root:
-[SECURITY.md](https://github.com/steel-experiments/cassandra-discord/blob/main/SECURITY.md).
+[SECURITY.md](https://github.com/steel-experiments/mneme/blob/main/SECURITY.md).
 Report security problems privately. Do not open a public issue for them.

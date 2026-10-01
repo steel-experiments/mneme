@@ -46,14 +46,14 @@ export function resolveBuildInfo(environment: Environment = process.env): BuildI
   return normalizeBuildInfo({
     appVersion: APP_VERSION,
     sourceRevision: firstRevision(environment, [
-      'CASSANDRA_SOURCE_REVISION',
+      'MNEME_SOURCE_REVISION',
       'RAILWAY_GIT_COMMIT_SHA',
       'GITHUB_SHA',
       'CI_COMMIT_SHA',
     ]),
     railwayDeploymentId: environment.RAILWAY_DEPLOYMENT_ID,
     buildId: firstIdentifier(environment, [
-      'CASSANDRA_BUILD_ID',
+      'MNEME_BUILD_ID',
     ]),
   });
 }

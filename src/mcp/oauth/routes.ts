@@ -42,7 +42,7 @@ export interface OAuthRouteDeps {
   context: AuthorizationContext;
   /** The identity provider seam; tests inject a fake so no network is touched. */
   identity: DiscordIdentityClient;
-  /** Roles that may sign in — the same gate as `/cassandra mcp-token create`. */
+  /** Roles that may sign in — the same gate as `/mneme mcp-token create`. */
   adminRoleIds: readonly string[];
   /** Shared global budget for unauthenticated MCP and OAuth traffic. */
   rateLimiter: RateLimiter;
@@ -156,7 +156,7 @@ function sendTokenJson(res: ServerResponse, status: number, body: unknown): void
 }
 
 /**
- * `GET /oauth/discord/callback`. Discord returns the person here; Cassandra
+ * `GET /oauth/discord/callback`. Discord returns the person here; Mneme
  * decides from their guild roles and, on approval, redirects a single-use
  * authorization code to the client that started the flow.
  */

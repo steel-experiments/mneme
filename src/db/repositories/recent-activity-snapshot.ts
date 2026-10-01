@@ -82,15 +82,15 @@ function buildWhere(
     'm.deleted_at_ms IS NULL',
     'm.created_at_ms >= ?',
     'm.created_at_ms < ?',
-    // Defense in depth for Cassandra-named control/test consoles. They are not
+    // Defense in depth for Mneme-named control/test consoles. They are not
     // retrieval sources even if a stale or misconfigured row says ingest=true.
-    "INSTR(LOWER(COALESCE(c.name, '')), 'cassandra') = 0",
-    // A normally named thread below a Cassandra test console is part of that
+    "INSTR(LOWER(COALESCE(c.name, '')), 'mneme') = 0",
+    // A normally named thread below a Mneme test console is part of that
     // same test surface. Keep parent-name isolation independent of policy state.
     `(c.is_thread = 0 OR NOT EXISTS (
       SELECT 1 FROM channels test_parent
        WHERE test_parent.id = c.parent_id
-         AND INSTR(LOWER(COALESCE(test_parent.name, '')), 'cassandra') > 0
+         AND INSTR(LOWER(COALESCE(test_parent.name, '')), 'mneme') > 0
     ))`,
     scope.sql,
   ];

@@ -6,15 +6,15 @@ import {
   type CommandDispatcherDeps,
 } from '../../src/discord/command-dispatcher.js';
 import {
-  CASSANDRA_SUBCOMMANDS,
-  CASSANDRA_SUBCOMMAND_GROUPS,
+  MNEME_SUBCOMMANDS,
+  MNEME_SUBCOMMAND_GROUPS,
 } from '../../src/discord/commands.js';
 import { handleChannelsCommand, formatChannelsReply } from '../../src/discord/commands/channels.js';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 import type { BootstrapContext } from '../../src/bootstrap.js';
 
 /**
- * Routing coverage for the `/cassandra` command dispatcher (the route-table
+ * Routing coverage for the `/mneme` command dispatcher (the route-table
  * rewrite of the former switch dispatcher).
  *
  * The handlers themselves have their own suites; this one proves the glue:
@@ -44,7 +44,7 @@ function fakeInteraction(opts: FakeOptions): Record<string, unknown> {
   const replies: string[] = [];
   const state = { deferred: false, replied: false };
   return {
-    commandName: 'cassandra',
+    commandName: 'mneme',
     guildId: GUILD,
     channelId: CHANNEL,
     user: { id: ADMIN },
@@ -162,8 +162,8 @@ describe('command dispatcher routing', () => {
 
   it('covers every declarative command and group route', () => {
     expect(listCommandDispatcherRouteNames()).toEqual({
-      commands: CASSANDRA_SUBCOMMANDS.map((command) => command.name),
-      groups: CASSANDRA_SUBCOMMAND_GROUPS.map((group) => group.name),
+      commands: MNEME_SUBCOMMANDS.map((command) => command.name),
+      groups: MNEME_SUBCOMMAND_GROUPS.map((group) => group.name),
     });
   });
 
@@ -194,14 +194,14 @@ describe('command dispatcher routing', () => {
 
   it('replies with the unknown-command text for an unrecognized subcommand', async () => {
     expect(await runCommand(db, { subcommand: 'nonsense', group: null }))
-      .toEqual(['Unknown Cassandra command.']);
+      .toEqual(['Unknown Mneme command.']);
   });
 
   it('does not resolve inherited object-property names as routes', async () => {
     expect(await runCommand(db, { subcommand: 'constructor', group: null }))
-      .toEqual(['Unknown Cassandra command.']);
+      .toEqual(['Unknown Mneme command.']);
     expect(await runCommand(db, { subcommand: 'nonsense', group: 'constructor' }))
-      .toEqual(['Unknown Cassandra command.']);
+      .toEqual(['Unknown Mneme command.']);
   });
 
   it('forwards a required id through an asynchronous route', async () => {

@@ -1,6 +1,6 @@
-# Cassandra for Discord
+# Mneme for Discord
 
-Cassandra is a quiet organizational-memory agent for one Discord server. It
+Mneme is a quiet organizational-memory agent for one Discord server. It
 reads the channels an organization explicitly permits, groups conversation
 into episodes, and extracts durable memories such as decisions, assumptions,
 predictions, risks, open questions, and commitments. Most of the time it says
@@ -31,7 +31,7 @@ an interruption worthwhile.
   provider, and what deletion does.
 - [Security](security.md)
 - [Troubleshooting](how-to/troubleshooting.md)
-- [Use Cassandra in Discord](how-to/use-cassandra.md)
+- [Use Mneme in Discord](how-to/use-mneme.md)
 - [Connect an MCP client](how-to/connect-mcp-clients.md)
 
 ## Reference
@@ -46,7 +46,7 @@ an interruption worthwhile.
 - [Safety and assurance](explanation/safety-and-assurance.md)
 
 These pages describe the current product and are also the documentation
-Cassandra reads when answering questions about herself. Records about one
+Mneme reads when answering questions about herself. Records about one
 organization's deployment do not belong in this tree. Contributor material,
 including the acceptance checklist that maps each criterion to its tests,
 lives in the repository's `contributor-docs/` directory.

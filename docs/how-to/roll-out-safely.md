@@ -1,8 +1,8 @@
 # Roll out review and autonomy safely
 
-Start with ingestion, inspect real behavior, then grant Cassandra more ability
-to speak. Each phase has an explicit rollback: set `CASSANDRA_MODE=observe` and
-restart. The `/cassandra pause` command is a faster operational brake for review
+Start with ingestion, inspect real behavior, then grant Mneme more ability
+to speak. Each phase has an explicit rollback: set `MNEME_MODE=observe` and
+restart. The `/mneme pause` command is a faster operational brake for review
 and outbound jobs while ingestion continues.
 
 ## Phase 1: observe ingestion
@@ -10,7 +10,7 @@ and outbound jobs while ingestion continues.
 Configure:
 
 ```dotenv
-CASSANDRA_MODE=observe
+MNEME_MODE=observe
 DIRECT_ANSWER_ENABLED=false
 ```
 
@@ -19,8 +19,8 @@ enforces this without extra work: basic-mode rules always set it false,
 including the default rule for unselected channels. With a file-mode policy,
 check every rule yourself.
 
-Run Cassandra long enough to complete discovery and, if enabled, historical
-backfill. Check `/cassandra channels` against the intended selection lists or
+Run Mneme long enough to complete discovery and, if enabled, historical
+backfill. Check `/mneme channels` against the intended selection lists or
 policy file. Inspect permission warnings and confirm unselected or excluded
 channels have no stored messages.
 
@@ -32,7 +32,7 @@ Do not continue until:
 - database growth and backup size are understood
 - no unexpected outbound message was sent
 
-Observe mode prevents unsolicited interventions. Cassandra still ingests
+Observe mode prevents unsolicited interventions. Mneme still ingests
 messages and still calls the model to review episodes and extract memories; it
 only never posts on its own. Disabling direct answers also removes replies to
 explicit mentions, so this phase produces no output in Discord.
@@ -55,12 +55,12 @@ Tune prompts and thresholds before enabling a review channel.
 
 ## Phase 3: require human review
 
-Create a private review channel that only the review group and Cassandra can
+Create a private review channel that only the review group and Mneme can
 read.
 
 Before you declare the channel, verify its audience: only the review group and
-Cassandra may hold read access. Enabling the channel requires an explicit
-audience assertion from you. Cassandra cannot verify the member list, so the
+Mneme may hold read access. Enabling the channel requires an explicit
+audience assertion from you. Mneme cannot verify the member list, so the
 assertion is the operator's confirmation that the check happened.
 
 Add the channel to your edited `config/channel-policy.yml`:
@@ -78,20 +78,20 @@ review_channel:
 Set the matching environment values:
 
 ```dotenv
-CASSANDRA_MODE=review
-CASSANDRA_REVIEW_CHANNEL_ID=<review-channel-id>
+MNEME_MODE=review
+MNEME_REVIEW_CHANNEL_ID=<review-channel-id>
 ```
 
 With `CHANNEL_POLICY_SOURCE=basic`, set the assertion pair instead of the YAML
 block:
 
 ```dotenv
-CASSANDRA_MODE=review
-CASSANDRA_REVIEW_CHANNEL_ID=<review-channel-id>
-CASSANDRA_REVIEW_CHANNEL_SECURE=true
+MNEME_MODE=review
+MNEME_REVIEW_CHANNEL_ID=<review-channel-id>
+MNEME_REVIEW_CHANNEL_SECURE=true
 ```
 
-Restart Cassandra. Startup fails if the IDs differ, the channel is not marked
+Restart Mneme. Startup fails if the IDs differ, the channel is not marked
 secure, the basic-mode assertion pair is incomplete, or the bot cannot access
 the channel.
 
@@ -105,7 +105,7 @@ Choose one or two org channels. Set `allow_interventions: true` only on those
 channels, then switch to:
 
 ```dotenv
-CASSANDRA_MODE=autonomous
+MNEME_MODE=autonomous
 GLOBAL_AUTONOMOUS_POST_LIMIT_PER_DAY=1
 ```
 
@@ -134,13 +134,13 @@ Before adding channels, write down:
 Test the controls:
 
 ```text
-/cassandra pause
-/cassandra status
-/cassandra resume
+/mneme pause
+/mneme status
+/mneme resume
 ```
 
 While paused, live ingestion and backfill continue; review and send jobs wait.
-To roll back persistently, set `CASSANDRA_MODE=observe` and restart.
+To roll back persistently, set `MNEME_MODE=observe` and restart.
 
 Increase `GLOBAL_AUTONOMOUS_POST_LIMIT_PER_DAY` slowly. The limit is a safety
 control, not a measure of intervention quality.
@@ -153,17 +153,17 @@ historical model independently of the live model, and begin with a small
 cumulative budget such as `$2`.
 
 Keep `HISTORICAL_MEMORY_MAX_PENDING_REVIEWS=1` for the first sample. Confirm in
-`/cassandra status` that the intended model and window are active, then inspect
+`/mneme status` that the intended model and window are active, then inspect
 the resulting memories and their source links. Pause only the campaign with:
 
 ```text
-/cassandra historical pause
-/cassandra historical status
+/mneme historical pause
+/mneme historical status
 ```
 
 If quality and cost are acceptable, raise
 `HISTORICAL_MEMORY_TOTAL_BUDGET_USD`, redeploy, and run
-`/cassandra historical resume`. The campaign ID, channel set, direction, model,
+`/mneme historical resume`. The campaign ID, channel set, direction, model,
 and timestamps are immutable for safety; use a new campaign ID for a different
 scope. The global `LLM_DAILY_BUDGET_USD` must remain above the historical daily
 cap so live work retains headroom.

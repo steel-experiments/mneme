@@ -1,6 +1,6 @@
 # Release process
 
-This document describes how a Cassandra release is cut, from the tag to the
+This document describes how a Mneme release is cut, from the tag to the
 operator checks. The publishing workflow is
 [.github/workflows/release.yml](../.github/workflows/release.yml). Its
 publication contract is spec Section 38.7.
@@ -16,12 +16,12 @@ Status at the time of writing: **no release has been published yet.** See
 2. Verify from a clean checkout, not your working tree:
 
    ```bash
-   git clone https://github.com/steel-experiments/cassandra-discord.git
-   cd cassandra-discord
+   git clone https://github.com/steel-experiments/mneme.git
+   cd mneme
    git checkout <commit-to-release>
    npm ci --ignore-scripts
    npm run verify
-   docker build -t cassandra:release-check .
+   docker build -t mneme:release-check .
    ```
 
 3. Update `CHANGELOG.md`. The `Unreleased` entry becomes the version heading,
@@ -60,7 +60,7 @@ No manual steps run here. The workflow:
 ## After the workflow: the human steps
 
 1. Open the draft release on GitHub. Check the digest line:
-   `ghcr.io/steel-experiments/cassandra-discord@sha256:<digest>`. Publish the
+   `ghcr.io/steel-experiments/mneme@sha256:<digest>`. Publish the
    release. The release notes carry the digest of the published tag; that is
    the reference operators pin.
 2. Update the install documentation when it pins concrete versions. The docs
@@ -91,7 +91,7 @@ The v1.0.0 tag on 2026-09-16 exercised this process end to end:
   deployment 4e9bd17c) with an existing volume, and the Railway backup drill
   passed against it.
 - The Railway template publishes from that digest-pinned service:
-  <https://railway.com/template/cassandra-for-discord>.
+  <https://railway.com/template/mneme>.
 
 Treat older history below this section as procedure only. Items that remain
 unverified after v1.0.0: none known.

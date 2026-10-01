@@ -13,7 +13,7 @@ import {
 import { authorizeAndAuditAdminAction } from '../authorization.js';
 
 /**
- * `/cassandra memory-search <query>` (Sections 7.3, 27).
+ * `/mneme memory-search <query>` (Sections 7.3, 27).
  *
  * An admin search over organizational memory. Visibility is computed by the
  * host, never the model: the command builds a {@link RetrievalGrant} from WHERE
@@ -116,7 +116,7 @@ export function buildMemorySearchGrant(
 }
 
 /**
- * Run `/cassandra memory-search`. Authorize first (audited on both denial and
+ * Run `/mneme memory-search`. Authorize first (audited on both denial and
  * success with the disclosure scope), build the grant for the invocation
  * channel, then search — disclosing only what the grant permits.
  */
@@ -172,7 +172,7 @@ export function handleMemoryGetCommand(
 /** Format the search results as an ephemeral reply. No secrets; statement previews are bounded. */
 export function formatMemorySearchReply(outcome: MemorySearchOutcome): string {
   if (outcome.kind === 'not_authorized') {
-    return 'You are not authorized to search Cassandra memory.';
+    return 'You are not authorized to search Mneme memory.';
   }
   if (outcome.results.length === 0) {
     return outcome.scope === 'secure_review'
@@ -186,14 +186,14 @@ export function formatMemorySearchReply(outcome: MemorySearchOutcome): string {
   const lines = outcome.results.map((r) => {
     const preview = r.statement.length > 120 ? `${r.statement.slice(0, 119)}…` : r.statement;
     const sc = scopeLabel(r.scopeType, r.scopeKey);
-    return `${r.memoryId}  [${r.type}${sc}]  (${preview})\n↳ /cassandra memory-get id:${r.memoryId}`;
+    return `${r.memoryId}  [${r.type}${sc}]  (${preview})\n↳ /mneme memory-get id:${r.memoryId}`;
   });
   return [header, ...lines].join('\n');
 }
 
 /** Format a complete memory with canonical, visibility-checked source links. */
 export function formatMemoryGetReply(outcome: MemoryGetOutcome): string {
-  if (outcome.kind === 'not_authorized') return 'You are not authorized to read Cassandra memory.';
+  if (outcome.kind === 'not_authorized') return 'You are not authorized to read Mneme memory.';
   if (outcome.kind === 'not_visible') {
     return 'That memory does not exist or is not visible in this channel’s permitted scope.';
   }

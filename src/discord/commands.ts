@@ -7,23 +7,23 @@ import {
 /**
  * Guild-scoped admin command registry (Sections 6.6, 27, 32.5.2).
  *
- * Every Cassandra command lives under one `/cassandra` application command as a
+ * Every Mneme command lives under one `/mneme` application command as a
  * subcommand (or a subcommand of the `mcp-token` group). The declarative spec
  * below is the single source of truth for the command surface; the SlashCommandBuilder
  * and the REST registration payload are both derived from it, so the registered
  * guild commands always match Section 27.
  *
- * Section 6.6 limits guild-scoped Cassandra commands to the configured role IDs in
- * `CASSANDRA_ADMIN_ROLE_IDS`, and the commands that disclose restricted content,
+ * Section 6.6 limits guild-scoped Mneme commands to the configured role IDs in
+ * `MNEME_ADMIN_ROLE_IDS`, and the commands that disclose restricted content,
  * modify channel policy, delete data, approve an intervention, or force a sync must
  * always require an admin role. Because every Section 27 command is Admin, access is
  * enforced at interaction time through `isAuthorizedAdmin` (fail-closed when no admin
  * roles are configured) rather than pinned to Discord permission bits.
  */
 
-export const CASSANDRA_COMMAND_NAME = 'cassandra';
-export const CASSANDRA_ROOT_DESCRIPTION =
-  'Cassandra organizational memory and admin commands.';
+export const MNEME_COMMAND_NAME = 'mneme';
+export const MNEME_ROOT_DESCRIPTION =
+  'Mneme organizational memory and admin commands.';
 
 /** Discord option kinds we declare on subcommands. */
 export type CommandOptionKind = 'string' | 'channel' | 'user' | 'integer';
@@ -59,7 +59,7 @@ const idOption = (description: string): CommandOptionSpec => ({
  * The Section 27 flat subcommands. All are Admin-only (Section 27 "Access" column).
  * Descriptions are trimmed from the Section 27 "Purpose" column (Discord caps at 100).
  */
-export const CASSANDRA_SUBCOMMANDS: readonly SubcommandSpec[] = [
+export const MNEME_SUBCOMMANDS: readonly SubcommandSpec[] = [
   { name: 'status', description: 'Gateway, DB, sync, queue, model, and mode status.', options: [] },
   {
     name: 'mode',
@@ -126,7 +126,7 @@ export const CASSANDRA_SUBCOMMANDS: readonly SubcommandSpec[] = [
 /**
  * The Section 27 `mcp-token` subcommand group: create / list / revoke (Section 32.5.2).
  */
-export const CASSANDRA_SUBCOMMAND_GROUPS: readonly SubcommandGroupSpec[] = [
+export const MNEME_SUBCOMMAND_GROUPS: readonly SubcommandGroupSpec[] = [
   {
     name: 'deletion',
     description: 'Review, approve, or cancel deletion requests in the secure review channel.',
@@ -243,22 +243,22 @@ function addOptions(sub: SlashCommandSubcommandBuilder, options: readonly Comman
 }
 
 /**
- * Build the `/cassandra` application command from the declarative spec. Deterministic:
+ * Build the `/mneme` application command from the declarative spec. Deterministic:
  * the same spec always yields the same command, so registration is convergent.
  */
-export function buildCassandraCommand(): SlashCommandBuilder {
+export function buildMnemeCommand(): SlashCommandBuilder {
   const root = new SlashCommandBuilder()
-    .setName(CASSANDRA_COMMAND_NAME)
-    .setDescription(CASSANDRA_ROOT_DESCRIPTION);
+    .setName(MNEME_COMMAND_NAME)
+    .setDescription(MNEME_ROOT_DESCRIPTION);
 
-  for (const s of CASSANDRA_SUBCOMMANDS) {
+  for (const s of MNEME_SUBCOMMANDS) {
     root.addSubcommand((sub) => {
       sub.setName(s.name).setDescription(s.description);
       addOptions(sub, s.options);
       return sub;
     });
   }
-  for (const g of CASSANDRA_SUBCOMMAND_GROUPS) {
+  for (const g of MNEME_SUBCOMMAND_GROUPS) {
     root.addSubcommandGroup((group) => {
       group.setName(g.name).setDescription(g.description);
       for (const s of g.subcommands) {
@@ -275,8 +275,8 @@ export function buildCassandraCommand(): SlashCommandBuilder {
 }
 
 /** The REST payload registered for the guild: one root command with all subcommands. */
-export const CASSANDRA_COMMANDS: ReturnType<SlashCommandBuilder['toJSON']>[] = [
-  buildCassandraCommand().toJSON(),
+export const MNEME_COMMANDS: ReturnType<SlashCommandBuilder['toJSON']>[] = [
+  buildMnemeCommand().toJSON(),
 ];
 
 /**
@@ -284,8 +284,8 @@ export const CASSANDRA_COMMANDS: ReturnType<SlashCommandBuilder['toJSON']>[] = [
  * Used to assert the registered surface matches Section 27 and for diagnostics.
  */
 export function listCommandEndpoints(): string[] {
-  const flat: string[] = CASSANDRA_SUBCOMMANDS.map((s) => s.name);
-  for (const g of CASSANDRA_SUBCOMMAND_GROUPS) {
+  const flat: string[] = MNEME_SUBCOMMANDS.map((s) => s.name);
+  for (const g of MNEME_SUBCOMMAND_GROUPS) {
     for (const s of g.subcommands) flat.push(`${g.name} ${s.name}`);
   }
   return flat;
@@ -306,7 +306,7 @@ export interface RegisterGuildCommandsDeps {
 export type RegisterGuildCommandsResult = { ok: true } | { ok: false; error: string };
 
 /**
- * Idempotently register Cassandra's guild commands. A `PUT` to the guild commands
+ * Idempotently register Mneme's guild commands. A `PUT` to the guild commands
  * route replaces the whole guild command set with `commands`, so repeated calls
  * converge on the canonical surface without accumulating duplicates. Any registration
  * failure returns `{ ok: false }` so the caller keeps readiness false (Section 27
@@ -315,7 +315,7 @@ export type RegisterGuildCommandsResult = { ok: true } | { ok: false; error: str
 export async function registerGuildCommands(
   deps: RegisterGuildCommandsDeps,
 ): Promise<RegisterGuildCommandsResult> {
-  const body = deps.commands ?? CASSANDRA_COMMANDS;
+  const body = deps.commands ?? MNEME_COMMANDS;
   try {
     await deps.rest.put(Routes.applicationGuildCommands(deps.applicationId, deps.guildId), {
       body,

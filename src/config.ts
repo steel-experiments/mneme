@@ -18,7 +18,7 @@ import { DEFAULT_SETTLE_SECONDS, DEFAULT_SETTLE_MAX_MINUTES } from './episodes/s
  * Precedence (highest wins):
  *   1. immutable security constraints enforced in source (this module);
  *   2. environment-variable overrides;
- *   3. config/cassandra.yml;
+ *   3. config/mneme.yml;
  *   4. documented defaults.
  *
  * On native runs a ./.env file seeds keys the real environment does not set; a
@@ -74,7 +74,7 @@ export interface LlmConfig {
   apiKey: string;
   /**
    * Admission-control ceiling for model spend per organization day (default 2
-   * USD): Cassandra stops starting new paid runs above it. Null means no cap
+   * USD): Mneme stops starting new paid runs above it. Null means no cap
    * (`LLM_DAILY_BUDGET_USD=unlimited`). This is not a provider billing
    * ceiling, and hosting charges are separate.
    */
@@ -212,7 +212,7 @@ export interface McpConfig {
   path: string;
   /**
    * Origin external clients reach the endpoint on, without a trailing slash
-   * (for example `https://cassandra.example.com`). Set from `MCP_PUBLIC_URL`,
+   * (for example `https://mneme.example.com`). Set from `MCP_PUBLIC_URL`,
    * or from the Railway public domain, or `http://localhost:PORT` as last
    * resort. {@link mcpEndpointUrl} joins it with {@link McpConfig.path}.
    */
@@ -247,7 +247,7 @@ export interface McpConfig {
   oauthRedirectUris: readonly string[];
   /**
    * The Discord application's OAuth2 client id (`DISCORD_OAUTH_CLIENT_ID`).
-   * Discord is the identity provider for MCP sign-ins: Cassandra has no password
+   * Discord is the identity provider for MCP sign-ins: Mneme has no password
    * to check and instead asks Discord who the person is and which roles they
    * hold. Public, unlike {@link McpConfig.oauthDiscordClientSecret}.
    *
@@ -275,7 +275,7 @@ export interface InspectorConfig {
   enabled: boolean;
   /** Mount path; must start with `/`. Default `/inspector`. */
   path: string;
-  /** Origin prefix for the URL echoed by `/cassandra inspector-token create`. */
+  /** Origin prefix for the URL echoed by `/mneme inspector-token create`. */
   publicBaseUrl: string;
   /** Per-token request ceiling for authenticated traffic. */
   rateLimitPerMinute: number;
@@ -310,11 +310,11 @@ export interface AppConfig {
   backupDir: string;
   logLevel: string;
   promptDir: string;
-  /** Directory of Cassandra's own Markdown documentation (Sections 22.5–22.7). */
+  /** Directory of Mneme's own Markdown documentation (Sections 22.5–22.7). */
   docsDir: string;
   /** Optional canonical HTTPS base for host-built public documentation links. */
   docsPublicUrl: string | undefined;
-  cassandraConfigPath: string;
+  mnemeConfigPath: string;
   channelPolicyPath: string;
   /** Resolved CHANNEL_POLICY_SOURCE; 'basic' never reads {@link AppConfig.channelPolicyPath}. */
   channelPolicySource: ChannelPolicySource;
@@ -343,8 +343,8 @@ export interface AppConfig {
   directAnswerEnabled: boolean;
 }
 
-/** Subset of cassandra.yml that influences operational config (Section 14). */
-interface CassandraYaml {
+/** Subset of mneme.yml that influences operational config (Section 14). */
+interface MnemeYaml {
   organization?: { name?: string; timezone?: string };
   agent?: { name?: string; role?: string };
   personality?: {
@@ -362,11 +362,11 @@ export const DEFAULTS = {
   // Native-run paths are relative to the working directory. The Docker image
   // bakes the absolute /app values as ENV, so containers are not affected.
   dataDir: './data',
-  databasePath: './data/cassandra.sqlite',
+  databasePath: './data/mneme.sqlite',
   logLevel: 'info',
   promptDir: './prompts',
   docsDir: './docs',
-  cassandraConfigPath: './config/cassandra.yml',
+  mnemeConfigPath: './config/mneme.yml',
   channelPolicyPath: './config/channel-policy.yml',
   // Starter LLM defaults for a basic install; validation still applies when set.
   llmProvider: 'openai',
@@ -374,7 +374,7 @@ export const DEFAULTS = {
   llmDailyBudgetUsd: 2,
   organizationName: 'Your Company',
   organizationTimezone: 'UTC',
-  agentName: 'Cassandra',
+  agentName: 'Mneme',
   agentRole: 'organizational memory and constructive dissenter',
   personality: {
     traits: [
@@ -440,7 +440,7 @@ export interface LoadConfigOptions {
    * when `env` is omitted, no file at all when `env` is injected.
    */
   envFileDir?: string;
-  /** cassandra.yml text. If omitted, the file is read from cassandraConfigPath. */
+  /** mneme.yml text. If omitted, the file is read from mnemeConfigPath. */
   yamlText?: string;
   /**
    * Review-channel facts resolved from channel-policy.yml, used to cross-check
@@ -713,10 +713,10 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
   // in the environment source always win and are never overwritten.
   const e = resolveEnv(options);
 
-  // ---- YAML base (cassandra.yml) ----
+  // ---- YAML base (mneme.yml) ----
   let yamlText = options.yamlText;
   if (yamlText === undefined) {
-    const path = env(e, 'CASSANDRA_CONFIG_PATH') ?? DEFAULTS.cassandraConfigPath;
+    const path = env(e, 'MNEME_CONFIG_PATH') ?? DEFAULTS.mnemeConfigPath;
     try {
       yamlText = readTextFile(path);
     } catch {
@@ -724,9 +724,9 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
       yamlText = '';
     }
   }
-  const yaml: CassandraYaml = yamlText.trim() === '' ? {} : (parseYaml(yamlText) as CassandraYaml);
+  const yaml: MnemeYaml = yamlText.trim() === '' ? {} : (parseYaml(yamlText) as MnemeYaml);
   if (yaml !== null && typeof yaml !== 'object') {
-    throw new ConfigError('cassandra.yml must parse to a mapping', 'CASSANDRA_CONFIG_PATH');
+    throw new ConfigError('mneme.yml must parse to a mapping', 'MNEME_CONFIG_PATH');
   }
 
   // ---- Core ----
@@ -752,7 +752,7 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
   const promptDir = env(e, 'PROMPT_DIR') ?? DEFAULTS.promptDir;
   const docsDir = env(e, 'DOCS_DIR') ?? DEFAULTS.docsDir;
   const docsPublicUrl = resolveDocsPublicUrl(e);
-  const cassandraConfigPath = env(e, 'CASSANDRA_CONFIG_PATH') ?? DEFAULTS.cassandraConfigPath;
+  const mnemeConfigPath = env(e, 'MNEME_CONFIG_PATH') ?? DEFAULTS.mnemeConfigPath;
   const channelPolicyPath = env(e, 'CHANNEL_POLICY_PATH') ?? DEFAULTS.channelPolicyPath;
   // 'basic' (default) builds the policy from the selection lists and never
   // reads CHANNEL_POLICY_PATH; 'file' loads the YAML from the path above.
@@ -764,7 +764,7 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
   );
   rejectUnsafePath(promptDir, 'PROMPT_DIR');
   rejectUnsafePath(docsDir, 'DOCS_DIR');
-  rejectUnsafePath(cassandraConfigPath, 'CASSANDRA_CONFIG_PATH');
+  rejectUnsafePath(mnemeConfigPath, 'MNEME_CONFIG_PATH');
   rejectUnsafePath(channelPolicyPath, 'CHANNEL_POLICY_PATH');
 
   // ---- Discord (required) ----
@@ -809,20 +809,20 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
   const personality = parsePersonality(yaml);
 
   // ---- Mode + review channel ----
-  const mode = parseEnum(env(e, 'CASSANDRA_MODE'), ['observe', 'review', 'autonomous'] as const, 'observe', 'CASSANDRA_MODE');
-  const reviewChannelIdEnv = env(e, 'CASSANDRA_REVIEW_CHANNEL_ID');
-  const reviewChannelId = reviewChannelIdEnv ? parseSnowflake(reviewChannelIdEnv, 'CASSANDRA_REVIEW_CHANNEL_ID') : undefined;
-  const adminRoleIds = parseSnowflakeList(env(e, 'CASSANDRA_ADMIN_ROLE_IDS'), 'CASSANDRA_ADMIN_ROLE_IDS');
+  const mode = parseEnum(env(e, 'MNEME_MODE'), ['observe', 'review', 'autonomous'] as const, 'observe', 'MNEME_MODE');
+  const reviewChannelIdEnv = env(e, 'MNEME_REVIEW_CHANNEL_ID');
+  const reviewChannelId = reviewChannelIdEnv ? parseSnowflake(reviewChannelIdEnv, 'MNEME_REVIEW_CHANNEL_ID') : undefined;
+  const adminRoleIds = parseSnowflakeList(env(e, 'MNEME_ADMIN_ROLE_IDS'), 'MNEME_ADMIN_ROLE_IDS');
   if (adminRoleIds.length === 0) {
     // A warning, never an error: authorization already fails closed with no
     // roles configured, so admin operations stay denied until the operator
     // sets them.
     createLogger().warn(
       { event: 'config.admin_roles_empty' },
-      'CASSANDRA_ADMIN_ROLE_IDS is empty; admin operations stay denied',
+      'MNEME_ADMIN_ROLE_IDS is empty; admin operations stay denied',
     );
   }
-  const deletionApproverUserIds = parseSnowflakeList(env(e, 'CASSANDRA_DELETION_APPROVER_USER_IDS'), 'CASSANDRA_DELETION_APPROVER_USER_IDS');
+  const deletionApproverUserIds = parseSnowflakeList(env(e, 'MNEME_DELETION_APPROVER_USER_IDS'), 'MNEME_DELETION_APPROVER_USER_IDS');
   const httpAdminToken = env(e, 'HTTP_ADMIN_TOKEN');
 
   // ---- Intervention (env overrides YAML overrides defaults) ----
@@ -833,7 +833,7 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
     minConfidence: parseNumber(env(e, 'MIN_INTERVENTION_CONFIDENCE'), numOr(iv.min_confidence, DEFAULTS.intervention.minConfidence), 'MIN_INTERVENTION_CONFIDENCE'),
     channelCooldownMinutes: parseInt_(env(e, 'CHANNEL_COOLDOWN_MINUTES'), intOr(iv.channel_cooldown_minutes, DEFAULTS.intervention.channelCooldownMinutes), 'CHANNEL_COOLDOWN_MINUTES'),
     globalDailyLimit: parseInt_(env(e, 'GLOBAL_AUTONOMOUS_POST_LIMIT_PER_DAY'), intOr(iv.global_daily_limit, DEFAULTS.intervention.globalDailyLimit), 'GLOBAL_AUTONOMOUS_POST_LIMIT_PER_DAY'),
-    maxMessageCharacters: parseInt_(env(e, 'CASSANDRA_MAX_MESSAGE_CHARACTERS'), intOr(iv.max_message_characters, DEFAULTS.intervention.maxMessageCharacters), 'CASSANDRA_MAX_MESSAGE_CHARACTERS'),
+    maxMessageCharacters: parseInt_(env(e, 'MNEME_MAX_MESSAGE_CHARACTERS'), intOr(iv.max_message_characters, DEFAULTS.intervention.maxMessageCharacters), 'MNEME_MAX_MESSAGE_CHARACTERS'),
     attentionWindowDays: parseInt_(env(e, 'INTERVENTION_ATTENTION_WINDOW_DAYS'), intOr(iv.attention_window_days, DEFAULTS.intervention.attentionWindowDays), 'INTERVENTION_ATTENTION_WINDOW_DAYS'),
   };
   assertFraction(intervention.threshold, 'INTERVENTION_THRESHOLD');
@@ -841,7 +841,7 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
   assertFraction(intervention.minConfidence, 'MIN_INTERVENTION_CONFIDENCE');
   assertPositive(intervention.channelCooldownMinutes, 'CHANNEL_COOLDOWN_MINUTES');
   assertPositive(intervention.globalDailyLimit, 'GLOBAL_AUTONOMOUS_POST_LIMIT_PER_DAY');
-  assertPositive(intervention.maxMessageCharacters, 'CASSANDRA_MAX_MESSAGE_CHARACTERS');
+  assertPositive(intervention.maxMessageCharacters, 'MNEME_MAX_MESSAGE_CHARACTERS');
   assertPositive(intervention.attentionWindowDays, 'INTERVENTION_ATTENTION_WINDOW_DAYS');
 
   // ---- Memory (env overrides YAML overrides defaults) ----
@@ -1052,7 +1052,7 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
   if (mcp.oauthEnabled && adminRoleIds.length === 0) {
     throw new ConfigError(
       'at least one admin role is required when MCP_OAUTH_ENABLED is set',
-      'CASSANDRA_ADMIN_ROLE_IDS',
+      'MNEME_ADMIN_ROLE_IDS',
     );
   }
 
@@ -1109,7 +1109,7 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
     promptDir,
     docsDir,
     docsPublicUrl,
-    cassandraConfigPath,
+    mnemeConfigPath,
     channelPolicyPath,
     channelPolicySource,
     discord: { token, applicationId, guildId },
@@ -1230,8 +1230,8 @@ function validateReviewChannel(args: {
   // If both env and channel-policy name a review channel, they must match.
   if (reviewChannelId && channelPolicyReview?.id && reviewChannelId !== channelPolicyReview.id) {
     throw new ConfigError(
-      'CASSANDRA_REVIEW_CHANNEL_ID and channel-policy.yml review_channel.id must match',
-      'CASSANDRA_REVIEW_CHANNEL_ID',
+      'MNEME_REVIEW_CHANNEL_ID and channel-policy.yml review_channel.id must match',
+      'MNEME_REVIEW_CHANNEL_ID',
     );
   }
 
@@ -1240,10 +1240,10 @@ function validateReviewChannel(args: {
 
   const resolvedId = reviewChannelId ?? channelPolicyReview?.id;
   if (!resolvedId) {
-    throw new ConfigError(`mode "${mode}" requires a secure review channel`, 'CASSANDRA_REVIEW_CHANNEL_ID');
+    throw new ConfigError(`mode "${mode}" requires a secure review channel`, 'MNEME_REVIEW_CHANNEL_ID');
   }
   if (channelPolicyReview && channelPolicyReview.secure === false) {
-    throw new ConfigError(`mode "${mode}" requires the review channel to be marked secure`, 'CASSANDRA_REVIEW_CHANNEL_ID');
+    throw new ConfigError(`mode "${mode}" requires the review channel to be marked secure`, 'MNEME_REVIEW_CHANNEL_ID');
   }
 }
 
@@ -1261,7 +1261,7 @@ function asStringList(value: unknown, setting: string): string[] {
   });
 }
 
-function parsePersonality(yaml: CassandraYaml): PersonalityConfig {
+function parsePersonality(yaml: MnemeYaml): PersonalityConfig {
   const p = yaml.personality;
   if (!p) return { ...DEFAULTS.personality, voice: { ...DEFAULTS.personality.voice } };
   const traits = p.traits === undefined ? DEFAULTS.personality.traits : asStringList(p.traits, 'personality.traits');

@@ -41,10 +41,10 @@ const CONTAINER_FIXED = {
   NODE_ENV: 'production',
   HOME: '/tmp',
   DATA_DIR: '/app/data',
-  DATABASE_PATH: '/app/data/cassandra.sqlite',
+  DATABASE_PATH: '/app/data/mneme.sqlite',
   PROMPT_DIR: '/app/prompts',
   DOCS_DIR: '/app/docs',
-  CASSANDRA_CONFIG_PATH: '/app/config/cassandra.yml',
+  MNEME_CONFIG_PATH: '/app/config/mneme.yml',
   CHANNEL_POLICY_PATH: '/app/config/channel-policy.yml',
 } as const;
 
@@ -115,53 +115,53 @@ describe('Docker Compose base file (Section 39)', () => {
     services: Record<string, unknown>;
     volumes: Record<string, unknown>;
   };
-  const cassandra = doc.services['cassandra'] as Record<string, unknown>;
+  const mneme = doc.services['mneme'] as Record<string, unknown>;
 
   it('defines exactly one application service', () => {
-    expect(Object.keys(doc.services)).toEqual(['cassandra']);
+    expect(Object.keys(doc.services)).toEqual(['mneme']);
   });
 
   it('mounts the named volume at /app/data', () => {
-    expect(cassandra['volumes']).toEqual(['cassandra_data:/app/data']);
+    expect(mneme['volumes']).toEqual(['mneme_data:/app/data']);
   });
 
   it('declares the named volume at the top level', () => {
-    expect(Object.keys(doc.volumes)).toEqual(['cassandra_data']);
+    expect(Object.keys(doc.volumes)).toEqual(['mneme_data']);
   });
 
   it('sets a read-only root filesystem', () => {
-    expect(cassandra['read_only']).toBe(true);
+    expect(mneme['read_only']).toBe(true);
   });
 
   it('provides a writable tmpfs at /tmp', () => {
-    expect(cassandra['tmpfs']).toEqual(['/tmp:size=64m,mode=1777']);
+    expect(mneme['tmpfs']).toEqual(['/tmp:size=64m,mode=1777']);
   });
 
   it('drops new privileges', () => {
-    expect(cassandra['security_opt']).toContain('no-new-privileges:true');
+    expect(mneme['security_opt']).toContain('no-new-privileges:true');
   });
 
   it('gives the shutdown drain time to finish before the container is killed', () => {
-    expect(cassandra['stop_grace_period']).toBe('45s');
+    expect(mneme['stop_grace_period']).toBe('45s');
   });
 
   it('exposes 3000 to siblings without publishing a host port', () => {
-    expect(cassandra['expose']).toEqual(['3000']);
-    expect(cassandra).not.toHaveProperty('ports');
+    expect(mneme['expose']).toEqual(['3000']);
+    expect(mneme).not.toHaveProperty('ports');
   });
 
   it('restarts unless stopped and carries the container healthcheck', () => {
-    expect(cassandra['restart']).toBe('unless-stopped');
-    const hc = cassandra['healthcheck'] as { test: unknown };
+    expect(mneme['restart']).toBe('unless-stopped');
+    const hc = mneme['healthcheck'] as { test: unknown };
     expect(hc.test).toEqual(['CMD', 'node', 'dist/healthcheck.js']);
   });
 
   it('passes the application environment through env_file including .env', () => {
-    expect(cassandra['env_file']).toEqual([{ path: '.env', required: false }]);
+    expect(mneme['env_file']).toEqual([{ path: '.env', required: false }]);
   });
 
   it('keeps only the container-fixed overrides in environment', () => {
-    expect(cassandra['environment']).toEqual({ ...CONTAINER_FIXED });
+    expect(mneme['environment']).toEqual({ ...CONTAINER_FIXED });
   });
 
   it('contains no variable interpolation or required-variable guards', () => {
@@ -173,18 +173,18 @@ describe('Docker Compose base file (Section 39)', () => {
 
 describe('local override publishes the host port on loopback only', () => {
   const doc = parseYaml(readFileSync(OVERRIDE, 'utf8')) as {
-    services: { cassandra: Record<string, unknown> };
+    services: { mneme: Record<string, unknown> };
   };
-  const cassandra = doc.services.cassandra;
+  const mneme = doc.services.mneme;
 
   it('publishes 3000 bound to 127.0.0.1', () => {
-    expect(cassandra['ports']).toEqual(['127.0.0.1:3000:3000']);
+    expect(mneme['ports']).toEqual(['127.0.0.1:3000:3000']);
   });
 
   it('does not weaken base hardening', () => {
-    expect(cassandra).not.toHaveProperty('read_only');
-    expect(cassandra).not.toHaveProperty('security_opt');
-    expect(cassandra).not.toHaveProperty('tmpfs');
+    expect(mneme).not.toHaveProperty('read_only');
+    expect(mneme).not.toHaveProperty('security_opt');
+    expect(mneme).not.toHaveProperty('tmpfs');
   });
 });
 
@@ -192,12 +192,12 @@ describe('env reference parity (Section 39)', () => {
   const composeDoc = parseYaml(readFileSync(COMPOSE, 'utf8')) as {
     services: Record<string, unknown>;
   };
-  const composeCassandra = composeDoc.services['cassandra'] as { env_file?: unknown };
+  const composeMneme = composeDoc.services['mneme'] as { env_file?: unknown };
 
   /** True when env_file carries .env, so non-override keys reach the process. */
   function envFileCarriesDotEnv(): boolean {
-    const entries = Array.isArray(composeCassandra.env_file)
-      ? composeCassandra.env_file
+    const entries = Array.isArray(composeMneme.env_file)
+      ? composeMneme.env_file
       : [];
     return entries.some(
       (entry) =>
@@ -262,15 +262,15 @@ describe.skipIf(!hasDocker)('docker compose config (authoritative)', () => {
     );
     const resolved = parseYaml(out.toString()) as {
       services: {
-        cassandra: {
+        mneme: {
           ports: Array<{ target?: number; published?: string | number; host_ip?: string }>;
           read_only: boolean;
           tmpfs: string[];
         };
       };
     };
-    const cassandra = resolved.services.cassandra;
-    const entry = cassandra.ports.find((p) => p.target === 3000);
+    const mneme = resolved.services.mneme;
+    const entry = mneme.ports.find((p) => p.target === 3000);
     expect(entry).toBeDefined();
     const published = String(entry?.published ?? '');
     const hostIp = entry?.host_ip ?? published.split(':')[0] ?? '';
@@ -278,8 +278,8 @@ describe.skipIf(!hasDocker)('docker compose config (authoritative)', () => {
       [hostIp, published].join(' '),
       'the host binding must stay on loopback',
     ).toContain('127.0.0.1');
-    expect(cassandra.read_only).toBe(true);
-    expect(cassandra.tmpfs).toEqual(['/tmp:size=64m,mode=1777']);
+    expect(mneme.read_only).toBe(true);
+    expect(mneme.tmpfs).toEqual(['/tmp:size=64m,mode=1777']);
   });
 });
 
@@ -305,20 +305,20 @@ describe('docker-compose.image.example.yml keeps the released-image contract', (
       }>;
       volumes?: Record<string, unknown>;
     };
-    const svc = doc.services?.cassandra;
-    expect(svc, 'one cassandra service').toBeDefined();
+    const svc = doc.services?.mneme;
+    expect(svc, 'one mneme service').toBeDefined();
     // Released image only: never a source build, never a floating latest tag.
     // Accepted forms: `image:vX.Y.Z`, `image:vX.Y.Z@sha256:<digest>`, and
     // `image@sha256:<digest>`. A digest always follows `@`, never `:`.
     expect(svc?.build).toBeUndefined();
     expect(svc?.image ?? '').toMatch(
-      /^ghcr\.io\/steel-experiments\/cassandra-discord(?::vX\.Y\.Z(?:@sha256:[0-9a-f]{64})?|@sha256:[0-9a-f]{64})$/,
+      /^ghcr\.io\/steel-experiments\/mneme(?::vX\.Y\.Z(?:@sha256:[0-9a-f]{64})?|@sha256:[0-9a-f]{64})$/,
     );
     // The same container-fixed override set as the source-build compose file.
     expect(svc?.environment).toEqual({ ...CONTAINER_FIXED });
     expect(svc?.env_file).toEqual([{ path: '.env', required: false }]);
-    expect(svc?.volumes).toEqual(['cassandra_data:/app/data']);
-    expect(doc.volumes && 'cassandra_data' in doc.volumes).toBe(true);
+    expect(svc?.volumes).toEqual(['mneme_data:/app/data']);
+    expect(doc.volumes && 'mneme_data' in doc.volumes).toBe(true);
     expect(svc?.healthcheck?.test).toEqual(['CMD', 'node', 'dist/healthcheck.js']);
     expect(svc?.restart).toBe('unless-stopped');
     // The same hardening as the source-build compose file.
