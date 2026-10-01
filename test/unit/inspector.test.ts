@@ -13,6 +13,7 @@ import { loadConfig, inspectorUrl, reservedHttpPaths, ConfigError } from '../../
 /** A minimal valid environment (mirrors config.test.ts). */
 function baseEnv(): Record<string, string | undefined> {
   return {
+    MNEME_PLATFORM: 'discord',
     DISCORD_TOKEN: 'a-real-discord-token-value',
     DISCORD_APPLICATION_ID: '123456789012345678',
     DISCORD_GUILD_ID: '234567890123456789',

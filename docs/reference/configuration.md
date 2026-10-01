@@ -25,6 +25,7 @@ for:
 
 | Variable | Meaning |
 | --- | --- |
+| `MNEME_PLATFORM` | Chat platform for this deployment. Required, no default. The only supported value is `discord`. |
 | `DISCORD_TOKEN` | Bot token. Secret. |
 | `DISCORD_APPLICATION_ID` | Discord application snowflake. |
 | `DISCORD_GUILD_ID` | The one guild Mneme may join. |

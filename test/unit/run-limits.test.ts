@@ -8,6 +8,7 @@ import {
 function productionEnv(): Record<string, string | undefined> {
   return {
     NODE_ENV: 'production',
+    MNEME_PLATFORM: 'discord',
     DISCORD_TOKEN: 'test-discord-token',
     DISCORD_APPLICATION_ID: '123456789012345678',
     DISCORD_GUILD_ID: '234567890123456789',

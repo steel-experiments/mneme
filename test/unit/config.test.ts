@@ -32,6 +32,7 @@ afterAll(() => {
 /** A minimal valid environment. Overrides per test. */
 function baseEnv(): Record<string, string | undefined> {
   return {
+    MNEME_PLATFORM: 'discord',
     DISCORD_TOKEN: 'a-real-discord-token-value',
     DISCORD_APPLICATION_ID: '123456789012345678',
     DISCORD_GUILD_ID: '234567890123456789',
@@ -374,6 +375,20 @@ describe('config', () => {
     const env = baseEnv();
     delete env.OPENAI_API_KEY;
     expectFail(env, 'OPENAI_API_KEY');
+  });
+
+  it('fails when MNEME_PLATFORM is missing', () => {
+    const env = baseEnv();
+    delete env.MNEME_PLATFORM;
+    expectFail(env, 'MNEME_PLATFORM');
+  });
+
+  it('fails when MNEME_PLATFORM names an unsupported platform', () => {
+    expectFail({ ...baseEnv(), MNEME_PLATFORM: 'slack' }, 'MNEME_PLATFORM');
+  });
+
+  it('selects the Discord platform when MNEME_PLATFORM=discord', () => {
+    expect(loadConfig({ env: baseEnv() }).platform).toBe('discord');
   });
 
   it('fails when DISCORD_TOKEN is missing', () => {

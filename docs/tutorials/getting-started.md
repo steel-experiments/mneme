@@ -63,6 +63,7 @@ cp .env.example .env
 `.env.example` is the short first-run template. Set at least these values:
 
 ```dotenv
+MNEME_PLATFORM=discord
 DISCORD_TOKEN=replace-me
 DISCORD_APPLICATION_ID=<application-id>
 DISCORD_GUILD_ID=<guild-id>

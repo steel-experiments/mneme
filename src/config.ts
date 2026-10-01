@@ -59,6 +59,10 @@ export class ConfigError extends Error {
   }
 }
 
+/** Chat platforms a deployment can run on (plan 002 decision 1). */
+export const PLATFORM_IDS = ['discord'] as const;
+export type PlatformId = (typeof PLATFORM_IDS)[number];
+
 export interface DiscordConfig {
   token: string;
   applicationId: string;
@@ -318,6 +322,8 @@ export interface AppConfig {
   /** Resolved CHANNEL_POLICY_SOURCE; 'basic' never reads {@link AppConfig.channelPolicyPath}. */
   channelPolicySource: ChannelPolicySource;
   /** The one Discord server or Slack workspace that this deployment serves. */
+  /** The active chat platform (`MNEME_PLATFORM`). */
+  platform: PlatformId;
   workspaceId: string;
   discord: DiscordConfig;
   llm: LlmConfig;
@@ -768,7 +774,12 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
   rejectUnsafePath(mnemeConfigPath, 'MNEME_CONFIG_PATH');
   rejectUnsafePath(channelPolicyPath, 'CHANNEL_POLICY_PATH');
 
-  // ---- Discord (required) ----
+  // ---- Chat platform (required; one platform for each deployment) ----
+  const platformRaw = env(e, 'MNEME_PLATFORM');
+  if (!platformRaw) throw new ConfigError('required setting is missing', 'MNEME_PLATFORM');
+  const platform = parseEnum(platformRaw, PLATFORM_IDS, 'discord', 'MNEME_PLATFORM');
+
+  // ---- Discord (required when MNEME_PLATFORM=discord) ----
   const token = env(e, 'DISCORD_TOKEN');
   if (!token) throw new ConfigError('required setting is missing', 'DISCORD_TOKEN');
   const applicationId = parseSnowflake(env(e, 'DISCORD_APPLICATION_ID'), 'DISCORD_APPLICATION_ID');
@@ -1113,6 +1124,7 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
     mnemeConfigPath,
     channelPolicyPath,
     channelPolicySource,
+    platform,
     workspaceId: guildId,
     discord: { token, applicationId },
     llm: { provider, model, triageModel, baseUrl, apiKey, dailyBudgetUsd },
