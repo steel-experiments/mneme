@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 import { GUILD, NOW, opts } from '../helpers/messages.js';
-import { backfillChannel } from '../../src/discord/backfill.js';
+import { backfillChannel } from '../../src/ingestion/backfill.js';
 import { getSyncCursor } from '../../src/db/repositories/sync-cursors.js';
 import { insertProposal } from '../../src/db/repositories/proposals.js';
 import { enqueueOutbox, getOutbox } from '../../src/outbox/repository.js';

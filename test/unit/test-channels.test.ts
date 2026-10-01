@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isMnemeTestChannelName } from '../../src/discord/test-channels.js';
+import { isMnemeTestChannelName } from '../../src/ingestion/test-channels.js';
 
 describe('Mneme test channels', () => {
   it('matches mneme anywhere in a channel name, case-insensitively', () => {

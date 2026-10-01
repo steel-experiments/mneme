@@ -5,7 +5,7 @@ import { createOAuthRoutes } from '../../src/mcp/oauth/routes.js';
 import { createRateLimiter } from '../../src/mcp/rate-limit.js';
 import { CLAUDE_HOSTED_REDIRECT_URI } from '../../src/mcp/oauth/client.js';
 import { hashAuthorizationCode } from '../../src/mcp/oauth/callback.js';
-import type { DiscordIdentityClient, DiscordIdentityOutcome } from '../../src/mcp/oauth/discord.js';
+import type { DiscordIdentityClient, DiscordIdentityOutcome } from '../../src/platform/discord/oauth-identity.js';
 import {
   consumeAuthorizationCode,
   createLoginSession,

@@ -6,7 +6,7 @@ import {
   formatInspectorTokenReply,
   type HandleInspectorTokenInput,
   type HandleInspectorTokenDeps,
-} from '../../src/discord/commands/inspector-token.js';
+} from '../../src/commands/inspector-token.js';
 import { resolveInspectorToken, DEFAULT_INSPECTOR_TOKEN_TTL_MS } from '../../src/http/inspector/tokens.js';
 import { listInspectorTokens } from '../../src/db/repositories/inspector-tokens.js';
 

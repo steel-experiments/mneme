@@ -6,7 +6,7 @@ import {
   handleFlushEpisodesCommand,
   formatSyncReply,
   formatFlushReply,
-} from '../../src/discord/commands/sync.js';
+} from '../../src/commands/sync.js';
 import { getJob, enqueue } from '../../src/jobs/queue.js';
 import { RECONCILE_CHANNEL_KEY } from '../../src/jobs/scheduler.js';
 import { countAdminEvents } from '../../src/db/repositories/admin-events.js';

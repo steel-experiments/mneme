@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 import { rawMessage, opts, GUILD, NOW } from '../helpers/messages.js';
-import { ingestMessagePage } from '../../src/discord/ingest.js';
-import { normalizeMessage } from '../../src/discord/normalize.js';
+import { ingestMessagePage } from '../../src/ingestion/ingest.js';
+import { normalizeMessage } from '../../src/platform/discord/normalize.js';
 import { transaction } from '../../src/db/database.js';
 import { upsertMessageCreate } from '../../src/db/repositories/messages.js';
 

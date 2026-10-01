@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 import { getChannel } from '../../src/db/repositories/channels.js';
-import { parseChannelPolicy } from '../../src/discord/channel-policy.js';
+import { parseChannelPolicy } from '../../src/policy/channel-policy.js';
 import {
   discoverThreads,
   fetchArchivedThreads,
@@ -11,7 +11,7 @@ import {
   formatArchivedPrivateCoverageWarning,
   type ThreadArchiveSource,
   type ArchivedThreadPage,
-} from '../../src/discord/threads.js';
+} from '../../src/ingestion/threads.js';
 import {
   GUILD_TEXT,
   GUILD_ANNOUNCEMENT,
@@ -22,7 +22,7 @@ import {
   ANNOUNCEMENT_THREAD,
   PRIVATE_THREAD,
   type DiscoveredChannelDescriptor,
-} from '../../src/discord/discovery.js';
+} from '../../src/ingestion/discovery.js';
 import type { ChannelAccessCapabilities } from '../../src/db/repositories/channel-access.js';
 
 /**

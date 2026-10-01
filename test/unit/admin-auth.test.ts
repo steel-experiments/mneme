@@ -6,13 +6,8 @@ import {
   countAdminEvents,
   sanitizeAdminDetails,
 } from '../../src/db/repositories/admin-events.js';
-import {
-  authorizeAdmin,
-  requireAdmin,
-  AuthorizationDeniedError,
-  extractMemberRoleIds,
-  authorizeAndAuditAdminAction,
-} from '../../src/discord/authorization.js';
+import { authorizeAdmin, requireAdmin, AuthorizationDeniedError, authorizeAndAuditAdminAction } from '../../src/policy/authorization.js';
+import { extractMemberRoleIds } from '../../src/platform/discord/authorization.js';
 
 /**
  * Admin-role authorization and auditing (Sections 6.6, 27, 44).

@@ -23,7 +23,7 @@ import { createDatabaseMaintenanceHandler } from '../../src/jobs/handlers/mainte
 import {
   handleIntegrityCheckCommand,
   formatIntegrityCheckReply,
-} from '../../src/discord/commands/integrity.js';
+} from '../../src/commands/integrity.js';
 
 /**
  * Database integrity and optimization maintenance (Section 28).

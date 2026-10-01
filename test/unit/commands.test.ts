@@ -10,7 +10,7 @@ import {
   registerGuildCommands,
   isAuthorizedAdmin,
   type CommandRegistrationRest,
-} from '../../src/discord/commands.js';
+} from '../../src/platform/discord/commands.js';
 
 /**
  * Guild-scoped admin command registry (Section 27).

@@ -1,6 +1,6 @@
 import type { DatabaseSync } from '../../db/database.js';
 import { getAttachment, setAttachmentArchive } from '../../db/repositories/attachments.js';
-import { archiveAttachment, type AttachmentArchiveConfig, type FetchBytes } from '../../discord/attachments.js';
+import { archiveAttachment, type AttachmentArchiveConfig, type FetchBytes } from '../../ingestion/attachments.js';
 import type { JobHandler } from '../worker.js';
 import { unlinkSync } from 'node:fs';
 

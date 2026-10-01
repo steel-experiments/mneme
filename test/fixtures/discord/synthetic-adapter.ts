@@ -1,11 +1,11 @@
-import type { BackfillMessageFetcher } from '../../../src/discord/backfill.js';
-import type { ThreadArchiveSource, ArchivedThreadPage } from '../../../src/discord/threads.js';
-import type { OutboxSender, SendOutboxMessageInput, SendResult } from '../../../src/discord/sender.js';
+import type { BackfillMessageFetcher } from '../../../src/ingestion/backfill.js';
+import type { ThreadArchiveSource, ArchivedThreadPage } from '../../../src/ingestion/threads.js';
+import type { OutboxSender, SendOutboxMessageInput, SendResult } from '../../../src/platform/discord/sender.js';
 import type {
   RecentSentMessageLookup,
   RecentSentMessage,
 } from '../../../src/outbox/recovery.js';
-import type { GatewayEventType } from '../../../src/discord/ingest.js';
+import type { GatewayEventType } from '../../../src/platform/discord/gateway-events.js';
 
 /**
  * Recorded synthetic Discord adapter (Section 46.2, task T119).

@@ -1,9 +1,9 @@
 import type { DatabaseSync } from '../../db/database.js';
 import { getIngestionRecovery, completeIngestionRecovery } from '../../db/repositories/ingestion-recovery.js';
-import { channelIngestionIneligibilityReason } from '../../discord/ingestion-eligibility.js';
-import { ingestMessageCreate, type IngestOptions } from '../../discord/ingest.js';
-import { normalizeMessage } from '../../discord/normalize.js';
-import type { BackfillMessageFetcher } from '../../discord/backfill.js';
+import { channelIngestionIneligibilityReason } from '../../ingestion/ingestion-eligibility.js';
+import { ingestMessageCreate, type IngestOptions } from '../../ingestion/ingest.js';
+import { normalizeMessage } from '../../platform/discord/normalize.js';
+import type { BackfillMessageFetcher } from '../../ingestion/backfill.js';
 import type { JobHandler } from '../worker.js';
 import { DeferJobError } from '../errors.js';
 import type { IngestionObserver } from '../../observability.js';

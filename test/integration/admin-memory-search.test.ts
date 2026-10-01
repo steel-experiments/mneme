@@ -10,7 +10,7 @@ import {
   handleMemoryGetCommand,
   formatMemoryGetReply,
   resolveMemorySearchScope,
-} from '../../src/discord/commands/memory-search.js';
+} from '../../src/commands/memory-search.js';
 
 /**
  * `/mneme memory-search` integration suite (Sections 7.3, 27).

@@ -17,8 +17,8 @@ import {
 import type { OutboundEvidenceResult, ProvenanceGateResult } from '../../src/agent/policy.js';
 import type { CooldownDecision } from '../../src/agent/cooldowns.js';
 import type { DuplicateResult } from '../../src/agent/duplicate-policy.js';
-import { createReviewButtonHandler } from '../../src/discord/interactions.js';
-import { signReviewComponent } from '../../src/discord/review-message.js';
+import { createReviewButtonHandler } from '../../src/platform/discord/interactions.js';
+import { signReviewComponent } from '../../src/platform/discord/review-message.js';
 import type { ButtonInteraction } from 'discord.js';
 
 /**

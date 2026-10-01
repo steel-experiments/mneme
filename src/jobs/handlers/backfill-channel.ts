@@ -6,13 +6,13 @@ import {
   backfillChannel,
   type BackfillMessageFetcher,
   type BackfillResult,
-} from '../../discord/backfill.js';
-import type { IngestOptions } from '../../discord/ingest.js';
+} from '../../ingestion/backfill.js';
+import type { IngestOptions } from '../../ingestion/ingest.js';
 import { DeferJobError } from '../errors.js';
 import {
   channelIngestionIneligibilityReason,
   type ChannelIngestionIneligibilityReason,
-} from '../../discord/ingestion-eligibility.js';
+} from '../../ingestion/ingestion-eligibility.js';
 
 /**
  * `backfill_channel` job handler (Sections 9.5, 10, 11.5).

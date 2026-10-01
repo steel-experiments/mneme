@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 import type { DatabaseSync } from 'node:sqlite';
-import { normalizeMessage, normalizeMessageUpdate } from '../../src/discord/normalize.js';
+import { normalizeMessage, normalizeMessageUpdate } from '../../src/platform/discord/normalize.js';
 import {
   ingestMessageCreate,
   ingestMessageUpdate,
   ingestMessageDelete,
   ingestMessageDeleteBulk,
-} from '../../src/discord/ingest.js';
+} from '../../src/ingestion/ingest.js';
 import { getMessage } from '../../src/db/repositories/messages.js';
 import { CHANNEL, NOW, opts, rawMessage, ftsMatches } from '../helpers/messages.js';
 

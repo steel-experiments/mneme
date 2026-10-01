@@ -9,8 +9,8 @@ import {
   SCHEDULED_NOTIFICATION_FOOTER,
   type MessageLink,
   type SourceLinkContext,
-} from '../discord/message-safety.js';
-import { isMnemeTestSurface } from '../discord/test-channels.js';
+} from '../outbound/message-safety.js';
+import { isMnemeTestSurface } from '../ingestion/test-channels.js';
 import { getMemory } from './repository.js';
 import { getScheduledProposalSubjects } from './scheduled-notifications.js';
 import { resolveScheduledMemoryRoute, type ScheduledRouteOptions } from './scheduled-routing.js';

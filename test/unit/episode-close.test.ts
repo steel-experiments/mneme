@@ -3,7 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 import { upsertMessageCreate } from '../../src/db/repositories/messages.js';
 import { getOpenEpisode, getEpisode, listEpisodeMessages } from '../../src/episodes/repository.js';
-import type { NormalizedMessage } from '../../src/discord/normalize.js';
+import type { NormalizedMessage } from '../../src/platform/types.js';
 import {
   ingestEpisodeActivity,
   closeEpisodeAndQueueReview,

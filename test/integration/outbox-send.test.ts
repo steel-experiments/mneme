@@ -12,8 +12,8 @@ import {
   type ProposalDeliveryReport,
   type SendOutboxHandlerDeps,
 } from '../../src/outbox/worker.js';
-import { createDiscordSender } from '../../src/discord/sender.js';
-import type { OutboxSender, SendOutboxMessageInput } from '../../src/discord/sender.js';
+import { createDiscordSender } from '../../src/platform/discord/sender.js';
+import type { OutboxSender, SendOutboxMessageInput } from '../../src/platform/discord/sender.js';
 import { PermanentJobError, TransientJobError } from '../../src/jobs/errors.js';
 import type { Client } from 'discord.js';
 import type { JobRow } from '../../src/jobs/types.js';

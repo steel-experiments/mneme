@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseChannelPolicy, resolveChannel, ChannelPolicyError } from '../../src/discord/channel-policy.js';
+import { parseChannelPolicy, resolveChannel, ChannelPolicyError } from '../../src/policy/channel-policy.js';
 
 const POLICY_YAML = `
 version: 1

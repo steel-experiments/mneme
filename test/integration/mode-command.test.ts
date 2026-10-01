@@ -8,7 +8,7 @@ import {
 import {
   handleModeCommand,
   formatModeReply,
-} from '../../src/discord/commands/mode.js';
+} from '../../src/commands/mode.js';
 import type { AutonomyMode } from '../../src/config.js';
 
 const NOW = 1_700_000_001_000;

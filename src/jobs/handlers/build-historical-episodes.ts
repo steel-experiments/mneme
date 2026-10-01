@@ -7,7 +7,7 @@ import { DeferJobError } from '../errors.js';
 import type { JobHandler } from '../worker.js';
 import type { JobRow } from '../types.js';
 import type { Logger } from '../../logger.js';
-import { isMnemeTestSurface } from '../../discord/test-channels.js';
+import { isMnemeTestSurface } from '../../ingestion/test-channels.js';
 import { markSkipped } from '../../episodes/repository.js';
 
 const LOW_PRIORITY = 200;

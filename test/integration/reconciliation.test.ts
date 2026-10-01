@@ -2,13 +2,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 import { GUILD, CHANNEL, AUTHOR, NOW, opts } from '../helpers/messages.js';
-import { reconcileChannel } from '../../src/discord/reconcile.js';
+import { reconcileChannel } from '../../src/ingestion/reconcile.js';
 import { createReconcileChannelHandler } from '../../src/jobs/handlers/reconcile-channel.js';
 import { getSyncCursor } from '../../src/db/repositories/sync-cursors.js';
 import { getMessage } from '../../src/db/repositories/messages.js';
-import { normalizeMessage } from '../../src/discord/normalize.js';
-import { ingestMessageCreate, type IngestOptions } from '../../src/discord/ingest.js';
-import type { BackfillMessageFetcher } from '../../src/discord/backfill.js';
+import { normalizeMessage } from '../../src/platform/discord/normalize.js';
+import { ingestMessageCreate, type IngestOptions } from '../../src/ingestion/ingest.js';
+import type { BackfillMessageFetcher } from '../../src/ingestion/backfill.js';
 import { enqueue } from '../../src/jobs/queue.js';
 import { JobWorker } from '../../src/jobs/worker.js';
 

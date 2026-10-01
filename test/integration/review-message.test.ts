@@ -10,9 +10,9 @@ import {
   type ReviewProposalInput,
   type ReviewMessagePayload,
   type ReviewChannel,
-} from '../../src/discord/review-message.js';
+} from '../../src/platform/discord/review-message.js';
 import type { Client } from 'discord.js';
-import { createDiscordReviewResolver } from '../../src/discord/interactions.js';
+import { createDiscordReviewResolver } from '../../src/platform/discord/interactions.js';
 
 /**
  * Secure-channel review proposal message (Section 25).

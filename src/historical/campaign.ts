@@ -1,6 +1,6 @@
 import type { DatabaseSync } from '../db/database.js';
 import { transactionImmediate } from '../db/database.js';
-import { isMnemeTestSurface } from '../discord/test-channels.js';
+import { isMnemeTestSurface } from '../ingestion/test-channels.js';
 
 export type HistoricalCampaignStatus = 'running' | 'paused' | 'completed' | 'budget_exhausted';
 

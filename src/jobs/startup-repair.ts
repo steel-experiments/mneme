@@ -13,7 +13,7 @@ import {
   DIRECT_ANSWER_PRIORITY,
   directAnswerJobKey,
 } from './direct-answer-identity.js';
-import { isMnemeTestSurface } from '../discord/test-channels.js';
+import { isMnemeTestSurface } from '../ingestion/test-channels.js';
 import {
   expirePendingProposals,
   PROPOSAL_EXPIRY_BATCH_SIZE,

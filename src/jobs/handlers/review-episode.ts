@@ -52,7 +52,7 @@ import { unavailablePolicyDecision } from '../../agent/policy-audit.js';
 import type { JobHandler } from '../worker.js';
 import type { JobRow } from '../types.js';
 import { DeferJobError, TransientJobError } from '../errors.js';
-import { isMnemeTestSurface } from '../../discord/test-channels.js';
+import { isMnemeTestSurface } from '../../ingestion/test-channels.js';
 import {
   resolveScheduledFeedback,
   type ScheduledFeedbackAssociation,

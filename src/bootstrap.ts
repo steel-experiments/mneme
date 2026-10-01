@@ -303,7 +303,7 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
         };
         wwwAuthenticate = oauth.wwwAuthenticateChallenge(metadataConfig);
         const { createOAuthRoutes } = await import('./mcp/oauth/routes.js');
-        const { createDiscordIdentityClient } = await import('./mcp/oauth/discord.js');
+        const { createDiscordIdentityClient } = await import('./platform/discord/oauth-identity.js');
         oauthRoutes = createOAuthRoutes({
           db,
           logger,
@@ -546,7 +546,7 @@ async function defaultConnectDiscord(ctx: BootstrapContext): Promise<DiscordWiri
   }
   // Imported lazily so the bootstrap (and its tests) do not require discord.js
   // at module load unless the real default is actually used.
-  const { createDiscordClient } = await import('./discord/client.js');
+  const { createDiscordClient } = await import('./platform/discord/client.js');
   const { client, tracker } = createDiscordClient({
     token: ctx.discordToken,
     guildId: ctx.config.workspaceId,
@@ -580,7 +580,7 @@ async function defaultConnectDiscord(ctx: BootstrapContext): Promise<DiscordWiri
     rawJson: null,
   });
   await client.login(ctx.discordToken);
-  const { assertExpectedGuild } = await import('./discord/client.js');
+  const { assertExpectedGuild } = await import('./platform/discord/client.js');
   assertExpectedGuild([...client.guilds.cache.keys()], ctx.config.workspaceId);
   const guild = await client.guilds.fetch(ctx.config.workspaceId);
   const observedAt = ctx.now();
@@ -607,19 +607,19 @@ const ingestionRegisteredClients = new WeakSet<object>();
 async function defaultBeginIngestion(ctx: BootstrapContext, discord: DiscordWiring): Promise<void> {
   if (!discord.client) return;
   if (ingestionRegisteredClients.has(discord.client as object)) return;
-  const { registerIngestionHandlers } = await import('./discord/client.js');
+  const { registerIngestionHandlers } = await import('./platform/discord/client.js');
   const { ingestEpisodeActivity } = await import('./episodes/builder.js');
-  const { enqueueDirectAnswerForMention } = await import('./discord/mentions.js');
+  const { enqueueDirectAnswerForMention } = await import('./ingestion/mentions.js');
   const { getChannel } = await import('./db/repositories/channels.js');
-  const { channelInputFromRaw } = await import('./discord/ingest.js');
+  const { channelInputFromRaw } = await import('./platform/discord/gateway-events.js');
   const { requestIngestionRecovery } = await import('./db/repositories/ingestion-recovery.js');
   const { enqueue } = await import('./jobs/queue.js');
   const {
     reconcileStoredChannelPolicyReview,
     resolveObservedChannelPolicy,
-  } = await import('./discord/channel-policy-review-service.js');
-  const { isMnemeTestSurface } = await import('./discord/test-channels.js');
-  const { mentionsMneme } = await import('./discord/mentions.js');
+  } = await import('./policy/channel-policy-review-service.js');
+  const { isMnemeTestSurface } = await import('./ingestion/test-channels.js');
+  const { mentionsMneme } = await import('./ingestion/mentions.js');
   const ing = ctx.config.ingestion;
   registerIngestionHandlers(discord.client, {
     db: ctx.db,
@@ -754,7 +754,7 @@ async function defaultRegisterCommands(ctx: BootstrapContext, discord: DiscordWi
   if (!discord.client?.rest) {
     throw new BootstrapError('Discord client has no REST adapter; commands cannot be registered');
   }
-  const { registerGuildCommands } = await import('./discord/commands.js');
+  const { registerGuildCommands } = await import('./platform/discord/commands.js');
   const result = await registerGuildCommands({
     rest: discord.client.rest,
     applicationId: ctx.config.discord.applicationId,
@@ -773,8 +773,8 @@ async function defaultDiscoverAndBackfill(
 ): Promise<void> {
   const snapshot = ctx.configStore?.get() ?? ctx.snapshot;
   if (!discord.client || !snapshot) return;
-  const { fetchDiscoveryDescriptors, createDiscordThreadArchiveSource } = await import('./discord/production-adapters.js');
-  const { runStartupSync } = await import('./discord/sync.js');
+  const { fetchDiscoveryDescriptors, createDiscordThreadArchiveSource } = await import('./platform/discord/production-adapters.js');
+  const { runStartupSync } = await import('./ingestion/sync.js');
   const descriptors = await fetchDiscoveryDescriptors(discord.client, ctx.config.workspaceId);
   const canManageThreads = descriptors.some((d) => d.capabilities?.canManageThreads === true);
   await runStartupSync({

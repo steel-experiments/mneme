@@ -32,7 +32,7 @@ import { approveProposal, recheckApprovalPolicy } from '../../src/review/workflo
 import { buildApprovalRecheck } from '../../src/production-runtime.js';
 import { createSendOutboxHandler } from '../../src/outbox/worker.js';
 import { enqueueOutbox, claimOutboxForSending, getOutboxByDedupeKey } from '../../src/outbox/repository.js';
-import type { OutboxSender } from '../../src/discord/sender.js';
+import type { OutboxSender } from '../../src/platform/discord/sender.js';
 
 /**
  * End-to-end proactive-attention gating (Section 12.7): episode

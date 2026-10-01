@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
-import { parseChannelPolicy } from '../../src/discord/channel-policy.js';
+import { parseChannelPolicy } from '../../src/policy/channel-policy.js';
 import {
   reconcileStoredChannelPolicyReview,
   resolveObservedChannelPolicy,
-} from '../../src/discord/channel-policy-review-service.js';
+} from '../../src/policy/channel-policy-review-service.js';
 import {
   getActiveChannelPolicyReview,
   getChannelPolicyReview,
@@ -17,9 +17,9 @@ import {
   parseChannelPolicyReviewComponent,
   signChannelPolicyReviewComponent,
   type ChannelPolicyReviewDiscordPort,
-} from '../../src/discord/channel-policy-review-message.js';
-import { applyChannelPolicyReviewDecision } from '../../src/discord/channel-policy-review-interactions.js';
-import { basicChannelPolicySourceText } from '../../src/discord/channel-policy-bootstrap.js';
+} from '../../src/platform/discord/channel-policy-review-message.js';
+import { applyChannelPolicyReviewDecision } from '../../src/platform/discord/channel-policy-review-interactions.js';
+import { basicChannelPolicySourceText } from '../../src/policy/channel-policy-bootstrap.js';
 import type { JobRow } from '../../src/jobs/types.js';
 
 const GUILD = '100000000000000001';

@@ -2,9 +2,9 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildBasicChannelPolicy } from '../../src/discord/channel-policy-bootstrap.js';
+import { buildBasicChannelPolicy } from '../../src/policy/channel-policy-bootstrap.js';
 import { loadInitialSnapshot } from '../../src/config-reload.js';
-import { resolveChannel, ChannelPolicyError } from '../../src/discord/channel-policy.js';
+import { resolveChannel, ChannelPolicyError } from '../../src/policy/channel-policy.js';
 import { makeTempDir } from '../helpers/db.js';
 
 /**

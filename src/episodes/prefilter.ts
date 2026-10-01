@@ -1,4 +1,4 @@
-import type { NormalizedMessage } from '../discord/normalize.js';
+import type { NormalizedMessage } from '../platform/types.js';
 
 /**
  * Conservative local episode pre-filter (Sections 11.4, 45).

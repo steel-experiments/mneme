@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 import { GUILD, CHANNEL, AUTHOR, NOW, opts } from '../helpers/messages.js';
-import { backfillChannel, type BackfillMessageFetcher } from '../../src/discord/backfill.js';
+import { backfillChannel, type BackfillMessageFetcher } from '../../src/ingestion/backfill.js';
 import { createBackfillChannelHandler } from '../../src/jobs/handlers/backfill-channel.js';
 import { getSyncCursor } from '../../src/db/repositories/sync-cursors.js';
 import { enqueue } from '../../src/jobs/queue.js';

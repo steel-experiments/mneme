@@ -5893,15 +5893,22 @@ mneme/
 │   │   ├── migrations.ts
 │   │   ├── repositories/
 │   │   └── backup.ts
-│   ├── discord/
-│   │   ├── client.ts
-│   │   ├── normalize.ts
+│   ├── platform/
+│   │   ├── types.ts
+│   │   └── discord/
+│   │       ├── client.ts
+│   │       ├── normalize.ts
+│   │       ├── gateway-events.ts
+│   │       ├── commands.ts
+│   │       ├── interactions.ts
+│   │       └── sender.ts
+│   ├── ingestion/
 │   │   ├── ingest.ts
 │   │   ├── backfill.ts
-│   │   ├── threads.ts
-│   │   ├── commands.ts
-│   │   ├── interactions.ts
-│   │   └── sender.ts
+│   │   └── threads.ts
+│   ├── policy/
+│   ├── commands/
+│   ├── outbound/
 │   ├── jobs/
 │   │   ├── queue.ts
 │   │   ├── worker.ts

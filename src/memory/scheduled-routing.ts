@@ -1,6 +1,6 @@
 import type { DatabaseSync } from '../db/database.js';
 import { getChannel, resolveRetrievableChannelScope, type VisibilityClass } from '../db/repositories/channels.js';
-import { isMnemeTestSurface } from '../discord/test-channels.js';
+import { isMnemeTestSurface } from '../ingestion/test-channels.js';
 import { getMemory } from './repository.js';
 import { recomputeMemoryScopes } from './search.js';
 

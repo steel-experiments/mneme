@@ -1,21 +1,21 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
-import { parseChannelPolicy } from '../../src/discord/channel-policy.js';
+import { parseChannelPolicy } from '../../src/policy/channel-policy.js';
 import {
   GUILD_TEXT,
   GUILD_CATEGORY,
   PUBLIC_THREAD,
   type DiscoveredChannelDescriptor,
-} from '../../src/discord/discovery.js';
-import type { ThreadArchiveSource } from '../../src/discord/threads.js';
+} from '../../src/ingestion/discovery.js';
+import type { ThreadArchiveSource } from '../../src/ingestion/threads.js';
 import {
   runStartupSync,
   backfillJobKey,
   STARTUP_PHASES,
   type StartupPhase,
-} from '../../src/discord/sync.js';
-import { DiscoveryError } from '../../src/discord/discovery.js';
+} from '../../src/ingestion/sync.js';
+import { DiscoveryError } from '../../src/ingestion/discovery.js';
 import { markBackfillComplete } from '../../src/db/repositories/sync-cursors.js';
 import { getChannel } from '../../src/db/repositories/channels.js';
 import { createReconcileChannelHandler } from '../../src/jobs/handlers/reconcile-channel.js';
