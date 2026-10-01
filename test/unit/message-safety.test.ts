@@ -159,7 +159,7 @@ describe('sanitizeOutboundMessage — size and citation limits', () => {
       'viewer@discord.com',
       'viewer:secret@canary.discord.com:443',
     ]) {
-      const res = sanitizeOutboundMessage({ format: discordFormat, 
+      const res = sanitizeOutboundMessage({ format: discordFormat,
         content: `See https://${host}/channels/1/2/3 for the source.`,
         guildId: GUILD,
         sourceLinkMessageIds: ['3'],
@@ -183,7 +183,7 @@ describe('sanitizeOutboundMessage — size and citation limits', () => {
       'https://discord.com/%5Cchannels/1/2/3',
       'https://discord.com/%252e%252e/channels/1/2/3',
     ]) {
-      const res = sanitizeOutboundMessage({ format: discordFormat, 
+      const res = sanitizeOutboundMessage({ format: discordFormat,
         content: `[source](${candidate})`,
         guildId: GUILD,
       });
@@ -354,7 +354,7 @@ describe('sanitizeOutboundMessage — size and citation limits', () => {
   });
 
   it('collects multiple violations into one reject', () => {
-    const res = sanitizeOutboundMessage({ format: discordFormat, 
+    const res = sanitizeOutboundMessage({ format: discordFormat,
       content: `<@111111111111111111> ${'x'.repeat(MAX_MESSAGE_CHARS + 1)}`,
       guildId: GUILD,
       sourceLinkMessageIds: ['a', 'b', 'c', 'd'],
