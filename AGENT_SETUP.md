@@ -158,6 +158,7 @@ Have the person enter the two secrets directly in Railway:
 Then fill in the non-secret values established earlier:
 
 ```text
+MNEME_PLATFORM=discord
 DISCORD_APPLICATION_ID
 DISCORD_GUILD_ID
 ORG_NAME

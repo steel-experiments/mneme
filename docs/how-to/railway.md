@@ -66,6 +66,7 @@ environment variables:
 
 | Variable | Required | Starter value |
 | --- | --- | --- |
+| `MNEME_PLATFORM` | yes | `discord` |
 | `DISCORD_TOKEN` | yes | your bot token (secret) |
 | `DISCORD_APPLICATION_ID` | yes | your application ID |
 | `DISCORD_GUILD_ID` | yes | your server ID |
