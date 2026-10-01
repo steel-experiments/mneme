@@ -7,6 +7,7 @@ import { createRecoverMessageHandler } from '../../src/jobs/handlers/recover-mes
 import { getMessage } from '../../src/db/repositories/messages.js';
 import { createCounters, createIngestionObserver, COUNTER_NAMES } from '../../src/observability.js';
 import { DeferJobError } from '../../src/jobs/errors.js';
+import { normalizeMessage } from '../../src/platform/discord/normalize.js';
 
 const MESSAGE = '100000000000000099';
 function raw(): Record<string, unknown> {
@@ -22,7 +23,7 @@ describe('durable ingestion recovery', () => {
   it('persists an exact, scope-matching message and terminalizes its request', async () => {
     const request = requestIngestionRecovery(db, { guildId: GUILD, channelId: CHANNEL, messageId: MESSAGE, reason: 'missing_message', now: NOW });
     const handler = createRecoverMessageHandler({ db, now: () => NOW + 1,
-      makeIngestOptions: (now) => opts({ now }), fetcher: { async fetchMessages() { return []; }, async fetchMessage() { return raw(); } } });
+      makeIngestOptions: (now) => opts({ now }), fetcher: { normalize: normalizeMessage, async fetchMessages() { return []; }, async fetchMessage() { return raw(); } } });
     await handler({ recoveryId: request.id, generation: request.generation }, {} as never);
     expect(getMessage(db, MESSAGE)?.content).toBe('recovered');
     expect(getIngestionRecovery(db, request.id)?.status).toBe('succeeded');
@@ -30,7 +31,7 @@ describe('durable ingestion recovery', () => {
   it('does not persist a response whose identity differs from the request', async () => {
     const request = requestIngestionRecovery(db, { guildId: GUILD, channelId: CHANNEL, messageId: MESSAGE, reason: 'missing_message', now: NOW });
     const handler = createRecoverMessageHandler({ db, now: () => NOW + 1,
-      makeIngestOptions: (now) => opts({ now }), fetcher: { async fetchMessages() { return []; }, async fetchMessage() { return { ...raw(), id: '100000000000000098' }; } } });
+      makeIngestOptions: (now) => opts({ now }), fetcher: { normalize: normalizeMessage, async fetchMessages() { return []; }, async fetchMessage() { return { ...raw(), id: '100000000000000098' }; } } });
     await handler({ recoveryId: request.id, generation: request.generation }, {} as never);
     expect(getMessage(db, MESSAGE)).toBeUndefined();
     expect(getIngestionRecovery(db, request.id)?.status).toBe('unavailable');
@@ -39,7 +40,7 @@ describe('durable ingestion recovery', () => {
     const counters = createCounters();
     const request = requestIngestionRecovery(db, { guildId: GUILD, channelId: CHANNEL, messageId: MESSAGE, reason: 'missing_message', now: NOW });
     const handler = createRecoverMessageHandler({ db, now: () => NOW + 1, observer: createIngestionObserver(counters),
-      makeIngestOptions: (now) => opts({ now }), fetcher: { async fetchMessages() { return []; }, async fetchMessage() { return null; } } });
+      makeIngestOptions: (now) => opts({ now }), fetcher: { normalize: normalizeMessage, async fetchMessages() { return []; }, async fetchMessage() { return null; } } });
     await handler({ recoveryId: request.id, generation: request.generation }, {} as never);
     await handler({ recoveryId: request.id, generation: request.generation }, {} as never);
     expect(counters.get(COUNTER_NAMES.ingestionRecovery, { outcome: 'unavailable', reason: 'unavailable_source' })).toBe(1);
@@ -48,7 +49,7 @@ describe('durable ingestion recovery', () => {
     const counters = createCounters();
     const request = requestIngestionRecovery(db, { guildId: GUILD, channelId: '100000000000000077', messageId: MESSAGE, reason: 'missing_channel', now: NOW });
     const handler = createRecoverMessageHandler({ db, now: () => NOW + 1, observer: createIngestionObserver(counters),
-      makeIngestOptions: (now) => opts({ now }), fetcher: { async fetchMessages() { return []; } } });
+      makeIngestOptions: (now) => opts({ now }), fetcher: { normalize: normalizeMessage, async fetchMessages() { return []; } } });
     await expect(handler({ recoveryId: request.id, generation: request.generation }, {} as never)).rejects.toBeInstanceOf(DeferJobError);
     expect(counters.get(COUNTER_NAMES.ingestionRecovery, { outcome: 'deferred', reason: 'missing_channel' })).toBe(1);
     expect(getIngestionRecovery(db, request.id)?.status).toBe('pending');
@@ -57,7 +58,7 @@ describe('durable ingestion recovery', () => {
     const first = requestIngestionRecovery(db, { guildId: GUILD, channelId: CHANNEL, messageId: MESSAGE, reason: 'missing_message', now: NOW });
     const second = requestIngestionRecovery(db, { guildId: GUILD, channelId: CHANNEL, messageId: MESSAGE, reason: 'missing_message', now: NOW + 1 });
     const handler = createRecoverMessageHandler({ db, now: () => NOW + 2,
-      makeIngestOptions: (now) => opts({ now }), fetcher: { async fetchMessages() { return []; }, async fetchMessage() { return raw(); } } });
+      makeIngestOptions: (now) => opts({ now }), fetcher: { normalize: normalizeMessage, async fetchMessages() { return []; }, async fetchMessage() { return raw(); } } });
     await handler({ recoveryId: first.id, generation: first.generation }, {} as never);
     expect(second.generation).toBe(first.generation + 1);
     expect(getIngestionRecovery(db, first.id)?.status).toBe('succeeded');

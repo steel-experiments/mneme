@@ -1,16 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 import { insertProposal, getProposal } from '../../src/db/repositories/proposals.js';
-import {
-  buildReviewMessage,
-  signReviewComponent,
-  parseReviewComponent,
-  createDiscordReviewChannel,
-  deliverProposalReview,
-  type ReviewProposalInput,
-  type ReviewMessagePayload,
-  type ReviewChannel,
-} from '../../src/platform/discord/review-message.js';
+import { buildReviewMessage, signReviewComponent, parseReviewComponent, createDiscordReviewChannel, deliverProposalReview, type ReviewMessagePayload, type ReviewChannel } from '../../src/platform/discord/review-message.js';
+import type { ReviewProposalInput } from '../../src/platform/types.js';
 import type { Client } from 'discord.js';
 import { createDiscordReviewResolver } from '../../src/platform/discord/interactions.js';
 

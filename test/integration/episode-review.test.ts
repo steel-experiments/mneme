@@ -40,6 +40,7 @@ import {
 } from '../../src/production-runtime.js';
 import type { BootstrapContext } from '../../src/bootstrap.js';
 import { emptyAgentRunUsage } from '../../src/agent/usage.js';
+import { createDiscordReviewChannel, deliverProposalReview } from '../../src/platform/discord/review-message.js';
 
 /**
  * Episode review job (Sections 11, 18, 21.4).
@@ -55,6 +56,15 @@ const CHANNEL = '100000000000000002'; // seeded by seedIdentity (restricted)
 const ALICE = '100000000000000003'; // seeded human user
 const BOT = '100000000000000004';
 const CASS = '999000000000000001';
+
+/** The platform members routeEpisodeIntervention uses, with Discord cards sent through `client`. */
+function reviewPlatform(client: unknown = {}) {
+  return {
+    selfUserId: CASS,
+    deliverProposalReview: (input: Parameters<typeof deliverProposalReview>[0], deps: Omit<Parameters<typeof deliverProposalReview>[1], 'channel'>) =>
+      deliverProposalReview(input, { ...deps, channel: createDiscordReviewChannel(client as never) }),
+  };
+}
 const NOW = 1_700_000_001_000;
 // Episode fixtures describe a conversation that already settled: the messages
 // land half an hour before the review runs, and the episode closes ten minutes
@@ -797,7 +807,7 @@ describe('episode intervention citation exposure', () => {
 
     const proposalId = await routeEpisodeIntervention(
       interventionRuntimeContext(),
-      {} as never,
+      reviewPlatform(),
       'test-secret',
       {
         proposal,
@@ -918,7 +928,7 @@ describe('episode intervention citation exposure', () => {
 
       const proposalId = await routeEpisodeIntervention(
         interventionRuntimeContext(),
-        {} as never,
+        reviewPlatform(),
         'test-secret',
         {
           proposal,
@@ -995,7 +1005,7 @@ describe('episode intervention citation exposure', () => {
     context: BootstrapContext = interventionRuntimeContext(),
     client: unknown = {},
   ): Promise<string | undefined> {
-    return routeEpisodeIntervention(context, client as never, 'test-secret', {
+    return routeEpisodeIntervention(context, reviewPlatform(client), 'test-secret', {
       proposal: seed.proposal(message, interventionEvidenceIds),
       result: seed.result,
       episode: seed.episode,
@@ -1368,7 +1378,7 @@ describe('episode intervention citation exposure', () => {
 
       const proposalId = await routeEpisodeIntervention(
         interventionRuntimeContext(),
-        {} as never,
+        reviewPlatform(),
         'test-secret',
         {
           proposal,

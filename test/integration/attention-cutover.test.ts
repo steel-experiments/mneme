@@ -16,6 +16,18 @@ import { runAttentionCutover, ATTENTION_CUTOVER_VERSION } from '../../src/memory
 import { forgetMessage } from '../../src/memory/deletion.js';
 import type { AgentRunResult } from '../../src/agent/runtime.js';
 import { DEFAULT_ATTENTION_WINDOW_MS } from '../../src/memory/attention.js';
+import { createDiscordReviewChannel, deliverProposalReview } from '../../src/platform/discord/review-message.js';
+
+const SELF_ID = '100000000000000099';
+/** The platform members routeEpisodeIntervention uses, with Discord cards sent through `client`. */
+function reviewPlatform(client: unknown = {}) {
+  return {
+    selfUserId: SELF_ID,
+    deliverProposalReview: (input: Parameters<typeof deliverProposalReview>[0], deps: Omit<Parameters<typeof deliverProposalReview>[1], 'channel'>) =>
+      deliverProposalReview(input, { ...deps, channel: createDiscordReviewChannel(client as never) }),
+  };
+}
+
 
 const GUILD = '100000000000000001';
 const ALICE = '100000000000000003';
@@ -219,7 +231,7 @@ describe('attention cutover — Section 12.7', () => {
         },
       },
       logger: { warn: () => undefined, info: () => undefined },
-    } as never, {} as never, 'secret', {
+    } as never, reviewPlatform(), 'secret', {
       proposal: {
         intervention: {
           recommend: true,

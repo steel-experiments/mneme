@@ -7,6 +7,7 @@ import { createBackfillChannelHandler } from '../../src/jobs/handlers/backfill-c
 import { getSyncCursor } from '../../src/db/repositories/sync-cursors.js';
 import { enqueue } from '../../src/jobs/queue.js';
 import { JobWorker } from '../../src/jobs/worker.js';
+import { normalizeMessage } from '../../src/platform/discord/normalize.js';
 
 /**
  * Paginated historical backfill (Sections 9.2, 9.5, 11.5).
@@ -50,6 +51,7 @@ function makeIds(n: number): string[] {
  */
 function makeFetcher(allIds: string[]): BackfillMessageFetcher {
   return {
+    normalize: normalizeMessage,
     async fetchMessages(_channelId: string, before: string | undefined, l: number): Promise<unknown[]> {
       const startIdx = before ? allIds.findIndex((id) => id < before) : 0;
       const slice = startIdx === -1 ? [] : allIds.slice(startIdx, startIdx + l);
@@ -186,6 +188,7 @@ describe('backfillChannel — restart resilience', () => {
     const ids = makeIds(250);
     let calls = 0;
     const fetcher: BackfillMessageFetcher = {
+      normalize: normalizeMessage,
       async fetchMessages(_c, _before, limit) {
         calls += 1;
         if (calls === 2) throw new Error('rate limited');
@@ -212,6 +215,7 @@ describe('backfillChannel — malformed payloads', () => {
   it('skips un-normalizable messages without abandoning the page', async () => {
     const ids = makeIds(3);
     const fetcher: BackfillMessageFetcher = {
+      normalize: normalizeMessage,
       async fetchMessages() {
         return [
           rawMessage(ids[0]!, 'good-1'),
@@ -236,6 +240,7 @@ describe('backfillChannel — current parent eligibility', () => {
       opts: opts({ now: NOW }),
       channelId: THREAD_CHANNEL,
       fetcher: {
+        normalize: normalizeMessage,
         async fetchMessages() {
           db.prepare("UPDATE channels SET name='mneme-project-test' WHERE id=?").run(THREAD_PARENT);
           return [];
@@ -255,6 +260,7 @@ describe('backfillChannel — current parent eligibility', () => {
       opts: opts({ now: NOW }),
       channelId: THREAD_CHANNEL,
       fetcher: {
+        normalize: normalizeMessage,
         async fetchMessages() {
           db.prepare("UPDATE channels SET ingest_enabled=0, visibility_class='excluded' WHERE id=?").run(THREAD_PARENT);
           return [{ id: makeIds(1)[0] }];
@@ -326,6 +332,7 @@ describe('createBackfillChannelHandler', () => {
     const handler = createBackfillChannelHandler({
       db,
       fetcher: {
+        normalize: normalizeMessage,
         async fetchMessages() {
           announceFetchStarted();
           await fetchGate;
@@ -381,6 +388,7 @@ describe('createBackfillChannelHandler', () => {
     const handler = createBackfillChannelHandler({
       db,
       fetcher: {
+        normalize: normalizeMessage,
         async fetchMessages() {
           announceFetchStarted();
           await fetchGate;

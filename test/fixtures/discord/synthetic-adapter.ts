@@ -1,11 +1,12 @@
 import type { BackfillMessageFetcher } from '../../../src/ingestion/backfill.js';
 import type { ThreadArchiveSource, ArchivedThreadPage } from '../../../src/ingestion/threads.js';
-import type { OutboxSender, SendOutboxMessageInput, SendResult } from '../../../src/platform/discord/sender.js';
+import type { OutboxSender, SendOutboxMessageInput, SendResult } from '../../../src/platform/types.js';
 import type {
   RecentSentMessageLookup,
   RecentSentMessage,
 } from '../../../src/outbox/recovery.js';
 import type { GatewayEventType } from '../../../src/platform/discord/gateway-events.js';
+import { normalizeMessage } from '../../../src/platform/discord/normalize.js';
 
 /**
  * Recorded synthetic Discord adapter (Section 46.2, task T119).
@@ -120,6 +121,7 @@ export function createSyntheticDiscord(opts: SyntheticDiscordOptions = {}): Synt
   const fetchCallCount = new Map<string, number>();
 
   const backfillFetcher: BackfillMessageFetcher = {
+    normalize: normalizeMessage,
     async fetchMessages(channelId, before, limit): Promise<unknown[]> {
       const callIdx = fetchCallCount.get(channelId) ?? 0;
       fetchCallCount.set(channelId, callIdx + 1);

@@ -1,14 +1,13 @@
 // ABOUTME: Guards the platform boundary: only the Discord adapter may import discord.js.
 // ABOUTME: Core code reaches the Discord adapter only through the platform selector.
 import { describe, it, expect } from 'vitest';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
 
 const ROOT = join(import.meta.dirname, '..', '..');
 const SRC = join(ROOT, 'src');
 const ADAPTER_DIR = 'src/platform/discord/';
-/** Core files that still import discord.js until the ChatPlatform seam replaces them (plan 005 Part B). */
-const PENDING_CORE_IMPORTS = new Set(['src/outbox/recovery.ts', 'src/production-runtime.ts']);
+const SELECTOR = 'src/platform/select.ts';
 
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
@@ -29,13 +28,25 @@ describe('platform boundary', () => {
 
   it('imports discord.js only inside the Discord adapter', () => {
     const offenders = files
-      .filter((f) => !f.path.startsWith(ADAPTER_DIR) && !PENDING_CORE_IMPORTS.has(f.path))
+      .filter((f) => !f.path.startsWith(ADAPTER_DIR))
       .filter((f) => /from 'discord\.js'|import\('discord\.js'\)/.test(f.text))
       .map((f) => f.path);
     expect(offenders).toEqual([]);
   });
 
-  it.todo('imports the Discord adapter only from the platform selector');
+  it('imports the Discord adapter only from the platform selector', () => {
+    const offenders: string[] = [];
+    for (const f of files) {
+      if (f.path.startsWith(ADAPTER_DIR) || f.path === SELECTOR) continue;
+      for (const m of f.text.matchAll(/(?:from |import\()'(\.{1,2}\/[^']+)'/g)) {
+        const target = repoPath(resolve(dirname(join(ROOT, f.path)), m[1]!));
+        if (target.startsWith(ADAPTER_DIR)) offenders.push(`${f.path} -> ${m[1]}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
 
-  it.todo('has no src/discord directory');
+  it('has no src/discord directory', () => {
+    expect(existsSync(join(SRC, 'discord'))).toBe(false);
+  });
 });

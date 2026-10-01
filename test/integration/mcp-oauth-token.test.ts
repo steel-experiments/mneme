@@ -12,7 +12,7 @@ import {
   purgeExpiredOAuthAccessTokens,
 } from '../../src/db/repositories/oauth-flows.js';
 import { insertMcpToken } from '../../src/db/repositories/mcp-tokens.js';
-import type { DiscordIdentityClient, DiscordIdentityOutcome } from '../../src/platform/discord/oauth-identity.js';
+import type { DiscordIdentityClient, DiscordIdentityOutcome } from '../../src/platform/types.js';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 
 /**

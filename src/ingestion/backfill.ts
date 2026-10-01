@@ -1,6 +1,5 @@
 import { type DatabaseSync, transaction } from '../db/database.js';
 import { ingestMessagePage, type IngestOptions } from './ingest.js';
-import { normalizeMessage } from '../platform/discord/normalize.js';
 import type { NormalizedMessage } from '../platform/types.js';
 import { channelIngestionIneligibilityReason } from './ingestion-eligibility.js';
 import {
@@ -34,6 +33,8 @@ export interface BackfillMessageFetcher {
   fetchMessages(channelId: string, before: string | undefined, limit: number): Promise<readonly unknown[]>;
   /** Exact fetch used only by durable missing-dependency recovery. */
   fetchMessage?(channelId: string, messageId: string): Promise<unknown | null>;
+  /** Normalize one raw message from this fetcher; throws on a malformed payload. */
+  normalize(raw: unknown): NormalizedMessage;
 }
 
 export interface BackfillOptions {
@@ -116,7 +117,7 @@ export async function backfillChannel(input: BackfillOptions): Promise<BackfillR
       const messages: NormalizedMessage[] = [];
       for (const raw of raws) {
         try {
-          messages.push(normalizeMessage(raw));
+          messages.push(input.fetcher.normalize(raw));
         } catch (err) {
           messagesSkipped += 1;
           input.logger?.warn(

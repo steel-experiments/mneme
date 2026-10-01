@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { type AppConfig, type AutonomyMode } from './config.js';
 import { createLogger } from './logger.js';
-import { createCounters, createIngestionObserver, type Counters } from './observability.js';
+import { createCounters, type Counters } from './observability.js';
 import { openDatabase, type DatabaseSync } from './db/database.js';
 import { applyMigrations } from './db/migrations.js';
 import { startHttpServer, type HttpServerHandle, type ProbeResult } from './http/server.js';
@@ -12,6 +12,7 @@ import { RuntimeState, getRuntimeModeOverride } from './runtime-state.js';
 import { ShutdownCoordinator, createShutdownDeps, type ShutdownResult } from './shutdown.js';
 import { setShutdownCoordinator } from './shutdown.js';
 import type { Logger } from 'pino';
+import type { ChatPlatform, PlatformHealthTracker } from './platform/types.js';
 import {
   normalizeBuildInfo,
   resolveBuildInfo,
@@ -76,13 +77,13 @@ export type StartupDiscoveryPhase =
 /** A startup-phase callback used by the discovery/backfill seam (steps 7-10). */
 export type PhaseRecorder = (phase: StartupDiscoveryPhase) => void;
 
-/** Handle to the connected Discord client and its teardown. */
-export interface DiscordWiring {
-  /** The discord.js client, when a real one was created. */
-  client?: any;
+/** Handle to the connected chat platform and its teardown. */
+export interface PlatformWiring {
+  /** The connected platform, when a real one was created. */
+  platform?: ChatPlatform;
   /** The health tracker, when one is in use. */
-  tracker?: any;
-  /** Disconnect the Gateway (shutdown step 7). */
+  tracker?: PlatformHealthTracker;
+  /** Disconnect from the platform (shutdown step 7). */
   destroy(): Promise<void> | void;
 }
 
@@ -111,27 +112,28 @@ export interface BootstrapContext {
   /** Process-lifetime, content-free operational counters. */
   counters: Counters;
   now: () => number;
-  discordToken: string | undefined;
 }
 
 /** Injectable startup seams. Each has a real default; tests override them. */
 export interface BootstrapSeams {
   /** Step 3: compile prompts and validate channel policy. */
   compilePromptsAndPolicy?: (ctx: BootstrapContext) => void | Promise<void>;
-  /** Step 4: connect the Discord Gateway and return a teardown handle. */
-  connectDiscord?: (ctx: BootstrapContext) => Promise<DiscordWiring> | DiscordWiring;
+  /** The chat platform for this deployment (default: selected by `MNEME_PLATFORM`). */
+  createPlatform?: (ctx: BootstrapContext) => ChatPlatform | Promise<ChatPlatform>;
+  /** Step 4: connect the chat platform and return a teardown handle. */
+  connectPlatform?: (ctx: BootstrapContext) => Promise<PlatformWiring> | PlatformWiring;
   /** Step 5: begin persisting live Gateway events. */
-  beginIngestion?: (ctx: BootstrapContext, discord: DiscordWiring) => void | Promise<void>;
+  beginIngestion?: (ctx: BootstrapContext, discord: PlatformWiring) => void | Promise<void>;
   /** Step 6 (pre-ready): register guild-scoped admin commands. */
-  registerCommands?: (ctx: BootstrapContext, discord: DiscordWiring) => void | Promise<void>;
+  registerCommands?: (ctx: BootstrapContext, discord: PlatformWiring) => void | Promise<void>;
   /** Steps 7-10: enumerate channels/threads and enqueue backfill. */
   discoverAndBackfill?: (
     ctx: BootstrapContext,
-    discord: DiscordWiring,
+    discord: PlatformWiring,
     record: PhaseRecorder,
   ) => void | Promise<void>;
   /** Start the bounded job worker and periodic scheduler. */
-  startJobRuntime?: (ctx: BootstrapContext, discord: DiscordWiring | null) => JobRuntimeWiring | Promise<JobRuntimeWiring>;
+  startJobRuntime?: (ctx: BootstrapContext, discord: PlatformWiring | null) => JobRuntimeWiring | Promise<JobRuntimeWiring>;
   /** Start the HTTP server (default true). Set false to skip the bind. */
   startHttp?: boolean;
 }
@@ -164,7 +166,7 @@ export interface BootstrapResult {
   runtime: RuntimeState;
   buildInfo: BuildInfo;
   httpServer: HttpServerHandle | null;
-  discord: DiscordWiring | null;
+  discord: PlatformWiring | null;
   jobs: JobRuntimeWiring | null;
   coordinator: ShutdownCoordinator;
   snapshot?: ConfigSnapshot;
@@ -202,7 +204,7 @@ const MILESTONE_BY_PHASE = {
 interface StartupResources {
   ownedDb?: DatabaseSync;
   http?: HttpServerHandle;
-  discord?: DiscordWiring;
+  discord?: PlatformWiring;
   jobs?: JobRuntimeWiring;
 }
 
@@ -265,11 +267,19 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
     logger,
     counters: createCounters(),
     now,
-    discordToken: config.discord.token,
+  };
+  let platformInstance: ChatPlatform | undefined;
+  const getPlatform = async (): Promise<ChatPlatform> => {
+    if (!platformInstance) {
+      platformInstance = seams.createPlatform
+        ? await seams.createPlatform(ctx)
+        : (await import('./platform/select.js')).createPlatform(config, logger, now);
+    }
+    return platformInstance;
   };
   // Declared before HTTP starts so the status-provider closure is safe during
   // early startup (null) and begins reporting live tracker state after step 4.
-  let discord: DiscordWiring | null = null;
+  let discord: PlatformWiring | null = null;
 
   // Step 2: start /livez (and /readyz, bound to the runtime).
   const statusStartedAtMs = now();
@@ -303,17 +313,11 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
         };
         wwwAuthenticate = oauth.wwwAuthenticateChallenge(metadataConfig);
         const { createOAuthRoutes } = await import('./mcp/oauth/routes.js');
-        const { createDiscordIdentityClient } = await import('./platform/discord/oauth-identity.js');
         oauthRoutes = createOAuthRoutes({
           db,
           logger,
           now,
-          identity: createDiscordIdentityClient({
-            clientId: config.mcp.oauthDiscordClientId,
-            clientSecret: config.mcp.oauthDiscordClientSecret,
-            publicBaseUrl: config.mcp.publicBaseUrl,
-            guildId: config.workspaceId,
-          }),
+          identity: (await getPlatform()).oauthIdentity,
           adminRoleIds: config.adminRoleIds,
           rateLimiter: unauthRateLimiter,
           context: {
@@ -442,11 +446,11 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
   runtime.markPolicyAndPromptsCompiled();
   record(3, 'prompts_policy_compiled');
 
-  // Step 4: connect the Discord Gateway.
-  if (seams.connectDiscord) {
-    discord = await seams.connectDiscord(ctx);
-  } else if (config.discord.token) {
-    discord = await defaultConnectDiscord(ctx);
+  // Step 4: connect the chat platform.
+  if (seams.connectPlatform) {
+    discord = await seams.connectPlatform(ctx);
+  } else if ((await getPlatform()).hasCredentials) {
+    discord = await defaultConnectPlatform(ctx, await getPlatform());
   } else {
     // No token and no seam: a clean, logged skip rather than a crash. The
     // readiness gate stays not-ready until a caller supplies a connection.
@@ -470,8 +474,8 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
     if (seams.registerCommands) {
       await seams.registerCommands(ctx, discord);
       runtime.markCommandsRegistered();
-    } else if (discord.client) {
-      await defaultRegisterCommands(ctx, discord);
+    } else if (discord.platform) {
+      await defaultRegisterCommands(discord.platform);
       runtime.markCommandsRegistered();
     }
     runtime.markDiscordAuthenticated();
@@ -482,7 +486,7 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
 
   // Steps 7-10: enumerate channels/threads and enqueue backfill. The seam records
   // each phase; the bootstrap maps it to the matching Section 9.2 milestone.
-  if (discord && (seams.discoverAndBackfill || discord.client)) {
+  if (discord && (seams.discoverAndBackfill || discord.platform)) {
     const phaseRecorder: PhaseRecorder = (phase) => {
       record(STEP_BY_PHASE[phase], MILESTONE_BY_PHASE[phase]);
     };
@@ -493,7 +497,7 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
   // Start bounded workers only after startup discovery has populated channel
   // metadata and queued its initial durable work.
   if (seams.startJobRuntime) jobs = await seams.startJobRuntime(ctx, discord);
-  else if (discord?.client) jobs = await defaultStartJobRuntime(ctx, discord);
+  else if (discord?.platform) jobs = await defaultStartJobRuntime(ctx, discord);
   if (jobs) resources.jobs = jobs;
 
   // Wire graceful shutdown over the assembled singletons.
@@ -536,246 +540,38 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
 // ---- real default seams -----------------------------------------------------
 
 /**
- * Default Discord connect: instantiate the client, register ingestion handlers
- * BEFORE login so no live event is lost, then log in. Throws cleanly when no
- * token is configured.
+ * Default platform connect: the platform registers the live-ingestion hooks
+ * BEFORE it connects, so no live event is lost.
  */
-async function defaultConnectDiscord(ctx: BootstrapContext): Promise<DiscordWiring> {
-  if (!ctx.discordToken) {
-    throw new BootstrapError('DISCORD_TOKEN is not configured; cannot connect the Discord Gateway');
-  }
-  // Imported lazily so the bootstrap (and its tests) do not require discord.js
-  // at module load unless the real default is actually used.
-  const { createDiscordClient } = await import('./platform/discord/client.js');
-  const { client, tracker } = createDiscordClient({
-    token: ctx.discordToken,
-    guildId: ctx.config.workspaceId,
-    logger: ctx.logger,
-    clock: ctx.now,
-  });
-  const wiring: DiscordWiring = {
-    client,
-    tracker,
-    destroy: async () => {
-      try {
-        await client.destroy();
-      } catch (err) {
-        ctx.logger.warn({ event: 'discord.destroy_failed', err: (err as Error).message }, 'discord destroy failed');
-      }
-    },
-  };
-  // Register ingestion handlers BEFORE login so no live event is missed.
-  await defaultBeginIngestion(ctx, wiring);
-  // Seed the configured guild identity before login so an event arriving in the
-  // narrow ready/fetch window cannot violate message foreign keys.
-  const { upsertGuild } = await import('./db/repositories/workspaces.js');
-  const seededAt = ctx.now();
-  upsertGuild(ctx.db, {
-    id: ctx.config.workspaceId,
-    name: ctx.config.organization.name,
-    ownerId: null,
-    joinedAtMs: null,
-    discoveredAtMs: seededAt,
-    updatedAtMs: seededAt,
-    rawJson: null,
-  });
-  await client.login(ctx.discordToken);
-  const { assertExpectedGuild } = await import('./platform/discord/client.js');
-  assertExpectedGuild([...client.guilds.cache.keys()], ctx.config.workspaceId);
-  const guild = await client.guilds.fetch(ctx.config.workspaceId);
-  const observedAt = ctx.now();
-  upsertGuild(ctx.db, {
-    id: guild.id,
-    // Discord REST/cache hydration may transiently omit otherwise documented
-    // guild fields. Never pass `undefined` across the SQLite boundary: Node's
-    // built-in driver accepts strings/numbers/null, but rejects undefined.
-    name: typeof guild.name === 'string' && guild.name.length > 0
-      ? guild.name
-      : ctx.config.organization.name,
-    ownerId: typeof guild.ownerId === 'string' ? guild.ownerId : null,
-    joinedAtMs: typeof guild.joinedTimestamp === 'number' ? guild.joinedTimestamp : null,
-    discoveredAtMs: observedAt,
-    updatedAtMs: observedAt,
-    rawJson: ctx.config.ingestion.storeRawJson ? JSON.stringify(guild.toJSON()) : null,
-  });
-  return wiring;
+async function defaultConnectPlatform(ctx: BootstrapContext, platform: ChatPlatform): Promise<PlatformWiring> {
+  const { createLiveIngestionDeps } = await import('./ingestion/live.js');
+  const connection = await platform.connect(createLiveIngestionDeps(ctx, platform.selfUserId));
+  return { platform, tracker: connection.tracker, destroy: () => connection.destroy() };
 }
 
-const ingestionRegisteredClients = new WeakSet<object>();
+/**
+ * Default ingestion step: the default connect already registered the live
+ * hooks before the connection opened (Section 9.2 step 5 ordering).
+ */
+async function defaultBeginIngestion(_ctx: BootstrapContext, _discord: PlatformWiring): Promise<void> {}
 
-/** Default ingestion: register the Section 9.3 gateway handlers on the client. */
-async function defaultBeginIngestion(ctx: BootstrapContext, discord: DiscordWiring): Promise<void> {
-  if (!discord.client) return;
-  if (ingestionRegisteredClients.has(discord.client as object)) return;
-  const { registerIngestionHandlers } = await import('./platform/discord/client.js');
-  const { ingestEpisodeActivity } = await import('./episodes/builder.js');
-  const { enqueueDirectAnswerForMention } = await import('./ingestion/mentions.js');
-  const { getChannel } = await import('./db/repositories/channels.js');
-  const { channelInputFromRaw } = await import('./platform/discord/gateway-events.js');
-  const { requestIngestionRecovery } = await import('./db/repositories/ingestion-recovery.js');
-  const { enqueue } = await import('./jobs/queue.js');
-  const {
-    reconcileStoredChannelPolicyReview,
-    resolveObservedChannelPolicy,
-  } = await import('./policy/channel-policy-review-service.js');
-  const { isMnemeTestSurface } = await import('./ingestion/test-channels.js');
-  const { mentionsMneme } = await import('./ingestion/mentions.js');
-  const ing = ctx.config.ingestion;
-  registerIngestionHandlers(discord.client, {
-    db: ctx.db,
-    opts: () => ({
-      guildId: ctx.config.workspaceId,
-      storeRawJson: ing.storeRawJson,
-      retainEditHistory: ing.retainEditHistory,
-      retainDeletedContent: ing.retainDeletedContent,
-      attachmentMode: ing.attachmentMode,
-      attachmentArchive: ing.attachmentMode === 'archive' || ing.attachmentMode === 'selective' ? {
-        mode: ing.attachmentMode,
-        maxBytes: ing.attachmentMaxBytes,
-        mimeAllowlist: ing.attachmentMimeAllowlist,
-        dataDir: ctx.config.dataDir,
-      } : undefined,
-      now: ctx.now(),
-    }),
-    shouldIngestMessage: (channelId, message) => {
-      const isDirectMention = mentionsMneme(message.mentions, ctx.config.discord.applicationId);
-      const channel = getChannel(ctx.db, channelId);
-      if (channel) {
-        if (isMnemeTestSurface(ctx.db, channelId)) {
-          if (isDirectMention) {
-            ctx.logger.info({ event: 'discord.direct_mention_received', channelId, testOnly: true }, 'direct mention accepted in test-only channel');
-          }
-          return isDirectMention;
-        }
-        if (isDirectMention) {
-          ctx.logger.info({ event: 'discord.direct_mention_received', channelId, testOnly: false }, 'direct mention accepted');
-        }
-        return channel.ingest_enabled === 1 && channel.visibility_class !== 'excluded';
-      }
-      const policy = ctx.configStore?.get().channelPolicy ?? ctx.snapshot?.channelPolicy;
-      const explicit = policy?.channels.get(channelId);
-      const rule = explicit ?? policy?.default;
-      return rule ? rule.ingest && rule.visibility !== 'excluded' : false;
-    },
-    onMissingDependency: ({ reason, channelId, messageId }) => {
-      const now = ctx.now();
-      const recovery = requestIngestionRecovery(ctx.db, {
-        guildId: ctx.config.workspaceId, channelId, messageId, reason, now,
-      });
-      enqueue(ctx.db, {
-        type: 'recover_message', payload: { recoveryId: recovery.id, generation: recovery.generation },
-        uniqueKey: `recover-message:${recovery.id}`, priority: 20, now,
-      });
-      return { recoveryId: recovery.id, generation: recovery.generation };
-    },
-    observer: createIngestionObserver(ctx.counters),
-    onMessageCreate: (message) => {
-      const observedAt = ctx.now();
-      if (!isMnemeTestSurface(ctx.db, message.channelId)) {
-        ingestEpisodeActivity(
-          message,
-          { mnemeId: ctx.config.discord.applicationId },
-          {
-            db: ctx.db,
-            guildId: ctx.config.workspaceId,
-            now: observedAt,
-            timing: {
-              quietSeconds: ctx.config.episodes.quietSeconds,
-              maxMessages: ctx.config.episodes.maxMessages,
-              maxMinutes: ctx.config.episodes.maxMinutes,
-            },
-          },
-        );
-      }
-      const direct = enqueueDirectAnswerForMention(message, {
-        db: ctx.db,
-        mnemeId: ctx.config.discord.applicationId,
-        enabled: ctx.config.directAnswerEnabled,
-        now: observedAt,
-      });
-      if (direct.mention) {
-        ctx.logger.info({ event: 'discord.direct_answer_queued', channelId: message.channelId,
-          messageId: message.id, enqueued: direct.enqueued }, 'direct-answer scheduling evaluated');
-      }
-    },
-    resolveChannelInput: (raw, guildId, now) => {
-      const input = channelInputFromRaw(raw, guildId, now);
-      if (!input) return null;
-      const policy = ctx.configStore?.get().channelPolicy ?? ctx.snapshot?.channelPolicy;
-      if (!policy) return { ...input, ingestEnabled: false, visibilityClass: 'excluded', allowInterventions: false };
-      const resolved = resolveObservedChannelPolicy(ctx.db, policy, {
-        id: input.id,
-        guildId,
-        parentId: input.parentId,
-        isThread: input.isThread,
-        kind: input.kind,
-      }, { channelPolicySource: ctx.config.channelPolicySource });
-      const existing = getChannel(ctx.db, input.id);
-      return {
-        ...input,
-        ingestEnabled: resolved.rule.ingest,
-        visibilityClass: resolved.rule.visibility,
-        allowInterventions: resolved.rule.allow_interventions,
-        permissionFingerprint: existing?.permission_fingerprint ?? null,
-      };
-    },
-    onChannelChange: (event, channelId) => {
-      const config = ctx.configStore?.get();
-      const policy = config?.channelPolicy ?? ctx.snapshot?.channelPolicy;
-      if (!policy) return;
-      const result = reconcileStoredChannelPolicyReview(
-        ctx.db,
-        policy,
-        channelId,
-        ctx.now(),
-        {
-          ...(event === 'delete' ? { deleted: true } : event === 'create' ? { forceReview: true } : {}),
-          channelPolicySource: config?.channelPolicySource,
-        },
-      );
-      if (result.created || result.superseded || result.enqueued) {
-        ctx.logger.info({
-          event: 'channel_policy_review.reconciled',
-          channelId,
-          created: result.created,
-          superseded: result.superseded,
-          enqueued: result.enqueued,
-        }, 'channel policy review reconciled');
-      }
-    },
-    tracker: discord.tracker,
-    logger: ctx.logger,
-  });
-  ingestionRegisteredClients.add(discord.client as object);
+/** Register the canonical admin command surface before readiness. */
+async function defaultRegisterCommands(platform: ChatPlatform): Promise<void> {
+  const result = await platform.registerCommands();
+  if (!result.ok) throw new BootstrapError(result.message);
 }
 
-/** Register the canonical guild-scoped slash-command surface before readiness. */
-async function defaultRegisterCommands(ctx: BootstrapContext, discord: DiscordWiring): Promise<void> {
-  if (!discord.client?.rest) {
-    throw new BootstrapError('Discord client has no REST adapter; commands cannot be registered');
-  }
-  const { registerGuildCommands } = await import('./platform/discord/commands.js');
-  const result = await registerGuildCommands({
-    rest: discord.client.rest,
-    applicationId: ctx.config.discord.applicationId,
-    guildId: ctx.config.workspaceId,
-  });
-  if (!result.ok) {
-    throw new BootstrapError(`Discord command registration failed: ${result.error}`);
-  }
-}
-
-/** Enumerate real Discord channels/threads and durably schedule configured history. */
+/** Enumerate real channels/threads and durably schedule configured history. */
 async function defaultDiscoverAndBackfill(
   ctx: BootstrapContext,
-  discord: DiscordWiring,
+  discord: PlatformWiring,
   record: PhaseRecorder,
 ): Promise<void> {
   const snapshot = ctx.configStore?.get() ?? ctx.snapshot;
-  if (!discord.client || !snapshot) return;
-  const { fetchDiscoveryDescriptors, createDiscordThreadArchiveSource } = await import('./platform/discord/production-adapters.js');
+  const platform = discord.platform;
+  if (!platform || !snapshot) return;
   const { runStartupSync } = await import('./ingestion/sync.js');
-  const descriptors = await fetchDiscoveryDescriptors(discord.client, ctx.config.workspaceId);
+  const descriptors = await platform.listChannels();
   const canManageThreads = descriptors.some((d) => d.capabilities?.canManageThreads === true);
   await runStartupSync({
     db: ctx.db,
@@ -784,7 +580,8 @@ async function defaultDiscoverAndBackfill(
     channelPolicySource: ctx.config.channelPolicySource,
     now: ctx.now(),
     channels: descriptors,
-    archiveSource: createDiscordThreadArchiveSource(discord.client),
+    archiveSource: platform.threadDiscovery.mode === 'archive_scan' ? platform.threadDiscovery.archive : undefined,
+    completeThreadSnapshot: platform.threadDiscovery.mode === 'complete_snapshot',
     canManageThreads,
     enqueueHistoricalBackfill: ctx.config.ingestion.fullHistory,
     record: (phase) => {
@@ -797,7 +594,7 @@ async function defaultDiscoverAndBackfill(
   });
 }
 
-async function defaultStartJobRuntime(ctx: BootstrapContext, discord: DiscordWiring): Promise<JobRuntimeWiring> {
+async function defaultStartJobRuntime(ctx: BootstrapContext, discord: PlatformWiring): Promise<JobRuntimeWiring> {
   const { createProductionJobRuntime } = await import('./production-runtime.js');
   return createProductionJobRuntime(ctx, discord);
 }

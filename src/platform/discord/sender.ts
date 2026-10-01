@@ -1,4 +1,5 @@
 import type { Client, Snowflake } from 'discord.js';
+import type { OutboxSender } from '../types.js';
 
 /**
  * Outbound Discord delivery port (Sections 10.1, 24.5).
@@ -10,24 +11,7 @@ import type { Client, Snowflake } from 'discord.js';
  * crash recovery (Section 10.1) make storage effectively-once.
  */
 
-export interface SendOutboxMessageInput {
-  channelId: string;
-  content: string;
-  /** Reply anchor in the target channel, when one was validated upstream. */
-  replyToMessageId?: string | null;
-  /** Stable Discord nonce used only for crash reconciliation. */
-  dedupeMarker?: string | null;
-}
 
-export interface SendResult {
-  /** The platform id of the created message. */
-  platformMessageId: string;
-}
-
-/** Deliver one outbox message to Discord. Throws on any delivery failure. */
-export interface OutboxSender {
-  send(input: SendOutboxMessageInput): Promise<SendResult>;
-}
 
 /**
  * discord.js-backed sender (Section 24.5):

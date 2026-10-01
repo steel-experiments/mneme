@@ -2,6 +2,7 @@
 // ABOUTME: Exchanges the authorization code and reads their guild membership and roles.
 
 import { discordCallbackUrl } from '../../mcp/oauth/authorize.js';
+import type { DiscordIdentityClient, DiscordIdentityOutcome } from '../types.js';
 
 /**
  * The identity-provider boundary (Section 32.5.2, amended).
@@ -31,33 +32,6 @@ const DISCORD_API = 'https://discord.com/api/v10';
  * respond, so each is held well inside that budget.
  */
 const DISCORD_TIMEOUT_MS = 4_000;
-
-/** A person's membership in the guild, as far as authorization cares. */
-export interface DiscordMembership {
-  /** The Discord user id — the subject of the token that follows. */
-  userId: string;
-  /**
-   * Role ids held in the guild, or null when they could not be resolved. Null is
-   * not an empty list: unresolved roles must fail closed, and `authorizeAdmin`
-   * distinguishes the two.
-   */
-  roleIds: readonly string[] | null;
-}
-
-/** Why identifying the person failed. */
-export type DiscordIdentityFailure =
-  | 'code_exchange_failed'
-  | 'not_a_guild_member'
-  | 'membership_unavailable';
-
-export type DiscordIdentityOutcome =
-  | { ok: true; membership: DiscordMembership }
-  | { ok: false; reason: DiscordIdentityFailure };
-
-/** The seam: given Discord's code, say who the person is. */
-export interface DiscordIdentityClient {
-  identify(code: string): Promise<DiscordIdentityOutcome>;
-}
 
 export interface DiscordIdentityConfig {
   clientId: string;

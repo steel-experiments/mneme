@@ -49,6 +49,7 @@ function makeIds(n: number, base = 400): string[] {
 /** A fetcher backed by a fixed newest-first id list, with Discord `before` semantics. */
 function makeFetcher(liveIds: string[]): BackfillMessageFetcher {
   return {
+    normalize: normalizeMessage,
     async fetchMessages(_channelId: string, before: string | undefined, limit: number): Promise<unknown[]> {
       const startIdx = before ? liveIds.findIndex((id) => id < before) : 0;
       const slice = startIdx === -1 ? [] : liveIds.slice(startIdx, startIdx + limit);
@@ -205,6 +206,7 @@ describe('reconcileChannel — overlap walk', () => {
   it('skips un-normalizable payloads without abandoning the walk', async () => {
     const ids = makeIds(5);
     const fetcher: BackfillMessageFetcher = {
+      normalize: normalizeMessage,
       async fetchMessages() {
         // Newest-first: two good, one malformed, then already-stored overlap.
         return [
@@ -230,6 +232,7 @@ describe('reconcileChannel — overlap walk', () => {
       opts: ingestOpts,
       channelId: THREAD_CHANNEL,
       fetcher: {
+        normalize: normalizeMessage,
         async fetchMessages() {
           db.prepare("UPDATE channels SET name='mneme-project-test' WHERE id=?").run(THREAD_PARENT);
           return [];
@@ -267,6 +270,7 @@ describe('createReconcileChannelHandler', () => {
     const handler = createReconcileChannelHandler({
       db,
       fetcher: {
+        normalize: normalizeMessage,
         async fetchMessages() {
           fetches += 1;
           return [];
@@ -317,6 +321,7 @@ describe('createReconcileChannelHandler', () => {
     const handler = createReconcileChannelHandler({
       db,
       fetcher: {
+        normalize: normalizeMessage,
         async fetchMessages() {
           announceFetchStarted();
           await fetchGate;
@@ -372,6 +377,7 @@ describe('createReconcileChannelHandler', () => {
     const handler = createReconcileChannelHandler({
       db,
       fetcher: {
+        normalize: normalizeMessage,
         async fetchMessages() {
           announceFetchStarted();
           await fetchGate;

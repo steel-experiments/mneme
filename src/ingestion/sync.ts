@@ -66,6 +66,11 @@ export interface StartupSyncDeps {
   channels: DiscoveredChannelDescriptor[];
   /** Step 9: optional archived-thread REST source. Omit to skip archived discovery. */
   archiveSource?: ThreadArchiveSource;
+  /**
+   * True when `channels` already holds every known thread (a platform that cannot
+   * list threads). Discovery then closes any omitted thread and makes no archive call.
+   */
+  completeThreadSnapshot?: boolean;
   /** Whether the bot holds Manage Threads (governs archived private coverage). */
   canManageThreads?: boolean;
   /** Safety bound on archived pages per endpoint per parent. */
@@ -131,7 +136,8 @@ export async function runStartupSync(deps: StartupSyncDeps): Promise<StartupSync
     // Step 7 contains active threads only. Preserve known archived threads only
     // while a separately paginated archive pass is guaranteed to follow; without
     // a source there is no later proof, so omission is quarantined immediately.
-    missingThreadMode: deps.archiveSource ? 'preserve' : 'quarantine',
+    // A complete thread snapshot is that proof, so omission closes the thread.
+    missingThreadMode: deps.completeThreadSnapshot ? 'close' : deps.archiveSource ? 'preserve' : 'quarantine',
   };
 
   // Step 5: live Gateway event storage must begin before any historical import so a
@@ -164,7 +170,7 @@ export async function runStartupSync(deps: StartupSyncDeps): Promise<StartupSync
   const archivedBackfillEnqueued: string[] = [];
 
   // Steps 9 + 10: enumerate archived threads, persist them, then enqueue their backfill.
-  if (deps.archiveSource) {
+  if (deps.archiveSource && !deps.completeThreadSnapshot) {
     record('enumerate-archived-threads');
     const parents: ThreadParentRef[] = deps.channels
       .filter((c) => isThreadCapableParent(c.kind))
