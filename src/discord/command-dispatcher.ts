@@ -346,7 +346,7 @@ export function listCommandDispatcherRouteNames(): {
 async function dispatch(i: ChatInputCommandInteraction, deps: CommandDispatcherDeps): Promise<void> {
   const { ctx } = deps;
   const guildId = i.guildId;
-  if (!guildId || guildId !== ctx.config.discord.guildId) return reply(i, 'This command only works in the configured server.');
+  if (!guildId || guildId !== ctx.config.workspaceId) return reply(i, 'This command only works in the configured server.');
   const base: RouteBase = { actorUserId: i.user.id, guildId, memberRoleIds: extractMemberRoleIds(i.member) };
   const common: RouteCommon = { db: ctx.db, adminRoleIds: ctx.config.adminRoleIds, nowMs: ctx.now() };
   // Read the subcommand first: an interaction without one throws here, exactly

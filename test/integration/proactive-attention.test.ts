@@ -87,7 +87,7 @@ function attentionContext(): BootstrapContext {
     db: env.db,
     now: () => NOW,
     config: {
-      discord: { guildId: GUILD, applicationId: '100000000000000099' },
+      workspaceId: GUILD, discord: { applicationId: '100000000000000099' },
       mode: 'review',
       reviewChannelId: REVIEW_CHANNEL,
       organization: { timezone: 'UTC' },

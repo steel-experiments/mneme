@@ -36,7 +36,7 @@ async function main(): Promise<void> {
       event: 'startup.init',
       mode: config.mode,
       provider: config.llm.provider,
-      guildId: config.discord.guildId,
+      guildId: config.workspaceId,
       build: buildInfo,
       shutdownTimeoutSeconds: config.maintenance.shutdownTimeoutSeconds,
     },

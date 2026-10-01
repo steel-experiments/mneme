@@ -208,7 +208,7 @@ describe('attention cutover — Section 12.7', () => {
       db: env.db,
       now: () => NOW,
       config: {
-        discord: { guildId: GUILD, applicationId: '100000000000000099' },
+        workspaceId: GUILD, discord: { applicationId: '100000000000000099' },
         mode: 'review',
         organization: { timezone: 'UTC' },
         episodes: { settleSeconds: 600, settleMaxMinutes: 60 },
