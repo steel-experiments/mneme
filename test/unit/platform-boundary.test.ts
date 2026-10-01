@@ -8,6 +8,9 @@ const ROOT = join(import.meta.dirname, '..', '..');
 const SRC = join(ROOT, 'src');
 const ADAPTER_DIR = 'src/platform/discord/';
 const SELECTOR = 'src/platform/select.ts';
+// Any quote style, static or dynamic import, and the Discord helper packages.
+const DISCORD_PACKAGE_IMPORT = /(?:from\s*|import\s*\(\s*)['"`](?:discord\.js|@discordjs\/[^'"`]+|discord-api-types[^'"`]*)['"`]/;
+const RELATIVE_IMPORT = /(?:from\s*|import\s*\(\s*)['"`](\.{1,2}\/[^'"`]+)['"`]/g;
 
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
@@ -29,7 +32,7 @@ describe('platform boundary', () => {
   it('imports discord.js only inside the Discord adapter', () => {
     const offenders = files
       .filter((f) => !f.path.startsWith(ADAPTER_DIR))
-      .filter((f) => /from 'discord\.js'|import\('discord\.js'\)/.test(f.text))
+      .filter((f) => DISCORD_PACKAGE_IMPORT.test(f.text))
       .map((f) => f.path);
     expect(offenders).toEqual([]);
   });
@@ -38,7 +41,7 @@ describe('platform boundary', () => {
     const offenders: string[] = [];
     for (const f of files) {
       if (f.path.startsWith(ADAPTER_DIR) || f.path === SELECTOR) continue;
-      for (const m of f.text.matchAll(/(?:from |import\()'(\.{1,2}\/[^']+)'/g)) {
+      for (const m of f.text.matchAll(RELATIVE_IMPORT)) {
         const target = repoPath(resolve(dirname(join(ROOT, f.path)), m[1]!));
         if (target.startsWith(ADAPTER_DIR)) offenders.push(`${f.path} -> ${m[1]}`);
       }
