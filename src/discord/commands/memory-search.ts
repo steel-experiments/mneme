@@ -206,7 +206,7 @@ export function formatMemoryGetReply(outcome: MemoryGetOutcome): string {
   if (outcome.evidence.length > 0) {
     lines.push('Sources:');
     for (const evidence of outcome.evidence) {
-      lines.push(`- ${evidence.discordLink} (${evidence.stance}, ${evidence.authorDisplayName})`);
+      lines.push(`- ${evidence.link} (${evidence.stance}, ${evidence.authorDisplayName})`);
     }
   } else {
     lines.push('No source messages are visible in this scope.');

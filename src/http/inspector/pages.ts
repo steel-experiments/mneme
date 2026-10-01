@@ -320,7 +320,7 @@ ${kvRow('Links', data.lineage.links.length > 0
 </dl>`;
 
   const evidence = data.evidence.length > 0
-    ? data.evidence.map((e) => `<blockquote class="evidence"><strong>${h(e.stance)}</strong> · ${h(e.authorDisplayName)} · ${fmtMs(e.createdAtMs)} · <a href="${h(e.discordLink)}" rel="noreferrer">Discord</a><br>${h(e.content)}</blockquote>`).join('\n')
+    ? data.evidence.map((e) => `<blockquote class="evidence"><strong>${h(e.stance)}</strong> · ${h(e.authorDisplayName)} · ${fmtMs(e.createdAtMs)} · <a href="${h(e.link)}" rel="noreferrer">Discord</a><br>${h(e.content)}</blockquote>`).join('\n')
     : '<p class="note">No permitted evidence rows.</p>';
   const evidenceNextQuery = data.evidenceNext
     ? new URLSearchParams({
@@ -422,7 +422,7 @@ ${kvRow('Reviewed', fmtMs(e.reviewedAtMs))}
       )).join('')}</table>`
     : '';
   const messages = data.messages.length > 0
-    ? data.messages.map((m) => `<blockquote class="evidence"><strong>#${m.ordinal}</strong> · ${h(m.authorDisplayName)} · ${fmtMs(m.createdAtMs)}${m.discordLink ? ` · <a href="${h(m.discordLink)}" rel="noreferrer">Discord</a>` : ''}<br>${h(m.content)}</blockquote>`).join('\n')
+    ? data.messages.map((m) => `<blockquote class="evidence"><strong>#${m.ordinal}</strong> · ${h(m.authorDisplayName)} · ${fmtMs(m.createdAtMs)}${m.link ? ` · <a href="${h(m.link)}" rel="noreferrer">Discord</a>` : ''}<br>${h(m.content)}</blockquote>`).join('\n')
     : '<p class="note">No permitted messages on this page of the episode.</p>';
   const messagePager = data.messageNextOrdinal !== null
     ? `<p class="pager"><a href="${h(env.basePath)}/episodes/${h(e.id)}?after=${data.messageNextOrdinal}">Later messages →</a></p>`
@@ -609,7 +609,7 @@ ${tr('Category agreement', h(shadowComparison.categoryMatch ?? '—'), '')}
   const exposureBlock = route.toolCallId === null ? '' : focusedCall && focused
     ? `<h2 id="tool-exposure">Tool exposure: ${h(focusedCall.toolName)}</h2>
 <p class="note">Current grant-permitted content associated with this call. Exact historical tool output was not retained. ${link(`${env.basePath}/runs/${h(r.id)}#tool-exposure`, 'Clear filter')}</p>
-${focused.rows.map((row) => `<article class="exposure"><p><strong>${h(row.kind)}</strong> <code>${h(row.id)}</code> · ${h(row.fingerprintStatus === 'unchanged' ? 'current content matches the exposure version' : row.fingerprintStatus === 'changed' ? 'content changed; only the current version is available' : 'exact historic content was not retained')}</p><p>${h(row.secondary)}${row.atMs === null ? '' : ` · ${fmtMs(row.atMs)}`}</p><blockquote class="evidence">${h(row.content)}</blockquote>${row.discordLink ? `<p>${link(row.discordLink, 'Open in Discord')}</p>` : ''}</article>`).join('') || '<p class="note">No currently visible rows on this page.</p>'}
+${focused.rows.map((row) => `<article class="exposure"><p><strong>${h(row.kind)}</strong> <code>${h(row.id)}</code> · ${h(row.fingerprintStatus === 'unchanged' ? 'current content matches the exposure version' : row.fingerprintStatus === 'changed' ? 'content changed; only the current version is available' : 'exact historic content was not retained')}</p><p>${h(row.secondary)}${row.atMs === null ? '' : ` · ${fmtMs(row.atMs)}`}</p><blockquote class="evidence">${h(row.content)}</blockquote>${row.link ? `<p>${link(row.link, 'Open in Discord')}</p>` : ''}</article>`).join('') || '<p class="note">No currently visible rows on this page.</p>'}
 ${focused.unavailableCount ? `<p class="note">${fmtNum(focused.unavailableCount)} item(s) unavailable or no longer visible.</p>` : ''}
 ${focused.nextOffset === null ? '' : `<p class="pager">${link(`${env.basePath}/runs/${h(r.id)}?toolCall=${encodeURIComponent(focusedCall.toolCallId)}&exposureAfter=${focused.nextOffset}#tool-exposure`, 'Next exposure page →')}</p>`}`
     : `<h2 id="tool-exposure">Tool exposure</h2><p class="note">Tool call is not available. ${link(`${env.basePath}/runs/${h(r.id)}`, 'Clear filter')}</p>`;

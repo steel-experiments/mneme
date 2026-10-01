@@ -74,7 +74,7 @@ export interface MessageSearchResult {
   reactionTotal: number;
   /** Host-computed combined rank; higher is better (Section 30.1). */
   rank: number;
-  discordLink: string;
+  link: string;
 }
 
 export interface RecentMessageResult {
@@ -87,7 +87,7 @@ export interface RecentMessageResult {
   createdAtMs: number;
   content: string;
   reactionTotal: number;
-  discordLink: string;
+  link: string;
 }
 
 /** Canonical Discord message jump link (Section 30.3). Host-generated, never trusted. */
@@ -301,7 +301,7 @@ export function searchMessages(
       snippet: String(row.snippet),
       reactionTotal: Number(row.reaction_total),
       rank,
-      discordLink: discordMessageLink(guildId, channelId, messageId),
+      link: discordMessageLink(guildId, channelId, messageId),
     };
   });
 }
@@ -397,7 +397,7 @@ export function listRecentMessages(
       createdAtMs: Number(row.created_at_ms),
       content: String(row.content),
       reactionTotal: Number(row.reaction_total),
-      discordLink: discordMessageLink(guildId, channelId, messageId),
+      link: discordMessageLink(guildId, channelId, messageId),
     };
   });
 }
