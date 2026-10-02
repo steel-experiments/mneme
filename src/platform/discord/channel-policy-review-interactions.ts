@@ -9,10 +9,7 @@ import {
   parseChannelPolicyReviewComponent,
   type ChannelPolicyReviewDiscordPort,
 } from './channel-policy-review-message.js';
-import {
-  applyChannelPolicyReviewDecision,
-  type ChannelPolicyReviewInteractionOutcome,
-} from '../../review/controls.js';
+import { applyChannelPolicyReviewDecision, CHANNEL_POLICY_REVIEW_LABELS } from '../../review/controls.js';
 
 export {
   applyChannelPolicyReviewDecision,
@@ -97,16 +94,7 @@ export function createChannelPolicyReviewButtonHandler(deps: {
         // Durable decision is authoritative; a cosmetic edit is best effort.
       }
     }
-    const labels: Record<ChannelPolicyReviewInteractionOutcome, string> = {
-      decided: 'Channel classification saved.',
-      unauthorized: 'You are not authorized to classify Mneme channels.',
-      stale: 'This channel review is stale or already resolved.',
-      not_found: 'This channel review could not be found.',
-      basic_mode:
-        'This deployment selects channels with environment variables, so classification cards are disabled. '
-        + 'Change ORG_VISIBLE_CHANNEL_IDS or RESTRICTED_CHANNEL_IDS, or set CHANNEL_POLICY_SOURCE=file, then restart Mneme.',
-    };
-    await replySafe(interaction, labels[result.outcome]);
+    await replySafe(interaction, CHANNEL_POLICY_REVIEW_LABELS[result.outcome]);
   };
 }
 

@@ -20,10 +20,9 @@ import {
   approveProposal,
   dismissProposal,
   type ApprovalPolicyRecheck,
-  type ApproveOutcome,
-  type DismissOutcome,
   type ReviewResolver,
 } from '../../review/workflow.js';
+import { labelForApprove, labelForDismiss } from '../../review/controls.js';
 import { type DatabaseSync } from '../../db/database.js';
 
 export interface ReviewInteractionDeps {
@@ -107,36 +106,6 @@ async function replySafe(interaction: ButtonInteraction, content: string): Promi
     }
   } catch {
     /* the gateway may have timed out the interaction; nothing more to do */
-  }
-}
-
-function labelForApprove(outcome: ApproveOutcome): string {
-  switch (outcome) {
-    case 'approved':
-      return 'Approved — the message is queued for delivery.';
-    case 'unauthorized':
-      return 'You are not authorized to approve Mneme proposals.';
-    case 'expired':
-      return 'This proposal has expired.';
-    case 'policy_blocked':
-      return 'Not sent — this proposal remains pending review and can be retried after the current policy block clears.';
-    case 'stale':
-      return 'This proposal has already been resolved.';
-    case 'not_found':
-      return 'This proposal could not be found.';
-  }
-}
-
-function labelForDismiss(outcome: DismissOutcome): string {
-  switch (outcome) {
-    case 'dismissed':
-      return 'Proposal dismissed.';
-    case 'unauthorized':
-      return 'You are not authorized to dismiss Mneme proposals.';
-    case 'stale':
-      return 'This proposal has already been resolved.';
-    case 'not_found':
-      return 'This proposal could not be found.';
   }
 }
 
