@@ -15,6 +15,7 @@ import { listSlackChannels, SLACK_REDISCOVERY_INTERVAL_MS } from './discovery.js
 import { handleSlackEnvelope, type SlackLiveContext } from './events.js';
 import { slackFormat } from './format.js';
 import { createSlackHistory } from './history.js';
+import { createSlackSender } from './sender.js';
 import { slackMessageLink } from './links.js';
 
 /** Raised by every send while the Slack write path is not available. */
@@ -137,7 +138,7 @@ export function createSlackPlatform(
     history,
     recentSent: { fetch: async () => [] },
 
-    sender: { send: unavailable },
+    sender: createSlackSender({ api, db: () => connected().db, teamDomain: () => connected().identity.teamDomain }),
     sendDirect: unavailable,
     deliverProposalReview: unavailable,
     reviewResolver: () => unavailable,

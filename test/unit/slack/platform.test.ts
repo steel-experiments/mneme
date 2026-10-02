@@ -1,7 +1,8 @@
 // ABOUTME: Tests the Slack platform startup checks and connection identity (plan 006 steps 2 and 6).
 // ABOUTME: Slack starts only in observe mode with direct answers off; a foreign team token stops startup.
 import { describe, it, expect } from 'vitest';
-import { createSlackPlatform, SlackWritePathUnavailableError } from '../../../src/platform/slack/platform.js';
+import { createSlackPlatform } from '../../../src/platform/slack/platform.js';
+import { PermanentJobError } from '../../../src/jobs/errors.js';
 import { SLACK_REDISCOVERY_INTERVAL_MS } from '../../../src/platform/slack/discovery.js';
 import { createLogger } from '../../../src/logger.js';
 import { createTestDb } from '../../helpers/db.js';
@@ -36,7 +37,7 @@ describe('Slack platform', () => {
     }
   });
 
-  it('connects, learns its bot id, selects Slack links, and fails every send closed', async () => {
+  it('connects, learns its bot id, selects Slack links, and refuses a send to an unknown channel', async () => {
     const platform = createSlackPlatform(slackTestConfig(), logger, () => 1, { api: fakeSlackApi(), socket });
     const t = createTestDb();
     try {
@@ -44,7 +45,7 @@ describe('Slack platform', () => {
       expect(platform.selfUserId).toBe('U0000000002');
       expect(messageLink('T0000000001', 'C0000000001', 'C0000000001-1790933741.610379'))
         .toBe('https://acme.slack.com/archives/C0000000001/p1790933741610379');
-      await expect(platform.sender.send({ channelId: 'C0000000001', content: 'x' })).rejects.toBeInstanceOf(SlackWritePathUnavailableError);
+      await expect(platform.sender.send({ channelId: 'C0000000001', content: 'x' })).rejects.toBeInstanceOf(PermanentJobError);
       expect(platform.threadDiscovery).toEqual({ mode: 'complete_snapshot', rediscoveryIntervalMs: SLACK_REDISCOVERY_INTERVAL_MS });
       expect(SLACK_REDISCOVERY_INTERVAL_MS).toBe(15 * 60_000);
       await connection.destroy();

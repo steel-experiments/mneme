@@ -397,6 +397,20 @@ function containsDiscordJumpUrl(content: string): boolean {
 
 
 /**
+ * True when text contains a Slack URL or a `slack:` deep link, after the same
+ * entity and escape decoding as the Discord check. Model text never carries a
+ * Slack link; the host builds every one (Section 30.3).
+ */
+export function containsSlackLink(content: string): boolean {
+  const rendered = normalizeMarkdownUrlSyntax(content);
+  if (/slack:/iu.test(rendered)) return true;
+  for (const candidate of [rendered, decodeUrlComponent(rendered)]) {
+    if (/(?:^|[^a-z0-9-])(?:[a-z0-9-]+\.)*slack(?:-edge|-files)?\.com(?![a-z0-9-])/iu.test(candidate)) return true;
+  }
+  return false;
+}
+
+/**
  * Construct at most {@link MAX_SOURCE_LINKS} trusted masked source links from
  * cited message ids. Links are built solely from the resolved channel and the
  * run's guild — never from URLs the model placed in the message text. A message
@@ -540,6 +554,10 @@ export function sanitizeOutboundMessage(
 
   if (containsDiscordJumpUrl(input.content)) {
     reasons.push('message contains an untrusted Discord source link; cite message ids instead');
+  }
+
+  if (input.format.containsNativeLink?.(input.content)) {
+    reasons.push('message contains an untrusted platform source link; cite message ids instead');
   }
 
   const linkIds = input.sourceLinkMessageIds ?? [];

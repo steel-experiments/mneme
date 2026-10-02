@@ -1,5 +1,6 @@
 // ABOUTME: Slack text conventions for mention parsing (spec Section 24.5).
 // ABOUTME: Slack mentions are `<@U…>`, `<!subteam^S…>`, `<!channel>`, `<!everyone>`, and `<!here>`.
+import { containsSlackLink } from '../../outbound/message-safety.js';
 import type { ParsedMention, PlatformFormat } from '../types.js';
 
 const MENTION = /<@([UW][A-Z0-9]+)(?:\|[^>]*)?>|<!subteam\^([A-Z0-9]+)(?:\|[^>]*)?>|<!(channel|everyone|here)(?:\|[^>]*)?>/g;
@@ -18,4 +19,5 @@ export const slackFormat: PlatformFormat = {
   hasIndividualMention(content: string): boolean {
     return INDIVIDUAL.test(content);
   },
+  containsNativeLink: containsSlackLink,
 };
