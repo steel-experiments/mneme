@@ -5,6 +5,7 @@ import {
   getChannel,
   resolveCurrentChannelScope,
   resolveRetrievableChannelScope,
+  sourceLinkChannelLabel,
   type VisibilityClass,
 } from './db/repositories/channels.js';
 import { getMessage } from './db/repositories/messages.js';
@@ -933,8 +934,7 @@ export async function routeEpisodeIntervention(
     resolveLabel: (id) => {
       const current = resolveCurrentEvidenceMessage(id);
       if (!current) return undefined;
-      const channel = getChannel(ctx.db, current.stored.channel_id);
-      const channelLabel = channel?.name ? `#${channel.name}` : 'Discord';
+      const channelLabel = sourceLinkChannelLabel(ctx.db, current.stored.channel_id);
       return `${channelLabel} · ${new Date(current.stored.created_at_ms).toISOString().slice(0, 10)}`;
     },
   });

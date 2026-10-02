@@ -6,6 +6,7 @@ import {
   getChannel,
   resolveCurrentChannelScope,
   resolveRetrievableChannelScope,
+  sourceLinkChannelLabel,
   type VisibilityClass,
 } from '../../db/repositories/channels.js';
 import {
@@ -1358,8 +1359,7 @@ export function validateDirectAnswer(
   const resolveLabel: SourceLinkContext['resolveLabel'] = (id) => {
     const message = getMessage(db, id);
     if (!message) return undefined;
-    const channel = getChannel(db, message.channel_id);
-    const channelLabel = channel?.name ? `#${channel.name}` : 'Discord';
+    const channelLabel = sourceLinkChannelLabel(db, message.channel_id);
     return `${channelLabel} · ${new Date(message.created_at_ms).toISOString().slice(0, 10)}`;
   };
   const sanitized = sanitizeOutboundMessage(

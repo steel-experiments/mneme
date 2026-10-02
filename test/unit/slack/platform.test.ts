@@ -1,5 +1,5 @@
 // ABOUTME: Tests the Slack platform startup checks and connection identity (plan 006 steps 2 and 6).
-// ABOUTME: Slack starts only in observe mode with direct answers off; a foreign team token stops startup.
+// ABOUTME: Slack starts in any mode; a foreign team token stops startup, and sends fail closed for unknown channels.
 import { describe, it, expect } from 'vitest';
 import { createSlackPlatform } from '../../../src/platform/slack/platform.js';
 import { PermanentJobError } from '../../../src/jobs/errors.js';
@@ -14,14 +14,9 @@ const logger = createLogger({ level: 'silent' });
 const socket = { on: () => undefined, start: async () => undefined, disconnect: async () => undefined };
 
 describe('Slack platform', () => {
-  it('refuses a mode other than observe', () => {
-    expect(() => createSlackPlatform(slackTestConfig({ MNEME_MODE: 'review', MNEME_REVIEW_CHANNEL_ID: 'C0000000009' }), logger, () => 1))
-      .toThrow(/observe mode/);
-  });
-
-  it('refuses direct answers until the write path exists', () => {
-    expect(() => createSlackPlatform(slackTestConfig({ DIRECT_ANSWER_ENABLED: 'true' }), logger, () => 1))
-      .toThrow(/DIRECT_ANSWER_ENABLED=false/);
+  it('starts in review mode with direct answers on', () => {
+    expect(() => createSlackPlatform(slackTestConfig({ MNEME_MODE: 'review', MNEME_REVIEW_CHANNEL_ID: 'C0000000009',
+      DIRECT_ANSWER_ENABLED: 'true' }), logger, () => 1)).not.toThrow();
   });
 
   it('stops startup for a token from another workspace', async () => {

@@ -146,6 +146,17 @@ export function getChannel(db: DatabaseSync, id: string): ChannelRow | undefined
     | undefined;
 }
 
+/**
+ * The channel part of a source-link label: `#name`, or the parent's `#name`
+ * for a thread row without a name (Slack threads have none), else `Discord`.
+ */
+export function sourceLinkChannelLabel(db: DatabaseSync, channelId: string): string {
+  const channel = getChannel(db, channelId);
+  if (channel?.name) return `#${channel.name}`;
+  const parent = channel?.is_thread === 1 && channel.parent_id ? getChannel(db, channel.parent_id) : undefined;
+  return parent?.name ? `#${parent.name}` : 'Discord';
+}
+
 export interface CurrentChannelScope {
   /** The concrete Discord channel in which the message lives. */
   channelId: string;
