@@ -1,7 +1,8 @@
 // ABOUTME: Handles the Slack `/mneme` slash command (spec Section 27).
-// ABOUTME: The envelope is acknowledged first; team, channel, and admin checks run before the shared routes.
+// ABOUTME: The envelope is acknowledged first; team, channel, admin, and boundary checks run before the shared routes.
 import { getChannel } from '../../db/repositories/channels.js';
 import { runMnemeCommand, type CommandRouteDeps } from '../../commands/dispatcher.js';
+import { authorizeAdmin } from '../../policy/authorization.js';
 import { MNEME_SUBCOMMAND_GROUPS, MNEME_SUBCOMMANDS } from '../../commands/spec.js';
 import type { Logger } from '../../logger.js';
 import type { SlackObject } from './api.js';
@@ -28,6 +29,7 @@ export interface SlackCommandDeps {
 const CONVERSATION_INFO_TIMEOUT_MS = 5_000;
 
 const SHARED_REFUSAL = 'Use /mneme in a channel that is not shared with another organization.';
+const NOT_ADMIN_REFUSAL = 'You are not authorized to use Mneme commands.';
 
 export type SlackCommandOutcome = 'ignored' | 'refused' | 'help' | 'handled' | 'failed';
 
@@ -82,6 +84,13 @@ export async function handleSlackCommand(deps: SlackCommandDeps, envelope: Slack
     return 'help';
   }
   const actorUserId = str(body.user_id);
+  // Every /mneme route is admin-only. Refuse other users before the channel
+  // lookup, so they cannot spend the Slack rate limit or stall the event chain.
+  const memberRoleIds = actorUserId ? [actorUserId] : null;
+  if (!authorizeAdmin(memberRoleIds, deps.adminUserIds).authorized) {
+    await reply(NOT_ADMIN_REFUSAL);
+    return 'refused';
+  }
   try {
     // A channel shared with another organization never handles Mneme admin
     // commands. An unknown channel that cannot be checked is refused too.
@@ -92,7 +101,7 @@ export async function handleSlackCommand(deps: SlackCommandDeps, envelope: Slack
     // Slack has no roles: the actor's own user id stands in for its roles.
     const text = await runMnemeCommand(
       { channelId, options: slackOptionsReader(parsed) },
-      { actorUserId, guildId: deps.workspaceId, memberRoleIds: actorUserId ? [actorUserId] : null },
+      { actorUserId, guildId: deps.workspaceId, memberRoleIds },
       { ...deps.routes, adminIds: deps.adminUserIds },
     );
     await reply(text);
