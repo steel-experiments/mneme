@@ -128,6 +128,7 @@ export function createLiveIngestionDeps(ctx: BootstrapContext, self: string | ((
         isThread: input.isThread,
         kind: input.kind,
         platformBoundary: input.platformBoundary,
+        isPrivateThread: input.isPrivateThread,
       }, { channelPolicySource: ctx.config.channelPolicySource });
       const existing = getChannel(ctx.db, input.id);
       return {

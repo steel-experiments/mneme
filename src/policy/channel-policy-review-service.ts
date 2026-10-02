@@ -31,6 +31,11 @@ export interface ObservedChannelIdentity {
    * of the row; a thread also inherits its parent's stored boundary.
    */
   platformBoundary?: 'excluded' | null;
+  /**
+   * True for a platform private thread (Discord type 12). Omit it to use the
+   * stored value of the row.
+   */
+  isPrivateThread?: boolean;
 }
 
 /** The boundary that applies to a channel: its own, or its thread parent's (fail closed). */
@@ -57,6 +62,8 @@ function staticPolicyForIdentity(
     parentId: channel.isThread ? channel.parentId ?? undefined : undefined,
     categoryId: channel.categoryId
       ?? (channel.isThread ? parent?.parent_id ?? undefined : channel.parentId ?? undefined),
+    isPrivateThread: channel.isThread
+      && (channel.isPrivateThread ?? getChannel(db, channel.id)?.is_private_thread === 1),
   });
 }
 
@@ -215,5 +222,6 @@ export function rowIdentity(row: ChannelRow): ObservedChannelIdentity {
     isThread: row.is_thread === 1,
     kind: row.kind,
     platformBoundary: row.platform_boundary,
+    isPrivateThread: row.is_private_thread === 1,
   };
 }

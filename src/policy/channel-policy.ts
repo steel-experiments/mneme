@@ -39,7 +39,7 @@ export interface ChannelPolicy {
   review_channel?: ReviewChannel;
 }
 
-export type PolicySource = 'channel' | 'thread_parent' | 'category' | 'default';
+export type PolicySource = 'channel' | 'thread_parent' | 'private_thread' | 'category' | 'default';
 
 export interface ResolvedPolicy {
   rule: ChannelRule;
@@ -60,6 +60,8 @@ export interface ResolveContext {
   parentId?: string;
   /** Category id containing the channel (threads use their parent's category). */
   categoryId?: string;
+  /** True for a platform private thread (Discord type 12); it defaults to restricted. */
+  isPrivateThread?: boolean;
 }
 
 function isVisibility(v: unknown): v is VisibilityClass {
@@ -144,11 +146,18 @@ export function parseChannelPolicy(text: string): ChannelPolicy {
 /**
  * Resolve the effective policy for a channel following the documented order.
  * Threads inherit their parent channel's resolved class when no explicit thread
- * rule exists.
+ * rule exists. A private thread without an explicit rule never inherits `org`:
+ * it becomes `restricted`, and a narrower inherited class stays (Section 7.1).
  */
 export function resolveChannel(policy: ChannelPolicy, channelId: string, ctx: ResolveContext): ResolvedPolicy {
   const explicit = policy.channels.get(channelId);
   if (explicit) return { rule: explicit, source: 'channel' };
+
+  if (ctx.isThread && ctx.isPrivateThread) {
+    const inherited = resolveChannel(policy, channelId, { ...ctx, isPrivateThread: false });
+    if (inherited.rule.visibility !== 'org') return inherited;
+    return { rule: { ...inherited.rule, visibility: 'restricted' }, source: 'private_thread' };
+  }
 
   if (ctx.isThread && ctx.parentId) {
     const parentExplicit = policy.channels.get(ctx.parentId);

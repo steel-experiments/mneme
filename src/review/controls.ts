@@ -269,6 +269,7 @@ export function applyChannelPolicyReviewDecision(input: {
       isThread: channel.is_thread === 1,
       parentId: channel.is_thread === 1 ? channel.parent_id ?? undefined : undefined,
       categoryId: channel.is_thread === 1 ? parent?.parent_id ?? undefined : channel.parent_id ?? undefined,
+      isPrivateThread: channel.is_thread === 1 && channel.is_private_thread === 1,
     }) : undefined;
     const valid = review.status === 'pending'
       && review.workspace_id === input.guildId
