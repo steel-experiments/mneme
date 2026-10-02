@@ -1,6 +1,7 @@
-# Mneme for Discord
+# Mneme
 
-Mneme is a quiet organizational-memory agent for one Discord server. It
+Mneme is a quiet organizational-memory agent for one Discord server or one
+Slack workspace (one platform for each deployment). It
 reads the channels an organization explicitly permits, groups conversation
 into episodes, and extracts durable memories such as decisions, assumptions,
 predictions, risks, open questions, and commitments. Most of the time it says
@@ -10,7 +11,7 @@ an interruption worthwhile.
 
 ## Start
 
-- [Quickstart](tutorials/getting-started.md): from a Discord application to a
+- [Quickstart](tutorials/getting-started.md): from a Discord or Slack app to a
   safe observe-mode deployment and your first cited answer.
 - [Deploy with Docker](how-to/deploy.md): run the released image with Docker
   Compose.
@@ -31,13 +32,13 @@ an interruption worthwhile.
   provider, and what deletion does.
 - [Security](security.md)
 - [Troubleshooting](how-to/troubleshooting.md)
-- [Use Mneme in Discord](how-to/use-mneme.md)
+- [Use Mneme](how-to/use-mneme.md)
 - [Connect an MCP client](how-to/connect-mcp-clients.md)
 
 ## Reference
 
 - [Configuration](reference/configuration.md)
-- [Discord commands](reference/discord-commands.md)
+- [Command reference](reference/commands.md)
 - [HTTP and MCP](reference/http-and-mcp.md)
 - [VM requirements](reference/vm-requirements.md)
 - [Architecture](explanation/architecture.md)

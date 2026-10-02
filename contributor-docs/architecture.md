@@ -9,13 +9,14 @@ its spec area.
 ## One process
 
 Mneme is one long-running Node.js process with three external boundaries:
-the Discord gateway, a model provider, and one HTTP server. There is no queue
+one chat platform (the Discord gateway or Slack Socket Mode), a model provider,
+and one HTTP server. There is no queue
 service, no cache, no sidecar, and no second writer. Recovery comes from durable
 state and reconciliation, not from replicas. A deployment runs exactly one
 process against one database (`src/bootstrap.ts`, `src/main.ts`).
 
 Startup is ordered to avoid message gaps: open SQLite and migrate, start the
-HTTP server, compile prompts and validate policy, register Discord handlers,
+HTTP server, compile prompts and validate policy, register platform handlers,
 connect the gateway, register commands, discover channels and threads, queue
 backfill, then start job workers. If startup fails after a resource is
 acquired, bootstrap unwinds in reverse.
@@ -64,7 +65,7 @@ review-episode, review-due-memories, rescope-memories, direct-answer,
 deep-recap, backup-database, maintenance, forget-user, attachment archive and
 purge, expire-proposals, and historical episode builds.
 
-Discord delivery is separate: approved proposals go to an outbox first, and the
+Chat delivery is separate: approved proposals go to an outbox first, and the
 outbox worker sends them (`src/outbox/`). Crash recovery reconciles the
 `sending` state so a crash cannot duplicate a message.
 
@@ -105,7 +106,7 @@ forbidden tool fails the whole run: fail closed.
 Model admission (`src/agent/model-admission.ts`) splits work into `direct_answer`
 and `background` classes and bounds how long an interactive request may wait
 for a provider slot. The budget gate (`src/agent/budget.ts`) enforces the daily
-USD admission limit and a provider outage window. Discord ingestion never
+USD admission limit and a provider outage window. Chat ingestion never
 depends on the provider: an outage or an exhausted budget pauses model work
 only, and recovery is automatic.
 
@@ -120,7 +121,7 @@ not discoverable.
 | `/livez`, `/readyz` | none, minimal output | `src/http/health.ts` |
 | `/status` | admin bearer token (`HTTP_ADMIN_TOKEN`); 404 while unset | `src/http/status.ts` |
 | `/mcp` | scoped MCP bearer token, hashed at rest, rate-limited | `src/mcp/` |
-| OAuth discovery, `/authorize`, `/token` | RFC 9728/8414 metadata, Discord sign-in, PKCE | `src/mcp/oauth/` |
+| OAuth discovery, `/authorize`, `/token` | RFC 9728/8414 metadata, Discord or Slack sign-in, PKCE | `src/mcp/oauth/` |
 | Inspector | its own hashed bearer token, read-only pages | `src/http/inspector/` |
 
 ## Failure posture
@@ -132,7 +133,7 @@ not discoverable.
   is recorded, not treated as an error.
 - **Forward-only migrations.** No down path. State moves one direction, so an
   upgrade is a deliberate operator action.
-- **One writer.** The singleton rule is load-bearing: one Discord client, one
+- **One writer.** The singleton rule is load-bearing: one platform connection, one
   job runtime, one HTTP server, one SQLite writer.
 
 ## Source map
@@ -146,7 +147,7 @@ not discoverable.
 | `src/commands/` | admin command handlers (platform-neutral) |
 | `src/ingestion/` | ingest, discovery, backfill, reconcile, sync, threads, attachments |
 | `src/outbound/` | outbound message safety |
-| `src/platform/` | platform-neutral types; `src/platform/discord/` holds the Discord client, normalization, cards, and command UI |
+| `src/platform/` | platform-neutral types and the selector; `src/platform/discord/` holds the Discord client, normalization, cards, and command UI; `src/platform/slack/` holds the Socket Mode connection, discovery, normalization, history, mrkdwn conversion, sender, Block Kit cards, the `/mneme` text parser, Sign in with Slack, and the file fetcher |
 | `src/policy/` | channel policy, policy reviews, admin authorization |
 | `src/episodes/` | episode build, prefilter, repository |
 | `src/http/`, `src/mcp/` | HTTP server, health, status, Inspector, MCP, OAuth |

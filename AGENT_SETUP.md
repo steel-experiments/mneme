@@ -1,9 +1,9 @@
 # Set up Mneme with an AI coding agent
 
 This is the installation runbook for an AI coding agent helping a person set up
-Mneme for Discord. Follow it in order. Stay with the person until Mneme
-is deployed, connected to Discord, and verified, or until you can name the exact
-external action that blocks progress.
+Mneme on Discord or Slack. Follow it in order. Stay with the person until
+Mneme is deployed, connected to the chat platform, and verified, or until you
+can name the exact external action that blocks progress.
 
 The canonical repository is
 <https://github.com/steel-experiments/mneme>. The default install
@@ -21,9 +21,12 @@ Do not call the installation complete until all of these are true:
 - the hosting platform reports the `/readyz` health check as ready;
 - on Railway, the deployment being verified has reached `SUCCESS`, not merely
   `QUEUED` or `DEPLOYING`;
-- Mneme appears online in the intended Discord server;
-- `/mneme status` and `/mneme channels` work for a member with the
-  configured admin role;
+- Mneme appears online in the intended Discord server or Slack workspace;
+- `/mneme status` and `/mneme channels` work for an admin (Discord: a member
+  with a role in `MNEME_ADMIN_ROLE_IDS`; Slack: a user in
+  `MNEME_ADMIN_USER_IDS`);
+- on Slack, the bot is a member of exactly the channels that the person chose,
+  and no Slack Connect channel shows as ingested;
 - the reported channel selection matches the person's choices;
 - Mneme is in `observe` mode;
 - the person knows whether historical backfill is complete or still running;
@@ -32,14 +35,15 @@ Do not call the installation complete until all of these are true:
 
 ## Rules for the setup agent
 
-1. Never ask the person to paste a Discord token or model-provider API key into
-   chat. Have them enter secrets directly into Railway's variable form or a
+1. Never ask the person to paste a Discord token, a Slack token (`xoxb-` or
+   `xapp-`), or a model-provider API key into chat. Have them enter secrets directly into Railway's variable form or a
    user-controlled secret prompt. Never print, list, or read secret values back.
 2. Do not put secrets in a tracked file, a command argument, a commit, or a pull
    request. A local `.env` is acceptable only for a local installation; it is
    ignored by Git and must remain local.
 3. Ask for human input in small, related groups. Explain where to find an ID
-   before asking for it. Discord IDs are not secrets; tokens and API keys are.
+   before asking for it. Discord and Slack IDs are not secrets; tokens and API
+   keys are.
 4. Keep `MNEME_MODE=observe` for the first installation. Do not enable
    review or autonomous posting during setup.
 5. Fail closed on channel selection. If the person is unsure whether a channel
@@ -85,6 +89,10 @@ repository's raw `main` URLs and continue with the template path.
 
 ## 2. Establish the install choices
 
+First ask which chat platform this deployment serves: **Discord** or
+**Slack**. One deployment serves one platform. Set `MNEME_PLATFORM` to the
+answer, and follow only that platform's branch in the steps below.
+
 Use these defaults unless the person asks for something else:
 
 - hosting: Railway template;
@@ -97,10 +105,13 @@ Use these defaults unless the person asks for something else:
 If the person asks for Docker, a native Node.js install, or another host, follow
 `docs/tutorials/getting-started.md` and `docs/how-to/deploy.md` instead of the
 Railway sections below. Preserve the same secret-handling, singleton, observe
-mode, channel-scope, Discord verification, and privacy-notice requirements.
+mode, channel-scope, platform verification, and privacy-notice requirements.
 
 Collect the following non-secret decisions and IDs. Discord exposes **Copy ID**
-after the person enables Developer Mode under User Settings → Advanced.
+after the person enables Developer Mode under User Settings → Advanced. On
+Slack, the workspace (team) id is in the browser address of Slack on the web, a
+user id is under the profile's **More** menu (**Copy member ID**), and a
+channel id is at the bottom of the channel details.
 
 | Item | What to establish |
 | --- | --- |
@@ -108,7 +119,9 @@ after the person enables Developer Mode under User Settings → Advanced.
 | Discord server | Server ID for `DISCORD_GUILD_ID` |
 | Discord application | Application ID for `DISCORD_APPLICATION_ID` |
 | Admin role | A role ID for `MNEME_ADMIN_ROLE_IDS` |
-| Organization-visible sources | Channel or category IDs whose contents may support answers in other organization-visible channels |
+| Slack workspace (Slack only, instead of the three Discord rows) | Team ID for `SLACK_TEAM_ID` |
+| Slack admins (Slack only) | User IDs for `MNEME_ADMIN_USER_IDS`; at least one |
+| Organization-visible sources | Channel or category IDs (Slack: channel IDs only) whose contents may support answers in other organization-visible channels |
 | Restricted sources | Channel or category IDs whose contents must stay inside that channel family |
 | Initial history | `FULL_HISTORY=true` to import reachable history, or `false` to start with new messages |
 
@@ -121,7 +134,9 @@ Make the `FULL_HISTORY` tradeoff explicit. A large server can take time and
 model spend to process after a full import; starting from new messages is faster
 but does not create organizational memory from earlier conversations.
 
-## 3. Guide the Discord setup
+## 3. Guide the chat app setup
+
+### Discord
 
 Have the person complete these browser-only steps in the
 [Discord Developer Portal](https://discord.com/developers/applications):
@@ -141,6 +156,30 @@ Have the person complete these browser-only steps in the
 8. Create a text channel named `mneme-test` for the final direct-reply
    check. Keep it out of both channel-selection lists.
 
+### Slack
+
+Have the person complete these browser-only steps at
+[api.slack.com/apps](https://api.slack.com/apps):
+
+1. **Create New App** → **From a manifest** → the intended workspace. Paste
+   `config/slack-app-manifest.yml` from this checkout. Remove the
+   `redirect_urls` block unless MCP OAuth is part of this installation.
+2. Do not turn on public distribution. Mneme must stay an internal app: a
+   distributed app gets much lower history rate limits and falls under other
+   Slack API Terms.
+3. **Basic Information** → **App-Level Tokens**: generate a token with
+   `connections:write`, and place the `xapp-` token directly into a password
+   manager or the Railway secret field.
+4. **Install App** → install to the workspace. Place the **Bot User OAuth
+   Token** (`xoxb-`) the same way. Do not ask to see either token.
+5. In each selected channel, the person types `/invite @Mneme`. The invite is
+   the consent; Mneme never joins a channel itself. Do not select a channel
+   that is shared with another organization (Slack Connect): Mneme always
+   excludes it.
+6. Create a private review channel if one is planned, and a channel named
+   `mneme-test` for the final direct-reply check. Invite the bot to both. Keep
+   them out of both channel-selection lists.
+
 Pause only for browser authentication, MFA, consent, or secret entry that the
 person must perform. Resume the setup as soon as that action is complete.
 
@@ -150,9 +189,10 @@ Open <https://railway.com/template/mneme>. The template should
 create one service from the released image and one volume mounted at
 `/app/data`.
 
-Have the person enter the two secrets directly in Railway:
+Have the person enter the secrets directly in Railway:
 
-- `DISCORD_TOKEN`
+- Discord: `DISCORD_TOKEN`
+- Slack: `SLACK_BOT_TOKEN` and `SLACK_APP_TOKEN`
 - `OPENAI_API_KEY` for the default provider
 
 Then fill in the non-secret values established earlier:
@@ -170,6 +210,11 @@ FULL_HISTORY
 LLM_DAILY_BUDGET_USD=2
 ```
 
+For Slack, use `MNEME_PLATFORM=slack`, replace the three Discord rows and
+`MNEME_ADMIN_ROLE_IDS` with `SLACK_TEAM_ID` and `MNEME_ADMIN_USER_IDS`, and
+remove the Discord variables that the template created. See
+[Deploy for Slack](docs/how-to/railway.md#deploy-for-slack).
+
 Leave an empty restricted list unset if Railway rejects an empty value. Do not
 set `MNEME_MODE`; its default is `observe`. Do not add a pre-deploy command.
 
@@ -179,7 +224,7 @@ Before deploying, inspect the template summary with the person and confirm:
 - there is one volume mounted at `/app/data`;
 - the service is configured for one replica;
 - the health check path is `/readyz`;
-- the required values are present and the two secret fields are masked.
+- the required values are present and the secret fields are masked.
 
 If the person chooses Anthropic or Google instead, set `LLM_PROVIDER` and the
 matching provider key described in `.env.example`; do not also require an
@@ -232,7 +277,7 @@ Do not run or display `railway variable list`; its output formats can include ra
 values. The application's readiness and Discord checks provide safer validation
 of the configuration.
 
-## 6. Verify Railway and Discord
+## 6. Verify Railway and the chat platform
 
 Use Railway's structured status commands and follow the exact deployment that
 the template created:
@@ -250,22 +295,23 @@ crashes, inspect that deployment's build and runtime logs, correct the named
 configuration issue, redeploy, and then follow the replacement deployment ID
 until it reaches `SUCCESS`.
 
-The service does not need a public domain for Discord or for Railway's health
-check. If it already has a public domain, an additional readiness check is:
+The service does not need a public domain for Discord, for Slack Socket Mode,
+or for Railway's health check. If it already has a public domain, an additional readiness check is:
 
 ```bash
 curl --fail https://<railway-domain>/readyz
 ```
 
-In Discord, have a member with the configured admin role run:
+Have an admin run, in a channel (not in a Slack thread):
 
 ```text
 /mneme status
 /mneme channels
 ```
 
-Verify that the Gateway and model are healthy, the mode is `observe`, and only
-the intended channels are ingesting. Missing permissions must be fixed before
+Verify that the platform connection and model are healthy, the mode is
+`observe`, and only the intended channels are ingesting. On Slack, check that no
+channel shared with another organization is ingesting. Missing permissions must be fixed before
 continuing. If `FULL_HISTORY=true`, `/mneme status` may show a backfill in
 progress; record that clearly rather than presenting partial coverage as final.
 
@@ -312,8 +358,10 @@ Never include secret values in the handoff.
 | `CHANNEL_POLICY_SOURCE=basic needs at least one id` | Add at least one channel or category to one selection list. |
 | `An invalid token was provided` | Have the person reset and replace `DISCORD_TOKEN` directly in Railway. |
 | Bot is offline | Check the deployment state, runtime logs, token, and Message Content Intent. |
-| Slash commands deny access | Confirm the caller has a role listed in `MNEME_ADMIN_ROLE_IDS`. |
-| A channel is absent | Check its selection list and the bot's View Channel and Read Message History permissions. |
+| Slash commands deny access | Discord: confirm the caller has a role listed in `MNEME_ADMIN_ROLE_IDS`. Slack: confirm the caller's user ID is in `MNEME_ADMIN_USER_IDS`. |
+| A channel is absent | Check its selection list. Discord: the bot's View Channel and Read Message History permissions. Slack: that the bot was invited to the channel. |
+| Slack: `invalid_auth` or `missing_scope` at startup | Have the person check both tokens in Railway, and that the app was created from the manifest and reinstalled after any scope change. |
+| Slack: a channel shows as excluded | It is or was shared with another organization (Slack Connect). This is permanent by design. |
 | Answers find nothing | Check sync progress, channel scope, requested time window, and whether matching content exists. |
 | Data disappears after a redeploy | Stop and verify that the volume is still mounted at `/app/data` before doing anything else. |
 

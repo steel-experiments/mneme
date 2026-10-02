@@ -142,6 +142,20 @@ effort, date, and commit hash. Use the model and reasoning effort named in
 | SIGTERM performs graceful shutdown | `test/integration/shutdown.test.ts` — "runs the coordinator and exits zero on SIGTERM"; "ShutdownCoordinator — full ordered sequence"; "ignores a repeated signal (idempotent coordinator)"; "leaves an unfinished job recoverable when the drain deadline elapses" |
 | Only one replica is active | `test/integration/compose.test.ts` — "defines exactly one application service"; `test/unit/railway.test.ts` — "declares no replica count" |
 
+## Slack
+
+| Criterion | Tests that must pass |
+| --- | --- |
+| The manifest equals the adapter scopes and events (plan 010) | `test/unit/slack/manifest.test.ts` — "requests exactly the bot scopes that the adapter uses"; "subscribes to exactly the bot events that the adapter handles"; "requests no forbidden scope" |
+| Member-only discovery and the Slack Connect boundary (plan 006) | `test/integration/slack/discovery.test.ts` — "stores a member channel and leaves a non-member channel out"; "excludes a Slack Connect channel and its threads with source platform_boundary"; "keeps a channel excluded after it stops being shared"; "excludes a channel that became pending-shared in the periodic rediscovery, with no event" |
+| Live events, threads, and share evidence (plan 006) | `test/integration/slack/live-events.test.ts` — "creates the thread row on the first reply and stores replies in it"; "stores a broadcast reply once, in the thread, and ignores the repeat update"; "excludes a known channel when an edit carries a message from another team" |
+| Backfill and reconcile commit nothing from a shared channel (plan 006) | `test/integration/slack/backfill.test.ts` — "does not commit a page fetched before the channel became shared"; "excludes the channel and commits nothing when a channel page has a message from another team" |
+| Outbound text never pings (plan 007) | `test/unit/slack/mrkdwn.test.ts` — "never keeps a user token live"; `test/unit/slack/sanitize.test.ts` |
+| The sender refuses unsafe targets and recovers without a duplicate (plan 007) | `test/integration/slack/outbox.test.ts` — "refuses a Slack Connect channel and its threads and posts nothing"; "replies to a top-level anchor in a new thread under the anchor" |
+| Commands check team, channel, and admin (plan 007) | `test/integration/slack/commands.test.ts` — "refuses another workspace"; "refuses a channel shared with another organization"; "refuses a non-admin before it looks up an unknown channel" |
+| Sign in with Slack admits only admins of the workspace (plan 008) | `test/unit/slack/oauth-identity.test.ts` — "refuses a person from another workspace, even with an admin user id"; "authorizes nobody when no admin is configured" |
+| The bot token goes only to `files.slack.com` (plan 009) | `test/unit/slack/fetch-bytes.test.ts` — "sends the bearer token to files.slack.com and returns the bytes"; "follows a redirect to a Slack edge host without the token"; "refuses an HTML page with a hint about the files:read scope" |
+
 ## Standing evidence
 
 This document makes no claim about the current state of any criterion. The

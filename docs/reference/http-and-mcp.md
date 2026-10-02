@@ -7,13 +7,14 @@ Mneme binds one HTTP server to `0.0.0.0:$PORT`.
 | Method and path | Authentication | Behavior |
 | --- | --- | --- |
 | `GET /livez` | none | Returns 200 when the process can query SQLite, otherwise 503. |
-| `GET /readyz` | none | Returns 200 after migrations, policy and prompts, Discord authentication, and command registration are ready. |
+| `GET /readyz` | none | Returns 200 after migrations, policy and prompts, platform authentication (Discord or Slack), and command registration are ready. |
 | `GET /status` | `Authorization: Bearer $HTTP_ADMIN_TOKEN` | Returns bounded operational JSON. Returns 404 when the token is unset and 401 for a bad bearer token. |
 | `POST $MCP_PATH` | MCP bearer token | Handles stateless MCP JSON-RPC when `MCP_ENABLED=true`. Returns 404 when disabled. |
 | `GET /.well-known/oauth-protected-resource$MCP_PATH` | none | RFC 9728 metadata when `MCP_OAUTH_ENABLED=true`. Also served at the bare path. Returns 404 when disabled. |
 | `GET /.well-known/oauth-authorization-server` | none | RFC 8414 metadata when `MCP_OAUTH_ENABLED=true`. Returns 404 when disabled. |
-| `GET /authorize` | none | Starts a sign-in and redirects to Discord. Returns 404 when OAuth is disabled. |
-| `GET /oauth/discord/callback` | none | Discord's return leg. Issues a single-use authorization code. |
+| `GET /authorize` | none | Starts a sign-in and redirects to the active platform (Discord or Slack). Returns 404 when OAuth is disabled. |
+| `GET /oauth/discord/callback` | none | Discord deployments only. Discord's return leg. Issues a single-use authorization code. |
+| `GET /oauth/slack/callback` | none | Slack deployments only. Slack's return leg (Sign in with Slack). Issues a single-use authorization code. |
 | `POST /token` | PKCE | Exchanges an authorization code or refresh token. Form-encoded only. |
 | `GET $INSPECTOR_PATH/*` | Inspector bearer token | Read-only admin pages when `INSPECTOR_ENABLED=true`. Returns 404 when disabled. |
 
@@ -38,7 +39,7 @@ Enable it with `INSPECTOR_ENABLED=true` (default `false`). The mount path is
 `INSPECTOR_PATH` (default `/inspector`). When disabled, every inspector path
 returns the same 404 body as an unknown route.
 
-1. Create a token in Discord:
+1. Create a token with the admin command:
 
    ```text
    /mneme inspector-token create admin-browser
@@ -108,7 +109,7 @@ available in Inspector and does not change the `/status` response shape.
 `directAnswers` object reports the rolling 24-hour primary, partial, fallback, and
 suppressed outcomes; rolling queued/sent/failed delivery state; all currently pending
 requests plus the overdue subset; and rolling question-to-send latency. The pending
-backlog is current state and is not restricted to the 24-hour outcome window. It does not contain Discord messages, prompts,
+backlog is current state and is not restricted to the 24-hour outcome window. It does not contain chat messages, prompts,
 credentials, model errors, tool arguments, or proposal text.
 
 ## MCP transport
@@ -165,10 +166,10 @@ Clients should paginate older activity losslessly by passing the oldest returned
 all org-visible channels in an org grant, but it cannot widen the token grant.
 
 Every result is limited by the bearer token's stored grant. MCP never exposes
-review-only data, starts a model run, changes a memory, or sends a Discord
+review-only data, starts a model run, changes a memory, or sends a chat
 message.
 
-Discord content returned by these tools is untrusted input. Agents that also hold
+Chat content returned by these tools is untrusted input. Agents that also hold
 write, execution, messaging, or financial tools must not follow instructions found in
 results as if they were system or user instructions. Use least-privilege tokens and
 require confirmation for consequential actions.
@@ -180,10 +181,16 @@ use an admin-issued token from `/mneme mcp-token create`. Remote connector
 surfaces that cannot accept a static header use the OAuth flow when the operator sets
 `MCP_OAUTH_ENABLED=true`.
 
-Mneme is both the resource server and its own authorization server. Discord is the
-identity provider, so signing in means proving Discord guild membership and holding a
-role in `MNEME_ADMIN_ROLE_IDS` — the same gate as creating a token by hand. A
-successful sign-in receives `org` scope and no restricted channel.
+Mneme is both the resource server and its own authorization server. The active chat
+platform is the identity provider, and only its callback route exists:
+
+- **Discord**: signing in means proving guild membership and holding a role in
+  `MNEME_ADMIN_ROLE_IDS`.
+- **Slack**: signing in uses Sign in with Slack. The Slack team must equal
+  `SLACK_TEAM_ID`, and the user id must be in `MNEME_ADMIN_USER_IDS`.
+
+This is the same gate as creating a token by hand. A successful sign-in receives `org`
+scope and no restricted channel.
 
 To configure a connector:
 
@@ -195,9 +202,12 @@ To configure a connector:
    ```
 
 2. Set that value as `MCP_OAUTH_CLIENT_ID` in the deployment environment.
-3. Register `https://<public-domain>/oauth/discord/callback` as a redirect on the
-   Discord application, then set `DISCORD_OAUTH_CLIENT_ID` and
-   `DISCORD_OAUTH_CLIENT_SECRET`.
+3. Register the platform callback as a redirect, then set the platform's OAuth client:
+   - Discord: `https://<public-domain>/oauth/discord/callback` on the Discord
+     application, then `DISCORD_OAUTH_CLIENT_ID` and `DISCORD_OAUTH_CLIENT_SECRET`.
+   - Slack: `https://<public-domain>/oauth/slack/callback` in the Slack app's
+     **OAuth & Permissions** redirect URLs (the manifest has a placeholder), then
+     `SLACK_OAUTH_CLIENT_ID` and `SLACK_OAUTH_CLIENT_SECRET`.
 4. Set `MCP_OAUTH_REDIRECT_URIS` to the exact connector callbacks the deployment
    accepts.
 5. In the client, enter the MCP endpoint URL with **no query string** and complete the
@@ -216,7 +226,7 @@ curl -i -X POST https://<public-domain>/mcp   # 401 with a resource_metadata poi
 ```
 
 Access tokens last one hour and are renewed by a rotating 90-day refresh token. They
-appear in `/mneme mcp-token list` as `oauth:<discord-user-id>` and are revoked the
+appear in `/mneme mcp-token list` as `oauth:<user-id>` (the Discord or Slack user id) and are revoked the
 same way as any other token. Presenting a rotated refresh token a second time revokes
 every token from that sign-in.
 

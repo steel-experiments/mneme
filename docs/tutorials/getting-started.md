@@ -1,18 +1,23 @@
 # Install Mneme
 
-This tutorial takes a new Discord server from no bot to a Mneme instance in
-`observe` mode. Observe mode ingests and reviews conversations but does not send
-unsolicited messages.
+This tutorial takes a new Discord server or Slack workspace from no bot to a
+Mneme instance in `observe` mode. Observe mode ingests and reviews
+conversations but does not send unsolicited messages. One deployment serves one
+platform. Follow the Discord or the Slack part of each step.
 
 ## What you need
 
-- a Discord server where you can manage applications and roles
 - Docker with Compose, or Node.js 24
 - an API key for OpenAI, Anthropic, or Google
-- the Discord IDs for the server, application, admin role, and any channels or
+- **Discord**: a server where you can manage applications and roles, and the
+  Discord IDs for the server, application, admin role, and any channels or
   categories you will name in the channel selection or policy
+- **Slack**: a workspace where you can create and install apps, your own Slack
+  user id, the workspace (team) id, and the ids of the channels you will name
 
-## 1. Create the Discord application
+## 1. Create the chat app
+
+### Discord
 
 Open the [Discord Developer Portal](https://discord.com/developers/applications)
 and create an application.
@@ -33,9 +38,7 @@ Mneme requests these gateway intents:
 
 It does not request presence or the full guild-member intent.
 
-## 2. Create a least-privilege role
-
-Create a dedicated Mneme role. Grant it:
+Then create a dedicated Mneme role. Grant it:
 
 - View Channel
 - Read Message History
@@ -52,6 +55,48 @@ Apply the role at the category level. Explicitly deny access to excluded or
 legally sensitive categories. Mneme can only ingest channels where it has
 both View Channel and Read Message History.
 
+### Slack
+
+Create the app in your own workspace from the manifest in this repository:
+
+1. Open [api.slack.com/apps](https://api.slack.com/apps), select **Create New
+   App**, then **From a manifest**, and select your workspace.
+2. Paste `config/slack-app-manifest.yml`. If you use MCP OAuth, replace
+   `mneme.example.com` with your public base URL; if not, remove the
+   `redirect_urls` block. Create the app.
+3. On **Basic Information**, under **App-Level Tokens**, generate a token with
+   the `connections:write` scope. This is the `xapp-` token for Socket Mode.
+4. Open **Install App** and install the app to the workspace. Copy the **Bot
+   User OAuth Token** (`xoxb-`). Store both tokens in a secret manager.
+5. Find the ids: the workspace (team) id starts with `T` and is in the browser
+   address when you open Slack on the web; your user id is in your profile
+   (**More**, then **Copy member ID**); a channel id is at the bottom of the
+   channel details.
+
+Do not turn on public distribution for this app. Mneme is an internal app that
+each team creates in its own workspace:
+
+- An internal app keeps the normal (Tier 3) rate limits for reading history. A
+  distributed app that is not in the Slack Marketplace is limited to one
+  history request per minute and 15 messages per request, which makes a
+  backfill impossible.
+- The Slack API Terms put extra rules on apps that are offered to other
+  organizations. Mneme is not built or reviewed for that use.
+
+The manifest requests only the scopes that Mneme uses. It does not request
+`channels:join`, so Mneme cannot add itself to a channel, and it does not
+request any scope that reads direct messages.
+
+## 2. Plan the admin and review setup
+
+- **Discord**: admins are the members with one of the roles in
+  `MNEME_ADMIN_ROLE_IDS`.
+- **Slack**: Slack has no roles. Admins are the users in
+  `MNEME_ADMIN_USER_IDS`. List at least one user id; startup fails without one.
+
+Choose a private review channel that only admins can read, for example
+`#mneme-review`. Mneme posts review cards there.
+
 ## 3. Create the environment file
 
 Copy the template:
@@ -60,7 +105,9 @@ Copy the template:
 cp .env.example .env
 ```
 
-`.env.example` is the short first-run template. Set at least these values:
+`.env.example` is the short first-run template. Set at least these values.
+
+For Discord:
 
 ```dotenv
 MNEME_PLATFORM=discord
@@ -76,6 +123,24 @@ MNEME_ADMIN_ROLE_IDS=<admin-role-id>
 
 ORG_VISIBLE_CHANNEL_IDS=<org-channel-or-category-ids>
 RESTRICTED_CHANNEL_IDS=<restricted-channel-or-category-ids>
+```
+
+For Slack:
+
+```dotenv
+MNEME_PLATFORM=slack
+SLACK_BOT_TOKEN=replace-me
+SLACK_APP_TOKEN=replace-me
+SLACK_TEAM_ID=<team-id>
+MNEME_ADMIN_USER_IDS=<your-user-id>
+OPENAI_API_KEY=replace-me
+
+ORG_NAME=Example Company
+ORG_TIMEZONE=UTC
+MNEME_MODE=observe
+
+ORG_VISIBLE_CHANNEL_IDS=<org-channel-ids>
+RESTRICTED_CHANNEL_IDS=<restricted-channel-ids>
 ```
 
 `LLM_PROVIDER` and `LLM_MODEL` default to `openai` and `gpt-5.6-terra`. Set
@@ -106,6 +171,18 @@ environment:
 Each id names one channel or one category. A category id classifies the
 channels inside it. Selected channels ingest with interventions off. Channels
 not in either list do not ingest. Threads inherit their parent channel's rule.
+
+On Slack:
+
+- Slack has no categories. Use channel ids.
+- Invite the bot to each channel that you select: type `/invite @Mneme` in the
+  channel. The invite is the consent. Mneme never joins a channel itself, and
+  it cannot read a private channel until someone invites it.
+- A channel that is shared with another organization (Slack Connect) is always
+  excluded. No list or policy rule changes this. A channel that was shared
+  once stays excluded, also after the share ends, because its history contains
+  the other organization's messages.
+- Mneme does not read direct messages or group direct messages.
 
 For full control, set `CHANNEL_POLICY_SOURCE=file` and edit the synthetic
 sample at `config/channel-policy.yml`. Start conservatively:
@@ -191,8 +268,7 @@ Wait for `/readyz` to return 200:
 curl --fail http://localhost:3000/readyz
 ```
 
-Then run these ephemeral Discord commands as a member with a configured admin
-role:
+Then run these commands as an admin. Only you see the replies:
 
 ```text
 /mneme status
@@ -201,28 +277,30 @@ role:
 
 Compare the channel list with your selection lists or policy file. Check that:
 
-- the gateway is ready and the model is healthy;
+- the platform connection is ready and the model is healthy;
 - the build revision is the one you deployed;
 - unselected or excluded channels do not appear as ingestible, and missing
   permissions are reported;
 - backfill and campaign work are either complete or visibly progressing.
 
 If `FULL_HISTORY=true`, let the backfill queue drain before judging memory
-coverage. Mneme stores live gateway events while the historical backfill is
+coverage. Mneme stores live events while the historical backfill is
 running. When source channels have not synced yet, conversational answers are
 incomplete even when Mneme itself is healthy.
 
 ## 8. Verify your first answer
 
-Use a dedicated Discord channel as a safe console for this check. Ten minutes
-is usually enough to verify the happy path.
+Use a dedicated channel as a safe console for this check. Ten minutes is
+usually enough to verify the happy path.
 
-Create a text channel named `mneme-test` and let Mneme:
+Create a text channel named `mneme-test`. On Discord, let Mneme:
 
 - View Channel
 - Read Message History
 - Send Messages
 - Use Application Commands
+
+On Slack, type `/invite @Mneme` in the channel.
 
 Mneme treats any channel whose name contains `mneme`,
 case-insensitively, as a test console. Ordinary messages in it are not
@@ -235,7 +313,7 @@ With `CHANNEL_POLICY_SOURCE=basic`, leave the console out of both selection
 lists: an unselected channel does not ingest, and its visibility is also
 restricted, so ask the memory and catch-up questions from an org-visible
 channel. The console itself only confirms that Mneme answers mentions. With a file policy, give the
-console an explicit rule. Replace the example ID with the Discord channel ID:
+console an explicit rule. Replace the example ID with the channel ID:
 
 ```yaml
 channels:
@@ -249,7 +327,7 @@ channels:
 other channels. It does **not** grant access to restricted, review-only,
 excluded, deleted, or ingestion-disabled sources. Deploy or reload the
 channel policy, then make sure the bot appears online, and send these as
-normal Discord mentions, one at a time:
+normal mentions, one at a time:
 
 ```text
 @Mneme hi
@@ -281,10 +359,14 @@ channel visibility when the result is unexpected. When a check fails,
 [Troubleshooting](../how-to/troubleshooting.md) maps each symptom to its
 cause.
 
-Mneme does not answer questions in DMs. An inbound DM receives one fixed
-notice that directs the sender back to an explicit server mention; repeated
-DMs from the same sender are limited to one notice per 24 hours. DM content
-is not ingested, stored, logged, or sent to the model.
+Mneme does not answer questions in DMs. On Discord, an inbound DM receives one
+fixed notice that directs the sender back to an explicit server mention;
+repeated DMs from the same sender are limited to one notice per 24 hours. On
+Slack, the app's Messages tab is read-only, so nobody can send Mneme a DM. DM
+content is not ingested, stored, logged, or sent to the model.
+
+On Slack, Mneme answers a mention as a reply in the thread of the message that
+mentioned it.
 
 Know the console limits. `#mneme-test` is an answer destination, not a
 memory source. Mneme has no automatic preceding-message context there;

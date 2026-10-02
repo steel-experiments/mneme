@@ -35,7 +35,7 @@ Do not continue until:
 Observe mode prevents unsolicited interventions. Mneme still ingests
 messages and still calls the model to review episodes and extract memories; it
 only never posts on its own. Disabling direct answers also removes replies to
-explicit mentions, so this phase produces no output in Discord.
+explicit mentions, so this phase produces no output in chat.
 
 ## Phase 2: inspect memories
 

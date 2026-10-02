@@ -3,8 +3,7 @@
 ## What this is
 
 Mneme is a quiet organizational-memory agent for one Discord server or one Slack
-workspace (one platform for each deployment; Slack support is in progress, see plans
-002–010). It ingests all permitted channel history into SQLite, groups conversation
+workspace (one platform for each deployment). It ingests all permitted channel history into SQLite, groups conversation
 into episodes, extracts memories (decisions, assumptions, predictions, risks), and
 rarely speaks — only when a contradiction or forgotten decision makes an intervention
 worth the interruption.

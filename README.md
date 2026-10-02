@@ -1,6 +1,7 @@
-# Mneme for Discord
+# Mneme
 
-Mneme is a quiet organizational-memory agent for one Discord server. It
+Mneme is a quiet organizational-memory agent for one Discord server or one
+Slack workspace (one platform for each deployment). It
 turns permitted conversations into durable, evidence-backed memory: decisions,
 assumptions, predictions, risks, open questions, and commitments. Most of the
 time, it says nothing.
@@ -16,11 +17,11 @@ Copy and paste this prompt into Codex, Claude Code, Cursor, or another coding
 agent with terminal access:
 
 ```text
-Set up Mneme for Discord for me. First read and follow this runbook:
+Set up Mneme for me on [Discord / Slack]. First read and follow this runbook:
 https://raw.githubusercontent.com/steel-experiments/mneme/main/AGENT_SETUP.md
 
 Work interactively and do every terminal and Railway step you can. Ask me to
-handle browser login, Discord choices, and secret entry only when needed. Never
+handle browser login, chat platform choices, and secret entry only when needed. Never
 ask me to paste tokens or API keys into chat. Use the Railway template unless I
 choose another host, keep Mneme in observe mode, and do not declare success
 until every verification check in the runbook passes. If you cannot fetch the
@@ -29,11 +30,14 @@ AGENT_SETUP.md locally.
 ```
 
 The [setup runbook](AGENT_SETUP.md) has the agent guide the Discord application
-setup, channel privacy choices, Railway deployment, CLI installation, and
+or Slack app setup, channel privacy choices, Railway deployment, CLI installation, and
 end-to-end checks. You enter tokens and API keys directly into Railway; they
 should never pass through the agent's chat.
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/mneme)
+
+The Railway template is for Discord. For Slack, follow
+[Deploy for Slack](docs/how-to/railway.md#deploy-for-slack).
 
 Prefer to work through it yourself? Follow [Install Mneme](docs/tutorials/getting-started.md)
 or the focused [Railway guide](docs/how-to/railway.md).
@@ -58,7 +62,7 @@ The name comes from Mneme, the Greek muse of memory.
 
 ## Give your agents the team's memory
 
-Mneme's MCP server lets a connected agent search Discord conversations,
+Mneme's MCP server lets a connected agent search team conversations,
 retrieve decisions and risks, and follow the source messages behind each memory.
 A new agent session can consult earlier discussions without you having to find
 and paste them into every task. Try requests like:
@@ -71,11 +75,11 @@ Summarize this week's deployment discussions and cite the source messages.
 
 ![An agent searches Mneme's memories and Discord conversations to suggest blog ideas with source links.](assets/mneme-mcp.png)
 
-An agent turns past Discord discussions into blog ideas, with links to the
+An agent turns past team discussions into blog ideas, with links to the
 source messages.
 
 MCP access is read-only and scoped per credential. Restricted channels require
-explicit grants; clients cannot change memories or send Discord messages through
+explicit grants; clients cannot change memories or send chat messages through
 Mneme. MCP is optional and disabled by default. See
 [Connect MCP clients](docs/how-to/connect-mcp-clients.md) for setup and
 [the MCP reference](docs/reference/http-and-mcp.md) for available tools and access
@@ -83,10 +87,10 @@ rules.
 
 ## Know before you install
 
-- One instance serves one Discord server. Never run two replicas against the
-  same database or bot token.
-- You provide a Discord application, a model-provider API key, and explicit
-  channel or category IDs to ingest.
+- One instance serves one Discord server or one Slack workspace. Never run two
+  replicas against the same database or bot token.
+- You provide a Discord application or a Slack app, a model-provider API key,
+  and explicit channel (or Discord category) IDs to ingest.
 - Organization-visible content may support answers in other organization-visible
   channels. Restricted content stays inside its channel family. Unselected
   channels are not ingested.
@@ -97,6 +101,24 @@ rules.
   new messages.
 - The starter model admission budget is 2 USD per day. It is an application
   control, not a provider billing ceiling, and hosting is billed separately.
+
+## Platforms
+
+Mneme runs on Discord or on Slack. Memory, visibility rules, review, and MCP
+work the same on both. The differences:
+
+| | Discord | Slack |
+| --- | --- | --- |
+| Access | the bot role's channel permissions | only channels the bot was invited to (`/invite @Mneme`); the invite is the consent |
+| Shared channels | not applicable | a channel shared with another organization (Slack Connect) is always excluded, also after the share ends |
+| Threads | native thread channels | reply threads below a channel |
+| Admins | roles in `MNEME_ADMIN_ROLE_IDS` | user ids in `MNEME_ADMIN_USER_IDS` |
+| Commands | `/mneme` with option fields | `/mneme <subcommand> [arguments]` as text, not in threads |
+| Connection | Gateway WebSocket | Socket Mode; no public inbound URL |
+
+On Slack, create the app from `config/slack-app-manifest.yml` in your own
+workspace and do not distribute it. A distributed app gets much lower history
+rate limits and falls under other Slack API Terms.
 
 ## How it behaves
 
@@ -121,9 +143,9 @@ Try these from a channel Mneme can answer in:
 @Mneme bring me up to speed on this channel since Monday
 ```
 
-Administrative actions use the role-gated `/mneme` commands. Start with
+Administrative actions use the admin-only `/mneme` commands. Start with
 `/mneme status` and `/mneme channels`; the full list is in the
-[command reference](docs/reference/discord-commands.md).
+[command reference](docs/reference/commands.md).
 
 ## Documentation
 

@@ -26,12 +26,18 @@ Never mount the same database volume into two active Mneme containers.
 
 ## Network access
 
-Mneme opens an outbound Discord Gateway WebSocket and uses Discord's HTTPS
-API. It also connects to the selected model provider. Attachment archival needs
-outbound access to the attachment URLs supplied by Discord.
+Mneme connects to the selected model provider and to one chat platform:
 
-No public inbound port is needed for Discord events or slash commands. Discord
-delivers both through the Gateway connection.
+- **Discord**: an outbound Gateway WebSocket and Discord's HTTPS API.
+  Attachment archival needs outbound access to the attachment URLs supplied by
+  Discord.
+- **Slack**: an outbound Socket Mode WebSocket and the Slack Web API
+  (`slack.com` and its subdomains). Attachment archival downloads only from
+  `files.slack.com`, and follows redirects only to other `slack.com` or
+  `slack-edge.com` hosts.
+
+No public inbound port is needed for chat events or slash commands. Discord
+delivers both through the Gateway connection, and Slack through Socket Mode.
 
 The application listens on port 3000 inside the container. Publish or proxy it
 only when an external system needs one of these interfaces:
@@ -56,7 +62,7 @@ suggests otherwise. Local Docker builds need more memory than steady-state
 operation. A small VM can avoid that peak by pulling an image built in CI.
 
 The fixture-mode verification used about 97 MB of resident memory in one local
-run. That test has no live Discord cache, sustained history backfill, or normal
+run. That test has no live platform cache, sustained history backfill, or normal
 job concurrency, so it does not establish a production minimum.
 
 ## Disk planning
@@ -116,4 +122,5 @@ resize from observed data rather than relying on the starting estimate.
 - [Back up and restore SQLite](../how-to/backup-and-restore.md)
 - [Docker Compose installation](https://docs.docker.com/compose/install/linux/)
 - [Discord Gateway](https://docs.discord.com/developers/events/gateway)
+- [Slack Socket Mode](https://docs.slack.dev/apis/events-api/using-socket-mode)
 - [Official Node Docker image architectures](https://github.com/docker-library/official-images/blob/master/library/node)
