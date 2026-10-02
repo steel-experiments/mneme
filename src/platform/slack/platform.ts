@@ -16,6 +16,7 @@ import { handleSlackEnvelope, type SlackLiveContext } from './events.js';
 import { slackFormat } from './format.js';
 import { createSlackHistory } from './history.js';
 import { handleSlackAction, type SlackActionDeps } from './actions.js';
+import { handleSlackCommand, type SlackCommandDeps } from './commands.js';
 import {
   buildSlackChannelPolicyCard,
   createSlackChannelPolicyPort,
@@ -88,6 +89,8 @@ export function createSlackPlatform(
     logger.warn({ event: 'slack.respond_failed', err: err instanceof Error ? err.message : String(err) }, 'slack reply failed');
   });
   let actionDeps: SlackActionDeps | undefined;
+  let commandDeps: SlackCommandDeps | undefined;
+  let healthTracker: SlackHealthTracker | undefined;
   const history = createSlackHistory({
     api,
     workspaceId,
@@ -121,6 +124,7 @@ export function createSlackPlatform(
         discoveredAtMs: now, updatedAtMs: now, rawJson: null,
       });
       const tracker = new SlackHealthTracker(clock);
+      healthTracker = tracker;
       const socket = seams.socket ?? createSlackSocket(slack.appToken);
       const ctx: SlackLiveContext = {
         workspaceId,
@@ -133,6 +137,10 @@ export function createSlackPlatform(
       attachSocket(socket, tracker, async (envelope) => {
         if (envelope.type === 'interactive') {
           if (actionDeps) await handleSlackAction(actionDeps, envelope);
+          return;
+        }
+        if (envelope.type === 'slash_commands') {
+          if (commandDeps) await handleSlackCommand(commandDeps, envelope);
           return;
         }
         await handleSlackEnvelope(ctx, envelope);
@@ -155,7 +163,20 @@ export function createSlackPlatform(
     async registerCommands() {
       return { ok: true };
     },
-    registerCommandDispatch() {},
+    registerCommandDispatch(deps) {
+      commandDeps = {
+        workspaceId,
+        routes: {
+          ctx: deps.ctx,
+          buildApprovalRecheck: deps.buildApprovalRecheck,
+          tracker: { snapshot: () => healthTracker?.snapshot() ?? {} },
+          resolveReview: deps.ctx.config.reviewChannelId ? createSlackReviewResolver(api) : undefined,
+        },
+        adminUserIds: slack.adminUserIds,
+        respond,
+        logger,
+      };
+    },
     registerReviewControls(deps) {
       actionDeps = {
         db: deps.db,
