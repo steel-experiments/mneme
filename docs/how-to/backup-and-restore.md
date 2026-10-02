@@ -11,7 +11,7 @@ untested backup.
 
 ## Create an online backup
 
-From Discord:
+With the admin command:
 
 ```text
 /mneme backup
@@ -33,7 +33,7 @@ npm run backup
 ```
 
 The CLI needs `DATABASE_PATH`, `DATA_DIR`, and optionally `BACKUP_DIR`. It
-does not need Discord or model credentials.
+does not need platform (Discord or Slack) or model credentials.
 
 Each successful backup creates:
 
@@ -216,7 +216,7 @@ Then, inside the container or a built checkout:
 node dist/cli/commands.js integrity-check
 ```
 
-Finish with `/mneme status` and `/mneme channels` in Discord, and one
+Finish with `/mneme status` and `/mneme channels`, and one
 scoped search question in the test console. Only then move out of observe
 mode.
 
@@ -240,7 +240,7 @@ was subsequently cancelled. Cancel that restored request before starting workers
 A restored approved request whose deadline has passed can otherwise run immediately.
 The readable preserved database and content-free admin events help reconstruct
 these states; they should not be the only copy of the ledger. The normal new-request
-flow is documented in [Discord commands](../reference/discord-commands.md#memory-and-deletion).
+flow is documented in [command reference](../reference/commands.md#memory-and-deletion).
 
 Older backups may retain content until both local and off-host retention
 remove them. State that delay plainly in the privacy notice.

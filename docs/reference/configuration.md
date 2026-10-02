@@ -5,7 +5,8 @@ behavior from two YAML files:
 
 - `config/mneme.yml` contains organization, agent voice, intervention, and
   memory defaults.
-- `config/channel-policy.yml` classifies Discord channels and categories. A
+- `config/channel-policy.yml` classifies channels (and, on Discord,
+  categories). A
   synthetic sample ships at this path. Edit it, or mount your reviewed policy
   over it.
 
@@ -23,19 +24,44 @@ environment.
 `.env.example` is the short template for a basic install. The values it asks
 for:
 
+### Platform
+
 | Variable | Meaning |
 | --- | --- |
-| `MNEME_PLATFORM` | Chat platform for this deployment. Required, no default. The only supported value is `discord`. |
+| `MNEME_PLATFORM` | Chat platform for this deployment: `discord` or `slack`. Required, no default. One deployment serves one platform. |
+
+### Discord (when `MNEME_PLATFORM=discord`)
+
+| Variable | Meaning |
+| --- | --- |
 | `DISCORD_TOKEN` | Bot token. Secret. |
 | `DISCORD_APPLICATION_ID` | Discord application snowflake. |
 | `DISCORD_GUILD_ID` | The one guild Mneme may join. |
+| `MNEME_ADMIN_ROLE_IDS` | Comma-separated Discord role IDs. Empty is valid; see the warning under Mode and administration. |
+
+### Slack (when `MNEME_PLATFORM=slack`)
+
+| Variable | Meaning |
+| --- | --- |
+| `SLACK_BOT_TOKEN` | Bot token of your internal Slack app. Starts with `xoxb-`. Secret. |
+| `SLACK_APP_TOKEN` | App-level token for Socket Mode, with `connections:write`. Starts with `xapp-`. Secret. |
+| `SLACK_TEAM_ID` | The workspace (team) id. Startup fails when the tokens belong to another workspace. |
+| `MNEME_ADMIN_USER_IDS` | Comma-separated Slack user IDs of the admins. Required, at least one. Slack has no roles, so a Slack deployment rejects `MNEME_ADMIN_ROLE_IDS`. |
+
+Create the Slack app from `config/slack-app-manifest.yml` in your own
+workspace, and do not distribute it. See
+[Install Mneme](../tutorials/getting-started.md#slack).
+
+### Both platforms
+
+| Variable | Meaning |
+| --- | --- |
 | `OPENAI_API_KEY` | API key for the selected provider. Secret. Use `ANTHROPIC_API_KEY` or `GOOGLE_API_KEY` for the other providers. |
 | `ORG_NAME` | Organization name rendered in prompts. |
 | `ORG_TIMEZONE` | Valid IANA time zone used for daily limits. `UTC` when unset. |
-| `MNEME_ADMIN_ROLE_IDS` | Comma-separated Discord role IDs. Empty is valid; see the warning under Mode and administration. |
 | `CHANNEL_POLICY_SOURCE` | `basic` (default) or `file`. See Channel policy below. |
-| `ORG_VISIBLE_CHANNEL_IDS` | Basic mode. Channels or categories selected for org visibility. |
-| `RESTRICTED_CHANNEL_IDS` | Basic mode. Channels or categories selected as restricted. |
+| `ORG_VISIBLE_CHANNEL_IDS` | Basic mode. Channels (or Discord categories) selected for org visibility. |
+| `RESTRICTED_CHANNEL_IDS` | Basic mode. Channels (or Discord categories) selected as restricted. |
 | `MNEME_REVIEW_CHANNEL_ID` | Basic mode. Secure review channel. Requires the audience assertion described below. |
 | `MNEME_REVIEW_CHANNEL_SECURE` | Must be exactly `true` when a review channel id is set. |
 | `FULL_HISTORY` | Initial import scope. Must be set explicitly. See Ingestion. |
@@ -50,7 +76,9 @@ Everything else has a default:
 | `DEEP_RECAP_ENABLED` | `false` | The admin-only durable recap command group stays off until enabled. |
 
 `config/advanced.env.example` is the complete maintained reference for every
-supported setting. Discord IDs must be 17 to 20 decimal digits. Mneme exits
+supported setting. Discord IDs must be 17 to 20 decimal digits. Slack ids
+are upper-case letters and digits with a type prefix, for example
+`TXXXXXXXXX` (workspace), `CXXXXXXXXX` (channel), and `UXXXXXXXXX` (user). Mneme exits
 before connecting if required configuration is missing or invalid.
 
 ## Environment file loading
@@ -112,8 +140,8 @@ contain secrets.
 | `MNEME_MODE` | `observe` | `observe`, `review`, or `autonomous`. |
 | `MNEME_REVIEW_CHANNEL_ID` | unset | Required in review and autonomous modes. Must match the review channel in the active channel policy. |
 | `MNEME_ADMIN_ROLE_IDS` | empty | Comma-separated Discord role IDs. An empty list authorizes nobody. |
-| `MNEME_ADMIN_USER_IDS` | none | Slack deployments only. Comma-separated Slack user IDs of the admins. Required, at least one. Slack has no roles, so a Slack deployment rejects `MNEME_ADMIN_ROLE_IDS`. On Slack, `MNEME_DELETION_APPROVER_USER_IDS` also holds Slack user IDs. |
-| `MNEME_DELETION_APPROVER_USER_IDS` | empty | Comma-separated Discord **user** IDs allowed to approve another admin’s deletion request. Approvers also need an admin role. Empty disables new deletion requests and approvals; removal revokes uncompleted purges at their next batch. Restart to apply changes. |
+| `MNEME_ADMIN_USER_IDS` | none | Slack deployments only. Comma-separated Slack user IDs of the admins. Required, at least one. Slack has no roles, so a Slack deployment rejects `MNEME_ADMIN_ROLE_IDS`. |
+| `MNEME_DELETION_APPROVER_USER_IDS` | empty | Comma-separated **user** IDs (Discord or Slack, as the platform) allowed to approve another admin’s deletion request. Approvers must also be admins. Empty disables new deletion requests and approvals; removal revokes uncompleted purges at their next batch. Restart to apply changes. |
 | `HTTP_ADMIN_TOKEN` | unset | Enables bearer-protected `GET /status`. Secret. |
 | `DIRECT_ANSWER_ENABLED` | `true` | Allows replies when Mneme is explicitly mentioned. |
 
@@ -146,9 +174,9 @@ current target and exact question reply anchor pass a separate outbound safety c
 | `RECONCILE_OVERLAP_HOURS` | `24` | Recent history refreshed on each completed reconciliation scan; 1–168. |
 | `RECONCILE_MAX_PAGES_PER_RUN` | `10` | Page budget per reconciliation job run; 1–100. A later run resumes the same scan. |
 | `THREAD_DISCOVERY_INTERVAL_MINUTES` | `360` | Periodic active and archived thread discovery. |
-| `STORE_RAW_JSON` | `false` | Store raw Discord JSON where supported. |
+| `STORE_RAW_JSON` | `false` | Store the raw platform JSON (Discord or Slack) where supported. |
 | `RETAIN_EDIT_HISTORY` | `false` | Keep previous message versions. |
-| `RETAIN_DELETED_CONTENT` | `false` | Keep normalized content after Discord deletion. |
+| `RETAIN_DELETED_CONTENT` | `false` | Keep normalized content after the message is deleted on the platform. |
 | `ATTACHMENT_MODE` | `metadata` | `none`, `metadata`, `archive`, or `selective`. |
 | `ATTACHMENT_MAX_BYTES` | `10485760` | Maximum archived file size. |
 | `ATTACHMENT_MIME_ALLOWLIST` | text, Markdown, JSON, CSV, PDF | Comma-separated MIME types accepted for archival. |
@@ -193,7 +221,7 @@ sync paths may still touch older rows.
 | `DEEP_RECAP_MAX_BUDGET_USD` | `20` | Largest per-request whole-dollar ceiling. |
 | `DEEP_RECAP_DAILY_BUDGET_USD` | `20` | Separate organization-day ceiling for deep-recap chunk and synthesis runs. |
 | `HISTORICAL_MEMORY_ENABLED` | `false` | Reconstruct memories from fully backfilled org history. |
-| `HISTORICAL_MEMORY_CHANNEL_IDS` | unset | Optional comma-separated Discord channel allowlist for historical construction and review; empty means all eligible org channels. |
+| `HISTORICAL_MEMORY_CHANNEL_IDS` | unset | Optional comma-separated Discord channel allowlist for historical construction and review; empty means all eligible org channels. The list accepts only Discord ids, so a bounded campaign, which needs an explicit allowlist, cannot be configured on Slack yet. |
 | `HISTORICAL_MEMORY_BATCH_MESSAGES` | `200` | Maximum historical messages scanned per durable batch. |
 | `HISTORICAL_MEMORY_MAX_PENDING_REVIEWS` | `4` | Backpressure ceiling for queued/running historical reviews. |
 | `HISTORICAL_MEMORY_DAILY_BUDGET_USD` | `1` | Dedicated org-day ceiling for historical model runs; `0` pauses them. |
@@ -332,7 +360,7 @@ semantic lifecycle states.
 | `SLACK_OAUTH_CLIENT_ID` | unset | Slack app client ID used for Sign in with Slack. Slack only; Discord ignores it. |
 | `SLACK_OAUTH_CLIENT_SECRET` | unset | Slack app client secret. Slack only; Discord ignores it. |
 
-MCP tokens are created through Discord admin commands. They are separate from
+MCP tokens are created through the `/mneme mcp-token` admin commands. They are separate from
 `HTTP_ADMIN_TOKEN`.
 
 ## Inspector
@@ -346,7 +374,7 @@ MCP tokens are created through Discord admin commands. They are separate from
 
 The surface origin for the `/mneme inspector-token create` reply follows
 `MCP_PUBLIC_URL`, the Railway domain, or `http://localhost:PORT`, in that
-order. Inspector tokens are issued through Discord admin commands and are
+order. Inspector tokens are issued through the `/mneme inspector-token` admin commands and are
 separate from MCP tokens and `HTTP_ADMIN_TOKEN`.
 
 ## Channel policy
@@ -375,8 +403,8 @@ described below.
 
 ### Basic mode
 
-Basic mode selects channels with two comma-separated snowflake lists. Each list
-entry names one Discord channel or one category:
+Basic mode selects channels with two comma-separated id lists. Each list entry
+names one channel or, on Discord, one category:
 
 | Variable | Rule applied to each listed id |
 | --- | --- |
@@ -398,6 +426,9 @@ Selection semantics:
   two lists must name an id; see the startup errors below.
 - Basic mode never consults stored classification review decisions.
 - Threads inherit their parent channel's resolved rule, as in file mode.
+- On Slack, list channel ids only (Slack has no categories), and invite the bot
+  to each listed channel. A channel that is or was shared with another
+  organization (Slack Connect) is always excluded, whatever the lists say.
 
 Startup fails with a named error when:
 

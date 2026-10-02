@@ -1,5 +1,5 @@
-site_name: Mneme for Discord
-site_description: Public documentation for Mneme, a quiet organizational-memory agent for Discord.
+site_name: Mneme
+site_description: Public documentation for Mneme, a quiet organizational-memory agent for Discord and Slack.
 site_url: https://steel-experiments.github.io/mneme/
 
 docs_dir: docs
@@ -25,7 +25,7 @@ nav:
   - Reference:
       - Configuration: reference/configuration.md
       - VM requirements: reference/vm-requirements.md
-      - Discord commands: reference/discord-commands.md
+      - Commands: reference/commands.md
       - HTTP and MCP: reference/http-and-mcp.md
   - Explanation:
       - Memory quality: explanation/memory-quality.md

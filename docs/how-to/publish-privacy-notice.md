@@ -7,7 +7,7 @@ changes.
 
 ## Notice template
 
-> # Mneme in this server
+> # Mneme in this [server / workspace]
 >
 > Mneme is an organizational-memory bot for [server name]. It reads
 > permitted conversations so it can remember decisions and assumptions, notice
@@ -16,18 +16,20 @@ changes.
 > ## What Mneme can read
 >
 > Mneme can read these categories and channels: [list them]. Its access is
-> limited by both its Discord role and the server's Mneme channel policy.
+> limited by both [Discord: its role / Slack: the channels that the bot was
+> invited to] and the Mneme channel policy.
 >
 > Mneme cannot read direct messages between members, channels hidden from
-> its role, voice conversations, or member presence. These categories and
+> it, voice conversations or huddles, or member presence. On Slack, it never
+> reads a channel that is or was shared with another organization. These categories and
 > channels are excluded: [list them].
 >
 > ## What Mneme stores
 >
-> Mneme stores normalized message text and the Discord IDs needed to link
+> Mneme stores normalized message text and the [Discord / Slack] IDs needed to link
 > messages, channels, users, replies, and reactions. Our current settings are:
 >
-> - raw Discord JSON: [stored / not stored]
+> - raw [Discord / Slack] JSON: [stored / not stored]
 > - edit history: [retained / not retained]
 > - deleted message content: [retained / removed]
 > - attachments: [none / metadata only / selected files / eligible files]
@@ -63,7 +65,8 @@ changes.
 > request removal with `/mneme forget-message` or `/mneme forget-user`.
 > A different authorized deletion approver must approve the request. A 24-hour
 > cancellation window follows approval; content remains available until the purge
-> starts. The final purge cannot be undone, and does not delete Discord originals.
+> starts. The final purge cannot be undone, and does not delete the original
+> messages on [Discord / Slack].
 >
 > ## Logs
 >

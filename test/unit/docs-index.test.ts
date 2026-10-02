@@ -152,10 +152,10 @@ describe('loadDocsIndex — scanning', () => {
     const index = loadDocsIndex(REPO_DOCS);
     const paths = index.entries.map((e) => e.path);
 
-    expect(paths).toContain('reference/discord-commands.md');
+    expect(paths).toContain('reference/commands.md');
     expect(paths).toContain('reference/configuration.md');
     expect(paths).toContain('how-to/connect-mcp-clients.md');
-    expect(index.entry('reference/discord-commands.md')?.title).toBe('Discord command reference');
+    expect(index.entry('reference/commands.md')?.title).toBe('Command reference');
     for (const entry of index.entries) {
       expect(entry.path.startsWith('/')).toBe(false);
       expect(entry.path.split('/')).not.toContain('..');

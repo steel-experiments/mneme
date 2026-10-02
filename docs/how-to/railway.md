@@ -1,10 +1,11 @@
 # Deploy on Railway
 
-This page describes the Railway install path for Mneme for Discord. The
-template provisions the infrastructure for one Mneme service from the
-released container image. It does not set up Discord or the model provider.
-You bring your own Discord application, your own provider key, and your own
-channel selection.
+This page describes the Railway install path for Mneme. The template
+provisions the infrastructure for one Mneme service from the released
+container image. It does not set up the chat platform or the model provider.
+You bring your own Discord application or Slack app, your own provider key,
+and your own channel selection. The template's variables are for Discord; see
+[Deploy for Slack](#deploy-for-slack) for a Slack deployment.
 
 > **Template status: published 2026-09-16.** The template at
 > <https://railway.com/template/mneme> provisions exactly the
@@ -19,13 +20,15 @@ channel selection.
 ## Prerequisites
 
 The template provisions infrastructure. It does not create your Discord
-application, install the bot, or choose your channels. Complete these parts of
+application or Slack app, install the bot, or choose your channels. Complete these parts of
 the [quickstart](../tutorials/getting-started.md) first:
 
 - **Discord application.** Create it in the Discord Developer Portal, enable
   Message Content Intent, install the bot with a least-privilege role, and
   invite it to your server. Collect `DISCORD_TOKEN`,
-  `DISCORD_APPLICATION_ID`, and `DISCORD_GUILD_ID`.
+  `DISCORD_APPLICATION_ID`, and `DISCORD_GUILD_ID`. For Slack, create the app
+  from `config/slack-app-manifest.yml` instead, as
+  [Install Mneme](../tutorials/getting-started.md#slack) describes.
 - **Admin role.** Create a dedicated Mneme admin role and copy its ID into
   `MNEME_ADMIN_ROLE_IDS`. With no admin role, every administrative command
   is denied.
@@ -86,13 +89,39 @@ set `MNEME_REVIEW_CHANNEL_ID` and `MNEME_REVIEW_CHANNEL_SECURE=true`
 together after you verified its audience. Every setting is listed in
 [Configuration](../reference/configuration.md).
 
+## Deploy for Slack
+
+The template is for Discord. There is no Slack template yet. For Slack, deploy
+the same template, then change the service variables by hand before the first
+start:
+
+1. Set `MNEME_PLATFORM=slack`.
+2. Remove `DISCORD_TOKEN`, `DISCORD_APPLICATION_ID`, `DISCORD_GUILD_ID`, and
+   `MNEME_ADMIN_ROLE_IDS`. Slack has no roles, and startup refuses
+   `MNEME_ADMIN_ROLE_IDS` on Slack.
+3. Add the Slack variables:
+
+| Variable | Required | Starter value |
+| --- | --- | --- |
+| `SLACK_BOT_TOKEN` | yes | the bot token, `xoxb-…` (secret) |
+| `SLACK_APP_TOKEN` | yes | the app-level token for Socket Mode, `xapp-…` (secret) |
+| `SLACK_TEAM_ID` | yes | your workspace (team) id |
+| `MNEME_ADMIN_USER_IDS` | yes | comma-separated Slack user ids of the admins |
+| `ORG_VISIBLE_CHANNEL_IDS` | yes | comma-separated Slack channel ids |
+| `RESTRICTED_CHANNEL_IDS` | no | comma-separated Slack channel ids |
+
+The other variables in the table above stay the same. Create the Slack app
+first, as [Install Mneme](../tutorials/getting-started.md#slack) describes,
+and invite the bot to each selected channel. Socket Mode needs no public
+inbound URL; the Railway domain is necessary only for the health check and for
+MCP clients.
+
 ## Check the first start
 
 1. Deploy the template. The first start runs migrations, then connects to
-   Discord. Wait for the `/readyz` health check to pass; the startup timeout
+   Discord or Slack. Wait for the `/readyz` health check to pass; the startup timeout
    is 300 seconds.
-2. In Discord, run `/mneme status` and `/mneme channels` as a member
-   with the admin role. Compare the reported channels with your selection
+2. Run `/mneme status` and `/mneme channels` as an admin. Compare the reported channels with your selection
    lists.
 3. With `FULL_HISTORY=true`, let the backfill queue drain before you judge
    memory coverage. `/mneme status` shows the progress.
@@ -115,7 +144,7 @@ lists at startup and does not reload them while running. Live reload with
 
 ## Back up and restore
 
-Run `/mneme backup` in Discord. The backup files are written to
+Run `/mneme backup` as an admin. The backup files are written to
 `/app/data/backups` on the volume. Copy them off Railway; a backup that stays
 on the same volume is not an off-host copy. For the concrete export,
 checksum, and restore commands for a Railway volume, see

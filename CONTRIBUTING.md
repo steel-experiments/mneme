@@ -9,8 +9,8 @@ silently.
 
 ## Set up a local environment
 
-You need Node.js 24 or later. You do not need a Discord server to build and
-test the repository.
+You need Node.js 24 or later. You do not need a Discord server or a Slack workspace to
+build and test the repository.
 
 ```bash
 git clone https://github.com/steel-experiments/mneme.git
@@ -122,6 +122,6 @@ operator action, and the release process says so.
 - Describe what the change does, why the specification allows it, and which
   tests cover it. For a bugfix, name the test that failed first.
 - No private data in issues or pull requests. This repository carries no
-  content from any real server, and that must stay true. Do not paste Discord
-  tokens, API keys, or message content from any real server. Use synthetic
+  content from any real server, and that must stay true. Do not paste Discord or
+  Slack tokens, API keys, or message content from any real server. Use synthetic
   data, like the fixture mode does.

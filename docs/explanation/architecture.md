@@ -1,18 +1,33 @@
 # Architecture
 
 Mneme is one long-running Node.js process with three external boundaries:
-Discord, a model provider, and optional MCP clients. SQLite is the durable center
-of the system.
+one chat platform (Discord or Slack), a model provider, and optional MCP
+clients. SQLite is the durable center of the system.
+
+## One platform for each deployment
+
+`MNEME_PLATFORM` selects one platform adapter at startup. The adapter holds
+everything that is specific to the platform: the connection, channel discovery,
+history pages, live events, sending, review cards, commands, admin
+resolution, message links, text formatting, attachment downloads, and the MCP
+sign-in provider. The core (ingestion policy, episodes, memory, the agent,
+review, and MCP) never imports a platform SDK. One database holds data from one
+platform.
+
+Slack threads have no channel id of their own. The Slack adapter stores each
+thread as a thread row below its channel, as Discord threads are stored, so
+scope rules, episodes, and sync work the same on both platforms.
 
 ## Why one process and one database
 
-Discord bots spend most of their time waiting for events or API responses.
+Chat bots spend most of their time waiting for events or API responses.
 SQLite can handle Mneme's write volume without another service, and a local
 database makes scope checks, full-text search, jobs, and outbox state available
 in one transaction boundary.
 
 The tradeoff is explicit: Mneme cannot be horizontally scaled. A deployment
-has one Discord client, one job runtime, one HTTP server, and one SQLite writer.
+has one platform connection, one job runtime, one HTTP server, and one SQLite
+writer.
 Recovery comes from durable state and reconciliation rather than replicas.
 
 ## Startup order
@@ -22,28 +37,36 @@ Startup is arranged to avoid a message gap:
 1. open SQLite and apply migrations
 2. start the HTTP health server
 3. compile prompts and validate channel policy
-4. register live Discord event handlers and connect the gateway
-5. register guild-scoped commands and become ready
+4. register live event handlers and connect to the platform
+5. register commands and become ready
 6. discover channels and active threads
 7. queue historical backfill
-8. discover archived threads and queue their backfill
+8. discover archived threads and queue their backfill (Discord only)
 9. start workers and periodic schedules
 
-Live handlers are registered before Discord login. Messages that arrive while
-history is being imported are written immediately. Idempotent upserts make
-overlap between gateway delivery, backfill, and reconciliation safe.
+On Discord, live handlers are registered before login. On Slack, Mneme first
+checks with `auth.test` that both tokens belong to `SLACK_TEAM_ID`, attaches
+its handlers, and then opens the Socket Mode connection. Slack has no archived
+threads to discover: thread rows come from parent messages with replies, and
+Mneme repeats the channel discovery every 15 minutes.
+
+Messages that arrive while history is being imported are written immediately.
+Idempotent upserts make overlap between live delivery, backfill, and
+reconciliation safe.
 
 If startup fails after acquiring a resource, bootstrap unwinds the job runtime,
-Discord client, HTTP server, and owned database connection.
+platform connection, HTTP server, and owned database connection.
 
 ## Ingestion and conversation episodes
 
-Channel discovery combines Discord capabilities with `channel-policy.yml`.
-Mneme requires View Channel and Read Message History. Missing either one is
+Channel discovery combines the platform's capabilities with the channel
+policy. On Discord, Mneme requires View Channel and Read Message History. On
+Slack, Mneme sees only the channels where the bot is a member, and a channel
+shared with another organization is always excluded. Missing access is
 treated as inaccessible; a permission change disables ingestion on the next
 discovery pass.
 
-Messages are normalized and stored synchronously from gateway events. A channel
+Messages are normalized and stored synchronously from live events. A channel
 or thread has one open episode at a time. Quiet time, message count, or elapsed
 time closes the episode and queues it for review.
 
@@ -71,7 +94,7 @@ A model run receives:
 - scoped, read-only search and context tools
 - one terminal tool that accepts a structured proposal
 
-For an explicit Discord question, that same model run is the semantic query planner. It
+For an explicit question, that same model run is the semantic query planner. It
 interprets the user's information need and chooses between bounded `list_memories`,
 topical `search_memories`, the direct-only `get_recent_activity_snapshot`, narrow
 `list_recent_messages` browsing, message/context retrieval, or Mneme's documentation.
@@ -114,7 +137,7 @@ the exposed rows, and appends an authoritative complete or partial footer—even
 empty `0/0` result. `list_recent_messages` retains its lossless pagination contract for
 narrow browsing and MCP clients.
 
-It does not receive a Discord sender. It cannot write memory directly. It cannot
+It does not receive a platform sender. It cannot write memory directly. It cannot
 use a shell, browser, filesystem tool, or generic HTTP client.
 
 After finalization, the host validates the schema and recomputes policy. Memory
@@ -125,7 +148,7 @@ gates. Cooldown, daily-limit, and duplicate checks bind an autonomous target del
 a later administrator-approved delivery; they do not decide whether an otherwise eligible
 review card can be shown.
 
-A direct-answer proposal cites source message IDs, not links. The host rejects a Discord
+A direct-answer proposal cites source message IDs, not links. The host rejects a Discord or Slack
 jump destination written into model-authored answer text. For every initial or tool-exposed
 message and memory, it compares the content-free SHA-256 fingerprint captured at the exact
 exposure boundary with a newly computed fingerprint. Those fingerprints cover all
@@ -142,7 +165,7 @@ always appends the host's complete or partial footer after the model answer.
 
 Valid direct-answer citations can carry `[[cite:message-id]]` markers. The model never
 creates the URL: after current-state validation, the host replaces each marker with a
-descriptive `#channel · date` Discord link. Valid citations without a marker are grouped
+descriptive `#channel · date` message link. Valid citations without a marker are grouped
 under one `Sources:` line. Durable deep recaps reuse the same outbound validation after
 processing bounded, restart-safe time partitions in the background.
 
@@ -197,20 +220,21 @@ reclamation, while reclaiming other orphaned rows. Direct-answer leases cover bo
 model-slot admission and the model run. A transient direct retry is admitted only when its
 worst-case queue backoff still fits the immutable response deadline.
 
-Discord output uses a separate outbox. Enqueueing an outbox row also creates its
+Chat output uses a separate outbox. Enqueueing an outbox row also creates its
 send job in the same transaction. Dedupe keys prevent repeated intent from
 creating repeated sends. On startup, Mneme reconciles rows left in
-`sending`: it checks recent Discord history before deciding whether to mark the
-row sent or requeue it.
+`sending`: it checks recent platform history (on Slack, also the thread the
+reply went into) for its own message with the dedupe marker before deciding
+whether to mark the row sent or requeue it.
 
 Human approval and its outbox enqueue also share one immediate transaction. Approval is
 therefore durably queued, not synchronously published; the outbox worker performs and
-records the later Discord delivery.
+records the later delivery.
 
 Direct-answer completion and outbox enqueue share one transaction. A stale concurrent
 execution that loses the terminal request transition rolls its outbox work back. If both
 fallback storage attempts fail, the request stays visibly pending; startup repair or a
-Gateway redelivery attaches one new active job, while a terminal request is never reopened.
+platform redelivery attaches one new active job, while a terminal request is never reopened.
 
 ## Operating modes
 
@@ -233,7 +257,7 @@ target, which must allow interventions. No review channel, parent, or `#general`
 is used. An exact reply to the delivered message can become bounded feedback for the
 scheduled subjects.
 
-Direct answers are triggered by an explicit Discord mention and have their own
+Direct answers are triggered by an explicit mention and have their own
 rate limit. They still pass the same scope and evidence boundaries.
 
 See [How Mneme decides whether to speak](speaking-and-review.md) for the
@@ -244,10 +268,10 @@ and the meaning of an approval.
 
 Shutdown first marks readiness false and stops periodic scheduling. Workers stop
 claiming jobs and receive a bounded drain period. Mneme then disconnects
-Discord, closes HTTP, checkpoints WAL, and closes SQLite.
+the platform, closes HTTP, checkpoints WAL, and closes SQLite.
 
 If the deadline expires, leased jobs remain recoverable. The next process can
 reclaim them after lease expiry, and outbox reconciliation handles uncertain
-sends. Before registering Discord interactions or starting workers, startup
+sends. Before registering platform interactions or starting workers, startup
 repair also expires every strictly past-deadline review proposal through
 idempotent, bounded update batches; periodic maintenance repeats the sweep.

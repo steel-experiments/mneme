@@ -259,7 +259,7 @@ curl --fail \
   http://mneme.example.internal/status
 ```
 
-In Discord, run:
+As an admin, run:
 
 ```text
 /mneme status
@@ -282,7 +282,7 @@ margin. The supplied Compose file uses a 45-second stop grace period for the
 default 30-second drain deadline.
 
 Shutdown marks readiness down, stops timers and job claims, waits for active
-work, disconnects Discord, closes HTTP, checkpoints WAL, and closes SQLite.
+work, disconnects the chat platform, closes HTTP, checkpoints WAL, and closes SQLite.
 Leased jobs and uncertain outbox sends remain recoverable after restart.
 
 ## Roll back or recover a failed deployment
@@ -296,7 +296,7 @@ safe after a newer migration has committed.
 1. Record the attempted source revision and platform deployment identifier.
 2. Inspect deployment and build logs without printing environment variables.
 3. If the process is healthy but behavior is unsafe, switch Mneme to
-   `observe` with the Discord mode command.
+   `observe` with the `/mneme mode` command.
 4. Determine whether the failed release applied a migration and confirm a usable
    backup before selecting older code.
 5. Prefer a forward corrective release. Use an older image only after verifying that it

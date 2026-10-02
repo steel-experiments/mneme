@@ -11,6 +11,19 @@ not recorded.
 
 ## [Unreleased]
 
+### Added
+
+- **Slack support.** Set `MNEME_PLATFORM=slack` to run Mneme in one Slack
+  workspace. Create the app from `config/slack-app-manifest.yml` in your own
+  workspace and do not distribute it. Mneme connects through Socket Mode,
+  reads only the channels that the bot was invited to, stores reply threads
+  below their channel, answers mentions in the thread, posts Block Kit review
+  cards, and accepts `/mneme` commands as text. A channel that is or was shared
+  with another organization (Slack Connect) is always excluded. Outbound text
+  never notifies people. MCP clients can sign in with Slack, and attachments
+  download only from `files.slack.com`. See
+  [Install Mneme](docs/tutorials/getting-started.md).
+
 ### Changed
 
 - **Platform selection.** `MNEME_PLATFORM` is required and has no default.

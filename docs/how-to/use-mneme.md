@@ -1,17 +1,22 @@
-# Use Mneme in Discord
+# Use Mneme
 
-This is the everyday guide for members of a Discord server where Mneme is already
-installed. You do not need an administrator role to ask Mneme a question.
+This is the everyday guide for members of a Discord server or Slack workspace where
+Mneme is already installed. You do not need an administrator role to ask Mneme a question.
 
 ## Ask a question
 
-Mention Mneme in a server channel she can access:
+Mention Mneme in a channel she can access. On Slack, she can access a channel
+only after someone invited her there (`/invite @Mneme`):
 
 ~~~text
 @Mneme what did we decide about the launch sequence?
 @Mneme what risks have we recorded for the migration?
 @Mneme bring me up to speed on this channel since Monday
 ~~~
+
+On Slack, Mneme answers in the thread of the message that mentioned her. Slack
+does not allow slash commands in threads, so admins type `/mneme` commands in a
+channel.
 
 Make follow-up questions self-contained when possible. Mneme can use permitted
 conversation and memories, but she does not treat every earlier chat message as an
@@ -42,7 +47,7 @@ Neither operation silently expands what the requester is allowed to see.
 
 ## Read citations and coverage
 
-Mneme places host-built Discord source links beside supported claims. A link points
+Mneme places host-built source links beside supported claims. A link points
 to a message you are permitted to open; Mneme does not let the model author source
 URLs.
 
@@ -59,7 +64,7 @@ absent.
 
 Mneme answers from the intersection of:
 
-- Discord channels the bot may read;
+- the channels the bot may read (on Slack, the channels it was invited to);
 - the configured channel policy; and
 - the visibility grant of the destination or MCP token.
 

@@ -1,9 +1,39 @@
-# Discord command reference
+# Command reference
 
-Mneme registers one guild-scoped `/mneme` command. Every subcommand is
-admin-only and replies ephemerally. A caller is authorized only when one of
-their Discord roles appears in `MNEME_ADMIN_ROLE_IDS`. If that setting is
-empty, nobody is authorized.
+Mneme has one `/mneme` command. Every subcommand is admin-only, and only you
+see the reply. A caller is an admin when:
+
+- **Discord**: one of their roles appears in `MNEME_ADMIN_ROLE_IDS`.
+- **Slack**: their user id appears in `MNEME_ADMIN_USER_IDS`.
+
+If the setting for the platform is empty, nobody is authorized.
+
+## Type a command
+
+**Discord.** Mneme registers `/mneme` as a server command. Discord shows each
+subcommand and its option fields as you type, for example `/mneme sync` and
+then the `channel` field.
+
+**Slack.** Type the subcommand and its arguments as text after `/mneme`:
+
+```text
+/mneme <subcommand> [arguments]
+/mneme <group> <subcommand> [arguments]
+```
+
+- Give arguments in the order that the tables below show, or as `name:value`,
+  for example `/mneme recap start days:7 topic:"pricing change"`.
+- Use double quotes for a value with spaces. When the last option is text, it
+  takes the rest of the line without quotes.
+- For a channel option, type the channel (`#general`). For a user option,
+  mention the user (`@name`).
+- `/mneme help` lists every command. `/mneme help <group>` lists one group.
+- Slack does not allow slash commands in threads. Type them in a channel.
+- Mneme refuses commands in a channel that is shared with another
+  organization (Slack Connect).
+
+The tables below use the Discord option names. On Slack, the same names work
+as `name:value`.
 
 ## Operations
 
@@ -35,7 +65,7 @@ that every failure is current. Sync progress is based on channels currently
 eligible for history ingestion; Mneme-named control/test channels and other
 policy-excluded surfaces are reported separately instead of making eligible sync
 look incomplete. Build, source revision, and deployment identifiers are bounded,
-sanitized, and shortened to 12 characters in Discord.
+sanitized, and shortened to 12 characters in the reply.
 
 Normal mention-based catch-ups are intentionally one bounded snapshot. When the
 footer says `Coverage: partial`, the answer is a deterministic, channel-balanced
@@ -92,12 +122,13 @@ proposal `pending_review` and keeps its buttons available for a later retry. Suc
 approval or dismissal interactions remove the controls; an approval click that detects
 expiry also resolves its card. Startup repair performs the idempotent expiry sweep in
 bounded update batches before interactions start, and periodic maintenance repeats it as
-defense in depth. Expiry changes database state but does not promise to edit an old Discord
+defense in depth. Expiry changes database state but does not promise to edit an old
 message, so a stale button may remain visible but cannot enqueue delivery.
 Scheduled-memory cards live in the exact secure review channel, but approval queues the
 notification to the separately shown source/working channel. That target must set
 `allow_interventions: true`; `#general` is not a fallback, and threads remain exact targets.
-Use Discord Reply on the delivered notification to update the reviewed memory. Ordinary
+Reply to the delivered notification (Discord Reply, or a thread reply on
+Slack) to update the reviewed memory. Ordinary
 review-channel messages do not alter memory. Cards show a categorical recommendation and
 up to three current evidence links rather than a synthetic intervention score.
 
@@ -106,9 +137,9 @@ up to three current evidence links rather than a synthetic intervention score.
 | Command | Behavior |
 | --- | --- |
 | `/mneme memory-search query:<text>` | Runs a literal full-text memory search visible from the invocation context. Use `query:*` (surrounding whitespace is ignored) for the bounded inventory compatibility form. The exact secure review channel has broader review access. |
-| `/mneme memory-get id:<memory-id>` | Returns one complete permitted memory with host-built Discord source links. Use the full ID returned by `memory-search`. |
+| `/mneme memory-get id:<memory-id>` | Returns one complete permitted memory with host-built source links. Use the full ID returned by `memory-search`. |
 | `/mneme forget-message id:<message-id>` | Creates a deletion request for one currently stored message; shows its ID and count. Deletes nothing yet. |
-| `/mneme forget-user user:<user>` | Select a Discord user to request deletion of their currently stored messages. Free-text names are not accepted. Deletes nothing yet. |
+| `/mneme forget-user user:<user>` | Select a user (Discord) or mention one (Slack) to request deletion of their currently stored messages. Free-text names are not accepted. Deletes nothing yet. |
 | `/mneme deletion status [id:<request-id>]` | Shows the latest four requests, or one exact request, with target, requester, approver, count, status, deadline, and worker failure when present. |
 | `/mneme deletion approve id:<request-id> [confirmation:DELETE]` | An independently authorized approver reviews the preview, then confirms. Schedules the purge no earlier than 24 hours later. |
 | `/mneme deletion cancel id:<request-id>` | The requester or an authorized deletion approver cancels before the first purge batch starts. |
@@ -120,7 +151,7 @@ contain IDs and counts, never source message text. Attempts and state transition
 are audited. The owner discovers pending requests with `deletion status`; requests
 do not automatically send a review card or DM.
 
-An admin role permits requests, not approval. Approval additionally requires the
+Admin status permits requests, not approval. Approval additionally requires the
 caller's user ID in `MNEME_DELETION_APPROVER_USER_IDS`. The requester can never
 approve their own request, even if they are an approver or the target. With one
 configured owner, another admin must initiate a request for that owner to approve.
@@ -137,7 +168,7 @@ At execution, the worker rechecks approval, the current approver allowlist, the
 deadline, and job ownership. It purges normalized content, removes evidence links,
 and invalidates or narrows dependent memories in restart-safe batches. Attachment
 file removal uses durable cleanup jobs. `completed` means the message batches are
-complete; attachment file cleanup may still be queued. Discord originals are not
+complete; attachment file cleanup may still be queued. The original messages on Discord or Slack are not
 deleted. No undo archive is kept; message tombstones prevent automatic reimport.
 
 Removing an approver from configuration stops remaining batches after restart;
@@ -157,7 +188,7 @@ An older image without migration 040 cannot start against the upgraded database.
 
 With no channel list, a token receives org scope. A channel list adds only valid
 restricted channels. A restricted thread ref is stored as its canonical parent scope
-anchor so the token can use the same thread boundary as Discord retrieval. Review-only
+anchor so the token can use the same thread boundary as chat retrieval. Review-only
 and excluded channels cannot be granted. The
 plaintext token cannot be recovered because Mneme stores only its SHA-256
 hash. A token expires 90 days after creation unless `expires-days` sets a
@@ -184,4 +215,4 @@ endpoint, and an MCP token never authenticates the inspector.
 
 Authorization successes and failures are written to `admin_events`. Audit rows
 contain actor IDs, action names, targets, timestamps, and bounded metadata. They
-do not contain Discord message bodies or secret token values.
+do not contain message bodies or secret token values.

@@ -18,9 +18,9 @@ curl --fail http://mneme.example.internal/livez
 curl --fail http://mneme.example.internal/readyz
 ```
 
-`/mneme status` shows the gateway state, the model health, the latest
+`/mneme status` shows the platform connection state, the model health, the latest
 backup age, and the backfill progress. `/mneme channels` shows the live
-channel policy next to the real Discord permissions. A readiness failure with
+channel policy next to the real platform permissions. A readiness failure with
 a healthy liveness means the process runs but a dependency is not ready.
 
 ## Bot is online but answers nothing
@@ -43,7 +43,7 @@ Check each cause in order:
 
 When a direct answer cannot complete, Mneme sends a short fixed fallback
 message. That fallback is a signal to check the model health, not a bug in
-Discord delivery.
+chat delivery.
 
 ## Permitted history is empty
 
@@ -55,10 +55,11 @@ Discord delivery.
   is a startup error, quoted below.
   Check `ORG_VISIBLE_CHANNEL_IDS` and `RESTRICTED_CHANNEL_IDS` against
   `/mneme channels`.
-- Live ingestion problems show in the `discord.ingestion_outcome` log events;
+- Live ingestion problems show in the `discord.ingestion_outcome` log events
+  on Discord and in the `slack.*` log events on Slack;
   see [Investigate ingestion safely](#investigate-ingestion-safely).
 
-## Missing role or gateway intent
+## Missing role or gateway intent (Discord)
 
 - **Message Content Intent is off.** The bot connects, sees events, and stores
   no text. Enable the intent in the Discord Developer Portal, then restart
@@ -71,10 +72,40 @@ Discord delivery.
   channels where it holds both View Channel and Read Message History.
   `/mneme channels` reports the missing permissions per channel.
 
+## Slack problems
+
+- **The bot does not see a channel.** Nobody invited it. Type
+  `/invite @Mneme` in the channel. Mneme never joins a channel itself.
+- **History is empty for a private channel.** The bot was not invited, or the
+  app lacks `groups:history`. Recreate the app from
+  `config/slack-app-manifest.yml` or add the scope, then reinstall the app.
+- **A channel shows as excluded.** It is or was shared with another
+  organization (Slack Connect). The exclusion is permanent by design, also
+  after the share ends. Look for the `slack.history_foreign_team` log event
+  when a share was found from a message.
+- **Startup fails with "belongs to a different workspace than SLACK_TEAM_ID".**
+  The bot token is from another workspace, or `SLACK_TEAM_ID` is wrong. Use
+  the `T…` workspace id, not an Enterprise Grid `E…` id.
+- **`invalid_auth` or `missing_scope`.** A token is wrong or revoked, or the
+  app lacks a scope. Compare the app's scopes with the manifest and reinstall
+  the app after a scope change.
+- **Socket Mode does not connect.** `SLACK_APP_TOKEN` is missing, is not an
+  `xapp-` token, or lacks `connections:write`. Socket Mode must be on in the
+  app settings.
+- **An attachment fails with "slack returned an HTML page".** The app lacks
+  `files:read`, so Slack sent its sign-in page instead of the file.
+- **A slash command does nothing in a thread.** Slack does not allow slash
+  commands in threads. Type `/mneme` in the channel.
+- **A command is refused as not authorized.** The caller's user id is not in
+  `MNEME_ADMIN_USER_IDS`.
+- **Very slow history import.** The app was distributed outside the
+  workspace, which lowers Slack's history rate limits. Create an internal app
+  in your own workspace instead.
+
 ## Invalid model or provider key
 
 - Startup fails with a named variable when a required value is missing or
-  malformed: the Discord token, application ID, guild ID, provider, model,
+  malformed: the Discord or Slack tokens and ids, provider, model,
   and the key for the selected provider. The error names the value to fix.
 - Provider responses 401 and 403 mark an authentication problem: wrong key,
   wrong provider, or no access to the named model. Check that
@@ -125,7 +156,8 @@ returns a partial report and says so.
   `channel policy: CHANNEL_POLICY_SOURCE=basic needs at least one id in ORG_VISIBLE_CHANNEL_IDS or RESTRICTED_CHANNEL_IDS; an existing channel-policy.yml needs CHANNEL_POLICY_SOURCE=file`.
   When you meant to use the YAML file, set `CHANNEL_POLICY_SOURCE=file`.
 - Compare the live result with `/mneme channels`. Channels that should
-  ingest must be reachable by policy and by Discord permissions.
+  ingest must be reachable by policy and by platform permissions (on Slack,
+  the bot must be invited).
 - In file mode, `/mneme reload-policy` applies policy and prompt changes
   without a restart. In basic mode, the selection lists are read at startup,
   so a change needs a restart.
@@ -169,7 +201,7 @@ ORDER BY status, reason;
 ```
 
 `PRAGMA foreign_key_check` detects referential violations. It cannot show a
-Discord event that was never stored. Interpret retained failed jobs by their
+platform event that was never stored. Interpret retained failed jobs by their
 timestamps and current status; historical rows do not prove an active
 incident.
 

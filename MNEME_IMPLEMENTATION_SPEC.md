@@ -358,11 +358,13 @@ The service intentionally accepts a short restart window during deployment.
 
 ### 5.3 Platform adapters
 
-(Amendment (plan 005): the Discord adapter implements this seam in
-`src/platform/`. Message links, the id validator, and attachment download are
-still core helpers, and Discord resolves admin actors inside its own command and
-button handlers. Plan 006 moves these behind the adapter and adds the Slack
-adapter. Until then, Mneme runs only on Discord.)
+(Amendment (plans 005–009): the Discord adapter (`src/platform/discord/`) and
+the Slack adapter (`src/platform/slack/`) implement this seam. The adapter
+supplies attachment download (`fetchBytes`). The message-link builder
+(`src/platform/links.ts`) and the id validator (`src/platform/ids.ts`) stay
+core helpers: the active adapter installs its link builder at connect, and the
+validator accepts the id forms of both platforms. Each adapter resolves admin
+actors inside its own command and button handlers.)
 
 One platform adapter is active in a process. `MNEME_PLATFORM` selects it. A
 missing or unknown value stops startup. One database holds data from one
@@ -3107,7 +3109,7 @@ Input:
 
 ```json
 {
-  "path": "reference/discord-commands.md"
+  "path": "reference/commands.md"
 }
 ```
 

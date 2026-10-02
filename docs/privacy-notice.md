@@ -1,25 +1,27 @@
 # Privacy
 
-This page states what Mneme for Discord stores, what it sends to the model
+This page states what Mneme stores on Discord or Slack, what it sends to the model
 provider, how visibility scopes constrain answers, and what deletion does. It
 is written for operators and members. Use it together with the
 [member notice template](how-to/publish-privacy-notice.md), which turns these
-facts into the notice you post in your server.
+facts into the notice you post in your server or workspace.
 
 ## What is stored locally
 
 Mneme stores data in one SQLite database under `DATA_DIR`. With the
 container defaults, this is `/app/data/mneme.sqlite`. The database holds:
 
-- normalized message text for the channels you selected, with the Discord IDs
+- normalized message text for the channels you selected, with the platform IDs
   needed to link messages, channels, users, replies, and reactions
 - derived memories: decisions, assumptions, predictions, risks, open
   questions, and commitments, each with source links
 - job, review, and audit records that keep the service restartable
 
-Discord direct messages are not ingested, stored, logged, or sent to the
-model. Channels you did not select are not ingested. Settings control what
-else is kept: raw Discord JSON, edit history, deleted message content, and
+Direct messages are not ingested, stored, logged, or sent to the model. On
+Slack, Mneme reads only the channels that the bot was invited to, and never a
+channel that is or was shared with another organization (Slack Connect).
+Channels you did not select are not ingested. Settings control what else is
+kept: raw platform JSON, edit history, deleted message content, and
 attachment handling are each configurable. Check the current values in
 [Configuration](reference/configuration.md).
 

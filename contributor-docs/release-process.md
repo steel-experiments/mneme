@@ -73,7 +73,12 @@ No manual steps run here. The workflow:
    onward, then the first-use verification in
    [Verify your first answer](../docs/tutorials/getting-started.md#8-verify-your-first-answer). Confirm `/livez`
    and `/readyz` answer, and that the container healthcheck passes.
-4. Treat upgrades as deliberate. Migrations are forward-only, `latest` is a
+4. Publish or update a Railway template for Slack, with `MNEME_PLATFORM=slack`
+   and the Slack variables, from the same digest-pinned image. Then replace
+   the manual section in `docs/how-to/railway.md` with a link to it. This is an
+   operator action outside the repository; until it is done, Slack operators
+   follow the manual steps in that section.
+5. Treat upgrades as deliberate. Migrations are forward-only, `latest` is a
    convenience pointer, and the operator contract is stop-and-start, never an
    overlapping rolling replacement.
 

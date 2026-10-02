@@ -1,11 +1,11 @@
 # How Mneme decides whether to speak
 
-Mneme continuously builds organizational memory from permitted Discord
+Mneme continuously builds organizational memory from permitted chat
 conversations. Building memory and sending a message are separate decisions:
 Mneme may create or update memories while remaining completely silent.
 
 This page explains proactive interventions. A direct answer to an explicit
-Discord mention follows a separate path described below.
+mention follows a separate path described below.
 
 ## The short version
 
@@ -39,7 +39,7 @@ Review mode is therefore not an uncertainty detector. It is a deployment policy:
 Confidence is the model's bounded self-assessment that its proposed conclusion is
 supported. It is neither an independently verified fact nor a calibrated probability of
 correctness. Evidence strength is another model-supplied dimension describing the cited
-Discord evidence. Both must clear configured eligibility floors, after which host code
+chat evidence. Both must clear configured eligibility floors, after which host code
 still verifies the exact citations, current scope, and delivery policy.
 
 The intervention score estimates whether speaking is worth the interruption. It
@@ -90,7 +90,7 @@ attention ownership — the proposal must still own its subject revision and be 
 its attention window. It then atomically records the approval and reviewer and queues
 the outbox item plus
 its send job. The outbox worker publishes later, so `approved` means durably queued,
-not already visible in Discord. An approved proposal whose attention window closes
+not already visible in the chat. An approved proposal whose attention window closes
 before the outbox runs is cancelled without sending; a send already proven delivered
 is recorded, never repeated or denied.
 
@@ -101,7 +101,7 @@ available for a later retry. A successful approval or dismissal interaction remo
 controls. An approval click that detects expiry also resolves that card. Startup repair
 expires past-deadline rows in bounded, idempotent batches before interactions start, and
 periodic maintenance repeats the sweep as defense in depth. Expiry does not promise to edit
-an old Discord message; any stale button cannot enqueue delivery. Proposals expire after
+an old chat message; any stale button cannot enqueue delivery. Proposals expire after
 72 hours by default, or sooner if their attention window closes.
 
 A definite privacy, evidence, or target violation cannot be overridden by an
@@ -143,7 +143,8 @@ the exact reviewed text to that channel, which must allow interventions. `#gener
 a fallback, and a thread is never replaced by its parent. If no unique safe target exists,
 Mneme performs silent secure maintenance or suppresses the notification.
 
-Use Discord's Reply action on the delivered working-channel message to provide an update.
+Reply to the delivered working-channel message to provide an update: use Discord's Reply
+action, or reply in the message's thread on Slack.
 An exact reply can update or resolve the reviewed memory. Nearby text and ordinary messages
 in the review channel are not treated as feedback.
 
@@ -157,8 +158,8 @@ Follow the [migration compatibility rules](../how-to/deploy.md#migration-compati
 
 Before workers and interactions start, Mneme records previously surfaced legacy
 evidence as consumed, expires legacy pending proposals, cancels their queued deliveries,
-and retires old scheduled-review jobs. Uncertain sends are reconciled with Discord
-instead of being blindly resent. The cutover itself performs no Discord or model calls
+and retires old scheduled-review jobs. Uncertain sends are reconciled with the platform
+instead of being blindly resent. The cutover itself performs no platform or model calls
 and is safe to repeat after a restart. It does not erase memory or reactivate memories
 already expired by an older version.
 

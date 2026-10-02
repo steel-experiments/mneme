@@ -1,12 +1,12 @@
 # Security model
 
 Mneme stores workplace conversations and sends selected excerpts to a model
-provider. Its security model assumes that Discord content and model output are
-both untrusted.
+provider. Its security model assumes that chat content (Discord or Slack) and
+model output are both untrusted.
 
 ## Trust boundaries
 
-Discord messages can contain prompt injection, false claims, malicious links,
+Chat messages can contain prompt injection, false claims, malicious links,
 or text that resembles commands. Mneme passes message content as marked
 conversation data, not as host instructions.
 
@@ -24,7 +24,7 @@ scope alone.
 
 The system fails closed when:
 
-- a channel is unknown, deleted, excluded, or lacks required Discord access
+- a channel is unknown, deleted, excluded, or lacks required platform access
 - a thread's required parent/scope anchor cannot be resolved safely
 - cited evidence does not exist or is no longer visible
 - retrieval provenance is broader than the target permits
@@ -99,8 +99,34 @@ Before an unsolicited message reaches the outbox, the host checks:
 Approval does not bypass these controls. It repeats the evidence, visibility,
 cooldown, and duplicate checks with current data.
 
-Discord sends disable mention parsing. For direct answers, the model supplies source
-message IDs rather than URLs. The host rejects model-authored Discord jump URLs,
+## Slack channel boundaries
+
+- **The invite is the consent.** The Slack app has no `channels:join` scope.
+  Mneme reads a channel only after a person invites the bot, and it stops when
+  the bot is removed.
+- **Slack Connect channels are always excluded.** A channel that is shared with
+  another organization, or that waits for such a share, is excluded. A message
+  from another team in any event or history page is also proof of a share.
+  Mneme excludes the channel and its threads at once, before any network call,
+  and discards the page.
+- **The exclusion is permanent.** A channel that was shared once stays
+  excluded, also after the share ends, because its history contains the other
+  organization's messages. A database trigger rejects any change that would
+  open it again, and no policy rule or review decision overrides it. Deletes
+  still apply to content stored before the share.
+- **Rediscovery.** Mneme repeats the Slack channel discovery every 15 minutes,
+  so a share that a missed event did not report is found without a restart.
+- **No DMs.** Mneme has no scope that reads direct messages, and the app's
+  Messages tab is read-only.
+- **Commands and buttons** are refused in a shared channel, from another
+  workspace, or from a user who is not in `MNEME_ADMIN_USER_IDS`.
+
+Outbound messages never notify people. Discord sends disable mention parsing.
+Slack has no mention allow-list, so Mneme escapes `&`, `<`, and `>` in all text
+that it did not build, turns every user, channel, and group mention from
+content into plain text, and never sends `link_names`. For direct answers, the
+model supplies source message IDs rather than URLs. The host rejects
+model-authored Discord or Slack message links,
 including destinations hidden behind Markdown escapes, character references, or browser
 URL normalization. Ambiguous encoded HTTP destinations fail closed. The host then
 validates the IDs and appends at most three canonical source links itself.
@@ -122,9 +148,12 @@ suppression remains a recorded no-send outcome rather than bypassing the visibil
 
 ## Secrets and logs
 
-Discord tokens, provider API keys, the HTTP admin token, and MCP bearer tokens
-belong in platform environment variables or a secret manager. They do not belong
-in YAML, prompts, `.env` files committed to Git, or Discord messages.
+Discord and Slack tokens, provider API keys, the HTTP admin token, and MCP
+bearer tokens belong in platform environment variables or a secret manager. They
+do not belong in YAML, prompts, `.env` files committed to Git, or chat messages.
+
+The Slack bot token is sent only to Slack. Attachment downloads send it only to
+`https://files.slack.com`, and never on a redirect to another host.
 
 The structured logger redacts credentials, authorization headers, environment
 values, prompts, and message bodies. Operational logs use IDs, counts, states,
@@ -135,7 +164,7 @@ authentication layer supports expiry and immediate revocation. A token expires
 90 days after creation unless the create command's `expires-days` option sets a
 different lifetime (1 to 365 days); the command cannot create a token that never
 expires. Review button signatures use a secret
-derived from the Discord token without logging that token.
+derived from the active platform's bot token without logging that token.
 
 ## HTTP exposure
 
@@ -175,7 +204,7 @@ backup cannot know about deletion requests made after its timestamp. Operators
 need off-host retention controls and, where deletion replay matters, an external
 request ledger.
 
-Discord permissions can change between discovery passes. Live message ingestion
+Platform permissions can change between discovery passes. Live message ingestion
 uses the last computed channel policy and fails closed for unknown channels, but
 operators should keep periodic discovery enabled and act on access warnings.
 

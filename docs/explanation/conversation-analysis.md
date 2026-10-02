@@ -2,18 +2,19 @@
 
 Mneme does not review every message independently and does not automatically
 send a fixed window around every message to the model. It first groups nearby
-messages from one Discord conversation into a bounded **episode**, then reviews
+messages from one chat conversation into a bounded **episode**, then reviews
 that complete episode. The model may retrieve additional permitted evidence
 when the episode alone is insufficient.
 
 ## Conversation and thread boundaries
 
-A Discord channel and each Discord thread are separate conversations. Messages
+A channel and each of its threads are separate conversations, on Discord and on
+Slack. Messages
 from different conversations never enter the same episode. Reply relationships
 are preserved as metadata, but replies do not determine episode boundaries.
 
 For a bounded historical campaign, a channel or thread is processed only when
-its own Discord ID is in the campaign allowlist. Allowlisting a parent channel
+its own ID is in the campaign allowlist. Allowlisting a parent channel
 does not implicitly include all of its child threads.
 
 A Mneme-named channel is a test surface, as is every child thread even when the
@@ -95,7 +96,7 @@ The initial review contains the complete episode transcript, not an automatic
 - content and timestamp;
 - reply target, when present;
 - aggregate reactions; and
-- a Discord source link.
+- a source link to the message on Discord or Slack.
 
 The prompt asks the model to identify consequential decisions, assumptions,
 predictions, facts, risks, commitments, experiments, disagreements, constraints,
@@ -119,7 +120,7 @@ retrieved-character limits.
 
 A direct answer does not begin with only the text after `@Mneme`. The host supplies
 the current question as structured message data, including its message ID, author,
-timestamp, reply target, and canonical Discord link. It also supplies a chronological
+timestamp, reply target, and canonical message link. It also supplies a chronological
 window of at most ten immediately preceding permitted messages from the same channel.
 
 When the question is a reply and its parent falls outside that window, the host adds the
