@@ -36,9 +36,8 @@ export interface ObservedChannelIdentity {
 /** The boundary that applies to a channel: its own, or its thread parent's (fail closed). */
 export function platformBoundaryFor(db: DatabaseSync, channel: ObservedChannelIdentity): 'excluded' | null {
   if (channel.platformBoundary === 'excluded') return 'excluded';
-  if (channel.platformBoundary === undefined && getChannel(db, channel.id)?.platform_boundary === 'excluded') {
-    return 'excluded';
-  }
+  // A stored exclusion is permanent: a later observation without it does not open the channel.
+  if (getChannel(db, channel.id)?.platform_boundary === 'excluded') return 'excluded';
   if (channel.isThread && channel.parentId && getChannel(db, channel.parentId)?.platform_boundary === 'excluded') {
     return 'excluded';
   }
