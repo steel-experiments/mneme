@@ -213,9 +213,8 @@ off-host SQLite backup. Schedule a copy of completed files from
 
 ## Deploy with Railway
 
-This path deploys from a source repository through `railway.json`. To
-provision from the released image with the Railway template instead, see
-[Deploy on Railway](railway.md).
+This path deploys from a source repository through `railway.json`. To run
+the released image on Railway instead, see [Deploy on Railway](railway.md).
 
 1. Create a service from the repository.
 2. Railway reads `railway.json` and builds the root Dockerfile.

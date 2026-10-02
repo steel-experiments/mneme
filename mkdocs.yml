@@ -11,7 +11,7 @@ nav:
   - Quickstart: tutorials/getting-started.md
   - Deploy:
       - Docker Compose and the released image: how-to/deploy.md
-      - Railway template: how-to/railway.md
+      - Railway: how-to/railway.md
   - Operations:
       - Back up and restore: how-to/backup-and-restore.md
       - Roll out safely: how-to/roll-out-safely.md

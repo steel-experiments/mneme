@@ -22,8 +22,8 @@ https://raw.githubusercontent.com/steel-experiments/mneme/main/AGENT_SETUP.md
 
 Work interactively and do every terminal and Railway step you can. Ask me to
 handle browser login, chat platform choices, and secret entry only when needed. Never
-ask me to paste tokens or API keys into chat. Use the Railway template unless I
-choose another host, keep Mneme in observe mode, and do not declare success
+ask me to paste tokens or API keys into chat. Deploy the released image on
+Railway unless I choose another host, keep Mneme in observe mode, and do not declare success
 until every verification check in the runbook passes. If you cannot fetch the
 runbook, clone https://github.com/steel-experiments/mneme and read
 AGENT_SETUP.md locally.
@@ -33,11 +33,6 @@ The [setup runbook](AGENT_SETUP.md) has the agent guide the Discord application
 or Slack app setup, channel privacy choices, Railway deployment, CLI installation, and
 end-to-end checks. You enter tokens and API keys directly into Railway; they
 should never pass through the agent's chat.
-
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/mneme)
-
-The Railway template is for Discord. For Slack, follow
-[Deploy for Slack](docs/how-to/railway.md#deploy-for-slack).
 
 Prefer to work through it yourself? Follow [Install Mneme](docs/tutorials/getting-started.md)
 or the focused [Railway guide](docs/how-to/railway.md).

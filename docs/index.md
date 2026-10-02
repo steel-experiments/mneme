@@ -15,8 +15,8 @@ an interruption worthwhile.
   safe observe-mode deployment and your first cited answer.
 - [Deploy with Docker](how-to/deploy.md): run the released image with Docker
   Compose.
-- [Deploy on Railway](how-to/railway.md): provision one service, one volume,
-  and a health check from the Railway template.
+- [Deploy on Railway](how-to/railway.md): run the released image as one
+  service with one volume and a health check.
 
 ## Operations
 
