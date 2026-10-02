@@ -586,7 +586,12 @@ Slack visibility rules:
   shared channel (`is_ext_shared_channel`), excludes the channel and its
   threads in one transaction before any Slack API call. The adapter then
   re-reads the channel. A failed re-read does not change the exclusion.
-- An excluded channel keeps no new messages and no edits. A delete still
+- A message from another team in any event or history page is evidence of a
+  share and excludes the channel at once. The adapter checks the `team`,
+  `user_team`, and `source_team` ids of the event, its message, its previous
+  message, and its root. A history page with such a message is discarded
+  whole.
+- An excluded channel keeps no new messages, no edits, and no reactions. A delete still
   applies: the stored message is tombstoned, so content that users remove does
   not stay stored.
 - The adapter repeats the full channel discovery every 15 minutes. A channel
