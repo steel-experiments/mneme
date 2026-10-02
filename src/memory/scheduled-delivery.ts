@@ -1,7 +1,7 @@
 import type { DatabaseSync } from '../db/database.js';
 import { getProposal } from '../db/repositories/proposals.js';
 import { getMessage } from '../db/repositories/messages.js';
-import { getChannel, resolveRetrievableChannelScope } from '../db/repositories/channels.js';
+import { resolveRetrievableChannelScope, sourceLinkChannelLabel } from '../db/repositories/channels.js';
 import { fingerprintExposedMemory } from '../agent/run-context.js';
 import {
   buildSourceLinks,
@@ -64,8 +64,7 @@ export function scheduledSourceLinkContext(db: DatabaseSync, guildId: string): S
     resolveLabel: (messageId) => {
       const message = getMessage(db, messageId);
       if (!message) return undefined;
-      const channel = getChannel(db, message.channel_id);
-      const channelLabel = channel?.name ? `#${channel.name}` : 'Discord';
+      const channelLabel = sourceLinkChannelLabel(db, message.channel_id);
       return `${channelLabel} · ${new Date(message.created_at_ms).toISOString().slice(0, 10)}`;
     },
   };

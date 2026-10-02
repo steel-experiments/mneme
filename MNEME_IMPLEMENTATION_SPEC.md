@@ -35,9 +35,10 @@ prompt_template_engine: Handlebars
 
 Mneme is a quiet organizational-memory agent for one Discord server or one Slack workspace (one platform for each deployment). It ingests every message the bot is permitted to see, backfills existing channel and thread history, stays current through the platform event connection (the Discord Gateway or Slack Socket Mode), builds a searchable institutional memory, and occasionally surfaces a contradiction, forgotten decision, risky assumption, overdue prediction, or repeated failure pattern.
 
-(Amendment (plan 006): on Slack, Mneme reads and remembers in `observe` mode
-with direct answers off. Startup refuses another mode or direct answers until
-the Slack write path is available.)
+(Amendment (plan 007): on Slack, Mneme reads, remembers, answers mentions,
+posts review cards, and delivers messages in every mode, as on Discord. Sign in
+with Slack for MCP (plan 008) and attachment archives (plan 009) are not
+implemented yet.)
 
 The v1 system is intentionally small:
 
@@ -186,9 +187,10 @@ The following are out of scope:
 | Deployment | One Docker image, one replica, one persistent volume | Matches Discord Gateway and SQLite’s operating model. |
 | Default autonomy | `observe` | Safest way to collect evaluation data before posting. |
 
-The Slack row: (Amendment (plan 006): on Slack, Mneme reads and remembers in `observe` mode
-with direct answers off. Startup refuses another mode or direct answers until
-the Slack write path is available.)
+The Slack row: (Amendment (plan 007): on Slack, Mneme reads, remembers, answers mentions,
+posts review cards, and delivers messages in every mode, as on Discord. Sign in
+with Slack for MCP (plan 008) and attachment archives (plan 009) are not
+implemented yet.)
 
 ### 4.1 Pi usage decision
 
@@ -478,11 +480,16 @@ Guild-scoped Mneme commands shall be limited to configured role IDs in `MNEME_AD
 
 Commands that disclose restricted content, modify channel policy, delete data, approve an intervention, or force a sync must always require an admin role.
 
+On Slack, the admins are the user ids in `MNEME_ADMIN_USER_IDS` (Section
+6.7.6). The actor's own user id stands in for its roles, so the same
+fail-closed check applies to commands and to review-card buttons.
+
 ### 6.7 Slack application configuration
 
-(Amendment (plan 006): on Slack, Mneme reads and remembers in `observe` mode
-with direct answers off. Startup refuses another mode or direct answers until
-the Slack write path is available.)
+(Amendment (plan 007): on Slack, Mneme reads, remembers, answers mentions,
+posts review cards, and delivers messages in every mode, as on Discord. Sign in
+with Slack for MCP (plan 008) and attachment archives (plan 009) are not
+implemented yet.)
 
 #### 6.7.1 App type
 
@@ -525,8 +532,8 @@ itself. An admin invites it, and the invite is the consent.
 Mneme does not read DMs. The App Home Messages tab stays visible but does not
 accept user input, so Mneme sends no unsupported-DM notice on Slack. Admin
 notices, for example backup notices, use `chat.postMessage` with the user id
-(`im:write`). That admins can see these notices is to be confirmed by plan
-007.
+(`im:write`). The plan 007 spike confirmed that the admin sees the message
+under Apps in the Slack sidebar while the Messages tab is read-only.
 
 #### 6.7.6 Admin permissions
 
@@ -1418,6 +1425,11 @@ the database side. The send path must close the crash window itself:
 A crash between the Discord call and the database update therefore results in one
 recovery lookup, not a duplicate post.
 
+On Slack, the sender carries the dedupe marker in message metadata
+(`event_type: mneme_outbox`). Recovery reads the target channel, or the thread
+for a thread row, with `include_all_metadata=true` and matches only messages
+that Mneme's bot user posted.
+
 For a proposal-backed scheduled notification, recovery and the worker repeat the current
 subject fingerprint, attention ownership and window (Section 12.7), origin route, run
 provenance, evidence, and target-policy checks before a retry or Discord I/O. An unsent
@@ -1435,6 +1447,10 @@ marker. It then records the Discord message ID and `sent`. Startup/retry recover
 recent Mneme-authored messages in the secure review channel for that exact marker
 before another send. A missing or inaccessible review channel leaves classification
 restricted and retries durably; card delivery never promotes visibility.
+
+On Slack, the card carries the marker as the `block_id` of its context block,
+and recovery searches recent messages from Mneme's bot user for that
+`block_id`.
 
 ---
 
@@ -3441,24 +3457,35 @@ On Discord:
   or more than three of them — rejects the whole proposal before any card or
   delivery.
 
-On Slack: (Amendment (plan 003): specified, not implemented. Plan 007 implements this
-rule. Until then, Mneme runs only on Discord.)
+On Slack:
 
-- convert the Markdown subset of Section 5.3 to mrkdwn;
-- escape `&`, `<`, and `>` in all text that the host did not build;
-- never send `link_names`;
-- remove `<@…>`, `<!…>`, and `<!subteam^…>` sequences that the host did not
-  build;
+- convert the Markdown subset of Section 5.3 to mrkdwn, and escape `&`, `<`,
+  and `>` in all other text, so no `<@…>`, `<!…>`, `<#…>`, or `<!subteam^…>`
+  token survives;
+- turn `[label](url)` into a Slack link only when the URL is a message link that
+  the host builds for this workspace (Section 30.3); any other Markdown link
+  becomes plain text;
+- reject model text that contains a Slack URL or a `slack:` link, as Discord
+  jump URLs are rejected;
+- keep a host-built `<@U…>` user token only in an ephemeral admin reply;
+- never send `link_names`, `reply_broadcast`, `username`, or icon overrides,
+  and turn off link and media unfurls;
 - keep the 1,800-character model limit and the 2,000-character assembled limit;
-- a reply anchor becomes a thread reply under the anchor's thread root.
+- a reply anchor becomes a thread reply under the anchor's thread root; a
+  target thread row posts into that thread;
+- refuse to post into an unknown, excluded, archived, or Slack Connect channel,
+  or into a thread under one.
 
 ---
 
 ## 25. Review workflow
 
 On Slack, review cards are Block Kit messages. Button action ids keep the same
-HMAC format. (Amendment (plan 003): specified, not implemented. Plan 007 implements this
-rule. Until then, Mneme runs only on Discord.)
+HMAC format. Slack acknowledges each click before any work starts. The handler
+then checks the team, the review channel, the signature, and the admin, in that
+order, before the shared workflow runs. A card goes only to a known review
+channel that is not shared with another organization. Resolving a card replaces
+its buttons with the label.
 
 In `review` mode, the secure channel receives:
 
@@ -3557,6 +3584,8 @@ tightening and exclusion retain the current fail-closed rescope behavior.
 ---
 
 ## 26. Direct questions
+
+On Slack, a direct answer is a thread reply to the question.
 
 When a user explicitly mentions Mneme:
 
@@ -3787,8 +3816,13 @@ the new report can be queued.
 On Slack, one `/mneme` command carries all subcommands. The adapter parses the
 command text into the same subcommand path and options as the Discord
 commands below, for example `/mneme recap status 42`. Replies are ephemeral.
-Slack does not allow slash commands in threads. (Amendment (plan 003): specified, not implemented. Plan 007 implements this
-rule. Until then, Mneme runs only on Discord.)
+Slack does not allow slash commands in threads. Arguments are positional, in
+the declared order, or `name:value`. Double quotes group words, and `\"` inside
+quotes is a literal quote. The last option, when it is a string, takes the rest
+of the line. User and channel options accept Slack user and channel tokens.
+`/mneme help` and `/mneme help <name>` print usage from the same command spec.
+The handler refuses another workspace, a DM or group DM, and a channel shared
+with another organization.
 
 Recommended guild-scoped commands:
 
@@ -7167,8 +7201,8 @@ The v1 implementation is complete when all are true:
 
 ### Slack
 
-(Amendment (plan 006): the first two rules and the thread rule are implemented.
-Plans 007–010 implement the rest; until then, Slack runs in `observe` mode.)
+(Amendment (plan 007): the first four rules are implemented. A live test of the
+link rule in a Slack workspace is open.)
 
 - Slack Connect channels are excluded, and no policy rule or review decision
   overrides this.

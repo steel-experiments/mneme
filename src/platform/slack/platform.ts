@@ -1,5 +1,5 @@
 // ABOUTME: Composes the Slack adapter into one ChatPlatform (spec Sections 5.3 and 6.7).
-// ABOUTME: The read path only: Slack runs in observe mode, and every send fails closed until the write path exists.
+// ABOUTME: Read and write paths: ingestion, outbox delivery, review cards, the /mneme command, and DMs.
 import { createHash } from 'node:crypto';
 import type { AppConfig } from '../../config.js';
 import type { DatabaseSync } from '../../db/database.js';
@@ -31,16 +31,6 @@ import { escapeSlackText } from './mrkdwn.js';
 import { createSlackSender } from './sender.js';
 import { slackMessageLink } from './links.js';
 
-/** Startup checks for the read path. Each one fails startup with a clear message. */
-export function assertSlackReadPathConfig(config: AppConfig): void {
-  if (config.mode !== 'observe') {
-    throw new Error('Slack supports observe mode until the write path is available; set MNEME_MODE=observe');
-  }
-  if (config.directAnswerEnabled) {
-    throw new Error('Slack cannot answer mentions until the write path is available; set DIRECT_ANSWER_ENABLED=false');
-  }
-}
-
 /** Review-card HMAC secret derived from the bot token, as on Discord. */
 export function slackReviewSecret(botToken: string): string {
   return createHash('sha256').update(botToken).update(':review-components').digest('hex');
@@ -59,7 +49,6 @@ export function createSlackPlatform(
 ): ChatPlatform {
   const slack = config.slack;
   if (!slack) throw new Error('MNEME_PLATFORM=slack requires the Slack settings');
-  assertSlackReadPathConfig(config);
   const workspaceId = config.workspaceId;
   const api = seams.api ?? createSlackApi(slack.botToken);
   let identity: SlackIdentity | undefined;

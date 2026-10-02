@@ -14,7 +14,7 @@ honor its STOP conditions, and update the row when done.
 | 004 | Make names, ids, links, and text format platform-neutral (Discord only) | P1 | M | 003 | DONE |
 | 005 | Extract the ChatPlatform adapter seam (Discord only) | P1 | L | 004 | DONE |
 | 006 | Add the Slack read path: connection, discovery, visibility, ingestion, backfill | P1 | L | 005 | DONE |
-| 007 | Add the Slack write path: send, outbox recovery, cards, commands | P1 | L | 006 | TODO |
+| 007 | Add the Slack write path: send, outbox recovery, cards, commands | P1 | L | 006 | DONE |
 | 008 | Add Sign in with Slack for MCP OAuth | P2 | M | 006 | TODO |
 | 009 | Archive Slack attachments | P2 | S | 006 | TODO |
 | 010 | Document Slack setup and ship the app manifest | P1 | M | 007, 008, 009 | TODO |
