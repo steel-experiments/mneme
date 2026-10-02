@@ -35,8 +35,9 @@ prompt_template_engine: Handlebars
 
 Mneme is a quiet organizational-memory agent for one Discord server or one Slack workspace (one platform for each deployment). It ingests every message the bot is permitted to see, backfills existing channel and thread history, stays current through the platform event connection (the Discord Gateway or Slack Socket Mode), builds a searchable institutional memory, and occasionally surfaces a contradiction, forgotten decision, risky assumption, overdue prediction, or repeated failure pattern.
 
-(Amendment (plan 003): specified, not implemented. Plan 006 implements this
-rule. Until then, Mneme runs only on Discord.)
+(Amendment (plan 006): on Slack, Mneme reads and remembers in `observe` mode
+with direct answers off. Startup refuses another mode or direct answers until
+the Slack write path is available.)
 
 The v1 system is intentionally small:
 
@@ -172,7 +173,7 @@ The following are out of scope:
 | Runtime | Node.js 24 LTS, TypeScript, ESM | Compatible with Pi’s Node requirements and provides built-in `node:sqlite`. |
 | Platform selection | `MNEME_PLATFORM=discord\|slack`, required, no default | One platform for each deployment keeps one database and one visibility model. |
 | Discord integration | `discord.js` 14.x | Handles Gateway lifecycle, intents, REST rate limits, messages, threads, and interactions. |
-| Slack integration | `@slack/bolt` 5.x in Socket Mode | No public inbound URL; one process. |
+| Slack integration | `@slack/socket-mode` 3.x and `@slack/web-api` 8.x in Socket Mode | No public inbound URL; one process. The adapter needs only envelope acknowledgement and a few Web API calls, so it does not use Bolt. |
 | Agent runtime | `@earendil-works/pi-agent-core` | Stateful tool-calling loop without the coding-agent surface. |
 | Model abstraction | `@earendil-works/pi-ai` | Keeps model/provider selection configurable. |
 | Prompt templates | Handlebars `.hbs` templates | Mature, simple partials/loops, strict rendering, easy prompt versioning. |
@@ -185,8 +186,9 @@ The following are out of scope:
 | Deployment | One Docker image, one replica, one persistent volume | Matches Discord Gateway and SQLite’s operating model. |
 | Default autonomy | `observe` | Safest way to collect evaluation data before posting. |
 
-The platform-selection and Slack rows: (Amendment (plan 003): specified, not implemented. Plan 006 implements this
-rule. Until then, Mneme runs only on Discord.)
+The Slack row: (Amendment (plan 006): on Slack, Mneme reads and remembers in `observe` mode
+with direct answers off. Startup refuses another mode or direct answers until
+the Slack write path is available.)
 
 ### 4.1 Pi usage decision
 
@@ -478,8 +480,9 @@ Commands that disclose restricted content, modify channel policy, delete data, a
 
 ### 6.7 Slack application configuration
 
-(Amendment (plan 003): specified, not implemented. Plan 006 implements this
-rule. Until then, Mneme runs only on Discord.)
+(Amendment (plan 006): on Slack, Mneme reads and remembers in `observe` mode
+with direct answers off. Startup refuses another mode or direct answers until
+the Slack write path is available.)
 
 #### 6.7.1 App type
 
@@ -492,14 +495,15 @@ has `connections:write`. The bot token starts with `xoxb-`.
 
 Request these bot scopes: `channels:history`, `groups:history`,
 `channels:read`, `groups:read`, `users:read`, `reactions:read`, `files:read`,
-`chat:write`, `commands`, and `im:write`.
+`chat:write`, `commands`, and `im:write`. The read path uses the first seven
+(`SLACK_READ_SCOPES` in the adapter).
 
 Do not request `channels:join`, `im:history`, `mpim:history`, or `mpim:read`.
 
-Outbox deduplication attaches message metadata to each sent message. The scope
-that reads message metadata is to be confirmed by plan 007. If that scope is
-not available, the sender puts the deduplication marker in a Block Kit
-`block_id`, which needs no extra scope.
+Outbox deduplication attaches message metadata to each sent message. The plan
+006 spike showed that `conversations.history` with `include_all_metadata=true`
+returns message metadata with the scopes above and no extra scope. A Block Kit
+`block_id` also round-trips, as a fallback.
 
 #### 6.7.3 Events
 
@@ -561,8 +565,7 @@ outbound validation use the thread row's resolved class, so an explicit thread
 override is preserved; the live parent remains a required availability dependency
 and the canonical restricted-scope anchor, but does not replace the thread's class.
 
-Slack visibility rules: (Amendment (plan 003): specified, not implemented. Plan 006 implements this
-rule. Until then, Mneme runs only on Discord.)
+Slack visibility rules:
 
 - A Slack Connect channel (`is_ext_shared` or `is_pending_ext_shared` is true)
   always resolves to `excluded`. Policy cannot override this. A channel that
@@ -570,7 +573,12 @@ rule. Until then, Mneme runs only on Discord.)
   retrievable on the next read.
 - The policy resolver has a `platform_boundary` source that the adapter
   supplies. It wins over every other source, including explicit thread rules
-  and review decisions. The Slack Connect rule uses this source.
+  and review decisions. The Slack Connect rule uses this source. The boundary
+  is stored on the channel row (`channels.platform_boundary`), so a policy
+  reload cannot reopen the channel. A thread inherits the stored boundary of
+  its parent. A boundary channel never gets a classification review card.
+- An event that Slack marks as coming from a shared channel
+  (`is_ext_shared_channel`) is dropped, and the adapter re-reads the channel.
 - A channel that the bot leaves, or is removed from, becomes unavailable and
   fails closed.
 - A Slack thread inherits its channel's class, as a Discord thread does.
@@ -1012,14 +1020,19 @@ On Discord, handle at minimum these Gateway events:
 - `THREAD_LIST_SYNC`
 - client ready, reconnect, error, invalidation, and shard lifecycle events
 
-On Slack, map each event in Section 6.7.3 to the same ingest action. (Amendment (plan 003): specified, not implemented. Plan 006 implements this
-rule. Until then, Mneme runs only on Discord.)
+On Slack, map each event in Section 6.7.3 to the same ingest action. The adapter
+acknowledges each envelope at once and handles envelopes one at a time, in
+arrival order. It drops an event whose team is not `SLACK_TEAM_ID` and an event
+for a channel that is not known.
 
 - `message` with no subtype, `bot_message`, `file_share`, or `me_message` →
   message create;
 - `message` with subtype `thread_broadcast` → message create in the thread
   (Section 9.7);
-- `message` with subtype `message_changed` → message update;
+- `message` with subtype `message_changed` → message update, only when the new
+  message has `edited` or its text differs from the stored text. Slack also
+  sends `message_changed` for a root after a reply delete and right after a
+  broadcast post; these are not edits;
 - `message` with subtype `message_deleted` → message delete;
 - `reaction_added` and `reaction_removed` → reaction add and remove;
 - `channel_created`, `channel_rename`, `group_rename`, `channel_archive`,
@@ -1029,6 +1042,9 @@ rule. Until then, Mneme runs only on Discord.)
   channel delete or unavailable;
 - `member_joined_channel` and `member_left_channel` for the bot user →
   channel discovery for that channel;
+- every other subtype (for example `channel_join`, `channel_name`,
+  `channel_archive`, `pinned_item`, and unknown subtypes) → ignored; an unknown
+  subtype is logged once at `debug` level, without text;
 - Socket Mode connect, disconnect, and error events → connection health.
 
 Store Mneme’s own messages, but do not let them open or extend a human episode.
@@ -1082,8 +1098,10 @@ Default backfill concurrency is `2`. The adapter's SDK controls pacing.
 On Slack, backfill uses `conversations.history` for each channel and
 `conversations.replies` for each parent message whose `reply_count > 0`. It
 obeys `Retry-After`. It never uses the Data Access API or the Real-Time Search
-API. (Amendment (plan 003): specified, not implemented. Plan 006 implements this
-rule. Until then, Mneme runs only on Discord.)
+API. A rate limit waits for `Retry-After` and retries at most five times; then
+the job retry applies. A channel page leaves out replies and broadcast replies,
+which belong to their thread, and pages past ignored subtypes, so a short page
+always means the end of history. A thread page leaves out the root.
 
 Backfill and reconciliation share one current ingestion-eligibility predicate covering
 the concrete channel, a thread's required live/ingestion-enabled parent, and Mneme-
@@ -1217,8 +1235,7 @@ not transiently disable a positively known archived thread during its active-onl
 the reconciliation eligibility recheck above prevents a later quarantine from accepting
 an already-fetched page.
 
-Slack threads: (Amendment (plan 003): specified, not implemented. Plan 006 implements this
-rule. Until then, Mneme runs only on Discord.)
+Slack threads:
 
 - A Slack thread is a synthetic channel row with the id
   `<channelId>-T<thread_ts>` and `parent_id = <channelId>`.
@@ -1232,6 +1249,12 @@ rule. Until then, Mneme runs only on Discord.)
 - Slack cannot list threads, so the adapter builds thread descriptors from
   stored thread rows whose parent is present. Discovery uses the `close`
   missing-thread mode for Slack, not `quarantine`.
+- The first live reply creates the thread row before the reply is stored. A
+  root with `reply_count > 0` in channel history creates the thread row and
+  queues the thread's history import once. When the thread's history is
+  complete, a root whose `latest_reply` is newer than the newest stored reply
+  queues a reconcile of the thread, so replies made while Mneme was offline are
+  read. Reconcile does not infer deletes on Slack, as on Discord (Section 9.6).
 - A Slack attachment id is `<messageId>-<fileId>`. One Slack file can be shared
   into more than one message, so a bare file id is not unique to one message.
   (Amendment (plan 003): specified, not implemented. Plan 009 implements this
@@ -1406,8 +1429,7 @@ The episode key is:
 - thread ID for thread messages;
 - channel ID otherwise.
 
-For Slack, the thread id is the synthetic thread row id (Section 9.7). (Amendment (plan 003): specified, not implemented. Plan 006 implements this
-rule. Until then, Mneme runs only on Discord.)
+For Slack, the thread id is the synthetic thread row id (Section 9.7).
 
 ### 11.2 Opening an episode
 
@@ -4953,8 +4975,7 @@ On Discord, construct:
 https://discord.com/channels/{workspace_id}/{channel_id}/{message_id}
 ```
 
-On Slack, construct: (Amendment (plan 003): specified, not implemented. Plan 006 implements this
-rule. Until then, Mneme runs only on Discord.)
+On Slack, construct:
 
 ```text
 https://{team_domain}.slack.com/archives/{channel}/p{ts without dot}
@@ -5577,8 +5598,7 @@ Only the selected provider key is required.
 
 `MNEME_PLATFORM` is required and has no default. The `DISCORD_*` block is required
 only when `MNEME_PLATFORM=discord`. When `MNEME_PLATFORM=slack`, this block replaces
-it. (Amendment (plan 003): specified, not implemented. Plan 005 implements this
-rule. Until then, Mneme runs only on Discord.) Plan 006 implements the Slack block.
+it. `MNEME_ADMIN_ROLE_IDS` must stay unset on Slack; Slack has no roles.
 
 ```dotenv
 SLACK_BOT_TOKEN=
@@ -6516,8 +6536,7 @@ Do not:
 
 Mneme uses model API inference only.
 
-On Slack, the Slack API Terms apply: (Amendment (plan 003): specified, not implemented. Plan 006 implements this
-rule. Until then, Mneme runs only on Discord.)
+On Slack, the Slack API Terms apply:
 
 - the app is internal to the installing organization and is not distributed;
 - do not train or fine-tune a model on Slack data;
@@ -7130,8 +7149,8 @@ The v1 implementation is complete when all are true:
 
 ### Slack
 
-(Amendment (plan 003): specified, not implemented. Plans 006–010 implement
-these rules. Until then, Mneme runs only on Discord.)
+(Amendment (plan 006): the first two rules and the thread rule are implemented.
+Plans 007–010 implement the rest; until then, Slack runs in `observe` mode.)
 
 - Slack Connect channels are excluded, and no policy rule or review decision
   overrides this.

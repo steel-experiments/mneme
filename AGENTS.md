@@ -24,4 +24,4 @@ Inspiration came from this article from Sunil https://sunilpai.dev/posts/every-c
 
 ## Stack
 
-Node 24 + TypeScript ESM, discord.js 14, @slack/bolt 5 (planned), Pi Agent Core, Handlebars prompts, `node:sqlite` + FTS5, MCP (2026-07-28 spec) for external agents.
+Node 24 + TypeScript ESM, discord.js 14, @slack/socket-mode 3 and @slack/web-api 8, Pi Agent Core, Handlebars prompts, `node:sqlite` + FTS5, MCP (2026-07-28 spec) for external agents.
