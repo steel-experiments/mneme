@@ -26,6 +26,23 @@ export interface ObservedChannelIdentity {
   kind: ChannelKind;
   /** Optional already-resolved category from a complete discovery graph. */
   categoryId?: string | null;
+  /**
+   * Platform boundary seen now by the adapter. Omit it to use the stored value
+   * of the row; a thread also inherits its parent's stored boundary.
+   */
+  platformBoundary?: 'excluded' | null;
+}
+
+/** The boundary that applies to a channel: its own, or its thread parent's (fail closed). */
+export function platformBoundaryFor(db: DatabaseSync, channel: ObservedChannelIdentity): 'excluded' | null {
+  if (channel.platformBoundary === 'excluded') return 'excluded';
+  if (channel.platformBoundary === undefined && getChannel(db, channel.id)?.platform_boundary === 'excluded') {
+    return 'excluded';
+  }
+  if (channel.isThread && channel.parentId && getChannel(db, channel.parentId)?.platform_boundary === 'excluded') {
+    return 'excluded';
+  }
+  return null;
 }
 
 function staticPolicyForIdentity(
@@ -70,6 +87,7 @@ export function resolveObservedChannelPolicy(
     activeReview: options.channelPolicySource === 'basic'
       ? undefined
       : getActiveChannelPolicyReview(db, channel.id),
+    platformBoundary: platformBoundaryFor(db, channel),
   });
 }
 
@@ -120,7 +138,9 @@ export function reconcileObservedChannelPolicyReviewInTransaction(
     && migration !== undefined
     && row.discovered_at_ms >= migration.applied_at_ms;
   const classificationReviewsEnabled = options.channelPolicySource !== 'basic';
+  const boundary = platformBoundaryFor(db, channel);
   const eligible = classificationReviewsEnabled
+    && boundary === null
     && options.accessible !== false
     && options.deleted !== true
     && options.unsupported !== true
@@ -132,7 +152,9 @@ export function reconcileObservedChannelPolicyReviewInTransaction(
     && (options.forceReview === true || existingReview !== undefined || observedAfterActivation);
   const reason = options.deleted
     ? 'channel_deleted'
-    : classificationReviewsEnabled
+    : boundary !== null
+      ? 'unsupported'
+      : classificationReviewsEnabled
       ? ineligibleReason(policy, channel, staticPolicy)
       // The basic selection decides every channel explicitly (selected list or
       // fail-closed default), so a review row has nothing left to classify.
@@ -193,5 +215,6 @@ export function rowIdentity(row: ChannelRow): ObservedChannelIdentity {
     parentId: row.parent_id,
     isThread: row.is_thread === 1,
     kind: row.kind,
+    platformBoundary: row.platform_boundary,
   };
 }
