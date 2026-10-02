@@ -171,6 +171,32 @@ describe('Slack live events', () => {
     expect((await handleSlackEnvelope(live, fixture('16'))).reason).toBe('policy');
   });
 
+  it('applies a delete flagged as coming from a shared channel', async () => {
+    const { db, live, feed } = await setup();
+    await feed('08');
+    const del = fixture('10');
+    del.body = { ...del.body, is_ext_shared_channel: true };
+    expect(await handleSlackEnvelope(live, del)).toEqual({ handled: true });
+    const row = getMessage(db, `${PUBLIC}-1790933741.610379`);
+    expect(row === undefined || row.deleted_at_ms !== null).toBe(true);
+    expect(getChannel(db, PUBLIC)?.platform_boundary).toBe('excluded');
+  });
+
+  it('applies deletes but drops edits in a channel that stays excluded', async () => {
+    const { db, api, live, feed } = await setup();
+    await feed('11', '12', '08');
+    api.conversations.set(PUBLIC, conversation(PUBLIC, { is_ext_shared: true }));
+    await handleSlackEnvelope(live, { type: 'events_api', body: { team_id: TEAM, event: { type: 'channel_shared', channel: PUBLIC } } });
+    const reply = `${PUBLIC}-1790933763.089139`;
+    const before = getMessage(db, reply);
+    expect(await handleSlackEnvelope(live, fixture('13'))).toEqual({ handled: false, reason: 'policy' });
+    expect(getMessage(db, reply)?.edited_at_ms).toBe(before?.edited_at_ms);
+    expect((await feed('14'))[0]).toEqual({ handled: true });
+    const deletedReply = getMessage(db, reply);
+    expect(deletedReply === undefined || deletedReply.deleted_at_ms !== null).toBe(true);
+    expect((await feed('10'))[0]).toEqual({ handled: true });
+  });
+
   it('drops content flagged as coming from a shared channel', async () => {
     const { db, api, live } = await setup();
     api.conversations.set(PUBLIC, conversation(PUBLIC, { is_ext_shared: true }));
