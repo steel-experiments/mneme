@@ -27,16 +27,9 @@ import {
 import { createChannelPolicyReviewDeliveryHandler } from '../../review/controls.js';
 import { createSlackResponder } from './respond.js';
 import { createSlackRecentSentLookup } from './recent-sent.js';
+import { escapeSlackText } from './mrkdwn.js';
 import { createSlackSender } from './sender.js';
 import { slackMessageLink } from './links.js';
-
-/** Raised by every send while the Slack write path is not available. */
-export class SlackWritePathUnavailableError extends Error {
-  constructor() {
-    super('Slack supports observe mode only; sending to Slack is not available');
-    this.name = 'SlackWritePathUnavailableError';
-  }
-}
 
 /** Startup checks for the read path. Each one fails startup with a clear message. */
 export function assertSlackReadPathConfig(config: AppConfig): void {
@@ -75,9 +68,6 @@ export function createSlackPlatform(
   const connected = (): { identity: SlackIdentity; db: DatabaseSync; deps: LiveIngestionDeps } => {
     if (!identity || !db || !liveDeps) throw new Error('the Slack platform is not connected');
     return { identity, db, deps: liveDeps };
-  };
-  const unavailable = async (): Promise<never> => {
-    throw new SlackWritePathUnavailableError();
   };
   const cardDeps: SlackCardDeps = {
     api,
@@ -200,7 +190,10 @@ export function createSlackPlatform(
     recentSent: createSlackRecentSentLookup(api, () => connected().identity.selfUserId),
 
     sender: createSlackSender({ api, db: () => connected().db, teamDomain: () => connected().identity.teamDomain }),
-    sendDirect: unavailable,
+    async sendDirect(userId, text) {
+      // A post to a user id opens the bot's DM with that user (`im:write`).
+      await api.postMessage({ channel: userId, text: escapeSlackText(text) });
+    },
     deliverProposalReview: async (input, deps) => deliverSlackProposalReview(input, deps, cardDeps),
     reviewResolver: () => createSlackReviewResolver(api),
     createChannelPolicyReviewDeliveryHandler: (deps) => createChannelPolicyReviewDeliveryHandler({

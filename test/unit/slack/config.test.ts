@@ -83,6 +83,13 @@ describe('Slack configuration', () => {
     expectFail({ ...slackEnv(), MNEME_REVIEW_CHANNEL_ID: '123456789012345678' }, 'MNEME_REVIEW_CHANNEL_ID');
   });
 
+  it('reads Slack deletion approvers and rejects Discord ids', () => {
+    expect(loadConfig({ env: { ...slackEnv(), MNEME_DELETION_APPROVER_USER_IDS: 'U0000000001, W0000000002' } }).deletionApproverUserIds)
+      .toEqual(['U0000000001', 'W0000000002']);
+    expect(loadConfig({ env: slackEnv() }).deletionApproverUserIds).toEqual([]);
+    expectFail({ ...slackEnv(), MNEME_DELETION_APPROVER_USER_IDS: '123456789012345678' }, 'MNEME_DELETION_APPROVER_USER_IDS');
+  });
+
   it('rejects MCP OAuth sign-in on Slack', () => {
     expectFail({ ...slackEnv(), MCP_OAUTH_ENABLED: 'true' }, 'MCP_OAUTH_ENABLED');
   });
