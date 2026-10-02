@@ -6,6 +6,8 @@ import { BOT_USER, conversation, fakeSlackApi, seedSlackWorkspace, TEAM } from '
 import { parseChannelPolicy } from '../../../src/policy/channel-policy.js';
 import { runStartupSync } from '../../../src/ingestion/sync.js';
 import { backfillChannel } from '../../../src/ingestion/backfill.js';
+import { reconcileChannel } from '../../../src/ingestion/reconcile.js';
+import { excludeSharedChannel } from '../../../src/platform/slack/channels.js';
 import type { IngestOptions } from '../../../src/ingestion/ingest.js';
 import { resolveObservedChannelPolicy } from '../../../src/policy/channel-policy-review-service.js';
 import type { ChannelUpsertInput } from '../../../src/db/repositories/channels.js';
@@ -63,6 +65,36 @@ describe('Slack backfill', () => {
     expect(result.messagesIngested).toBe(3);
     expect(result.historyComplete).toBe(true);
     expect(getMessage(db, `${C}-1790930001.000100`)?.channel_id).toBe(C);
+  });
+
+  it('does not commit a page fetched before the channel became shared', async () => {
+    const { db, api, fetcher, opts } = await setup();
+    api.channelMessages.set(C, [msg('1790930002.000100'), msg('1790930001.000100')]);
+    const history = api.history.bind(api);
+    api.history = async (input) => {
+      const page = await history(input);
+      excludeSharedChannel(db, C, NOW);
+      return page;
+    };
+    const result = await backfillChannel({ db, opts, fetcher, channelId: C });
+    expect(result.messagesIngested).toBe(0);
+    expect(getMessage(db, `${C}-1790930002.000100`)).toBeUndefined();
+    expect(getMessage(db, `${C}-1790930001.000100`)).toBeUndefined();
+  });
+
+  it('does not commit a reconcile page fetched before the channel became shared', async () => {
+    const { db, api, fetcher, opts } = await setup();
+    api.channelMessages.set(C, [msg('1790930001.000100')]);
+    await backfillChannel({ db, opts, fetcher, channelId: C });
+    api.channelMessages.set(C, [msg('1790930009.000100'), msg('1790930001.000100')]);
+    const history = api.history.bind(api);
+    api.history = async (input) => {
+      const page = await history(input);
+      excludeSharedChannel(db, C, NOW);
+      return page;
+    };
+    await reconcileChannel({ db, opts: { ...opts, now: NOW + 60_000 }, fetcher, channelId: C });
+    expect(getMessage(db, `${C}-1790930009.000100`)).toBeUndefined();
   });
 
   it('queues one thread job for a root with replies, then stores the replies without the root', async () => {
