@@ -151,6 +151,15 @@ describe('Slack /mneme handler', () => {
     expect(replies[0]).toMatch(/not shared with another organization/);
   });
 
+  it('refuses a non-admin before it looks up an unknown channel', async () => {
+    const { deps, replies, command } = await setup();
+    let lookups = 0;
+    const counted: SlackCommandDeps = { ...deps, conversationInfo: async () => { lookups += 1; return null; } };
+    expect(await handleSlackCommand(counted, command('channels', { channel_id: UNKNOWN, user_id: 'U0000000055' }))).toBe('refused');
+    expect(lookups).toBe(0);
+    expect(replies[0]).toMatch(/not authorized/i);
+  });
+
   it('handles an unknown channel that is not shared', async () => {
     const { api, deps, command } = await setup();
     api.conversations.set(UNKNOWN, conversation(UNKNOWN));
