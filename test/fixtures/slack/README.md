@@ -50,3 +50,19 @@ are real.
   Apps in the Slack sidebar when the Messages tab is read-only.
 - Slack Connect was not tested (action 7). The test workspace had only
   customer channels for it.
+
+## Write path spike
+
+These results come from the same live session (2026-10-02), with the bot
+posting through the Web API (plan 007, step 1).
+
+| Check | Result |
+|---|---|
+| `chat.postMessage` with `metadata` (`event_type: mneme_outbox`, `event_payload: { dedupe }`), read back with `conversations.history` and `include_all_metadata=true` | Returned with the plan 006 scopes; no extra scope |
+| A section block with a custom `block_id` | Returned unchanged in `conversations.history` |
+| Raw `<!here>` and `<@U…>` in a bot message | Notifies users; escaping is mandatory |
+| `chat.postMessage` to a user id (`im:write`), Messages tab read-only | The user sees the message under Apps in the sidebar |
+| Slash command payload | Has `channel_id`, `user_id`, `team_id`, `text`, `response_url`, and `trigger_id`; no thread field (fixture 25) |
+
+The outbox dedupe marker uses message metadata. The `block_id` fallback is not
+necessary.
