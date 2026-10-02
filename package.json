@@ -29,8 +29,8 @@
     "integrity-check": "node dist/cli/commands.js integrity-check"
   },
   "dependencies": {
-    "@earendil-works/pi-agent-core": "0.84.1",
-    "@earendil-works/pi-ai": "0.84.1",
+    "@earendil-works/pi-agent-core": "1.0.0",
+    "@earendil-works/pi-ai": "1.0.0",
     "@modelcontextprotocol/sdk": "1.30.0",
     "@sinclair/typebox": "0.34.52",
     "@slack/socket-mode": "3.1.0",

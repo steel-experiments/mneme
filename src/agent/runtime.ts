@@ -1,4 +1,4 @@
-import { Agent, uuidv7 } from '@earendil-works/pi-agent-core';
+import { Agent } from '@earendil-works/pi-agent-core';
 import type {
   AgentTool,
   BeforeToolCallContext,
@@ -7,7 +7,7 @@ import type {
   AfterToolCallResult,
   StreamFn,
 } from '@earendil-works/pi-agent-core';
-import type { Api, Model, ThinkingLevel, Usage } from '@earendil-works/pi-ai';
+import { uuidv7, type Api, type Model, type ThinkingLevel, type Usage } from '@earendil-works/pi-ai';
 import { hasBillablePricing } from './model.js';
 import { type DatabaseSync } from '../db/database.js';
 import type { RetrievalGrant } from '../db/repositories/message-search.js';
@@ -767,17 +767,26 @@ export async function executeAgentRun(deps: ExecuteAgentRunDeps): Promise<AgentR
       }
       return { context: { ...context, tools: finalizeOnlyTools } };
     },
-    shouldStopAfterTurn: () => {
-      if (finalizeState.accepted) return true;
+    // Runs after each turn, before its turn_end event, so the turn is not yet
+    // counted in budget.turns. Error and aborted responses end the run in Pi.
+    // Pi calls prepareNextTurnWithContext only when a next request is already
+    // scheduled. When the finalization directive is due, this hook asks for
+    // that request. A call outside the allowlist ends the run (fail closed).
+    finishTurn: ({ message }) => {
+      if (message.stopReason === 'error' || message.stopReason === 'aborted') return undefined;
+      if (finalizeState.accepted) return { action: 'end' };
       if (finalizeState.correctionExhausted) {
         if (budget.endReason === null) budget.endReason = 'validation_rejected';
-        return true;
+        return { action: 'end' };
       }
-      if (budget.turns >= limits.maxTurns) {
+      if (budget.turns + 1 >= limits.maxTurns) {
         if (budget.endReason === null) budget.endReason = 'budget_exceeded';
-        return true;
+        return { action: 'end' };
       }
-      return false;
+      if (phase.directiveSent || budget.endReason === 'blocked') return undefined;
+      const idle = !message.content.some((part) => part.type === 'toolCall');
+      const directiveDue = phase.finalizeOnly || budget.turns + 1 >= finalizeOnlyFromTurn || idle;
+      return directiveDue ? { action: 'continue' } : undefined;
     },
   });
 
