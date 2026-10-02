@@ -154,6 +154,7 @@ export function createSlackPlatform(
         adminUserIds: slack.adminUserIds,
         respond,
         logger,
+        conversationInfo: (channel) => api.conversationInfo(channel),
       };
     },
     registerReviewControls(deps) {

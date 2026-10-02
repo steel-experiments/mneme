@@ -58,7 +58,7 @@ describe('Slack /mneme handler', () => {
     const replies: string[] = [];
     const warnings: unknown[] = [];
     const deps: SlackCommandDeps = {
-      workspaceId: TEAM, adminUserIds: [ADMIN],
+      workspaceId: TEAM, adminUserIds: [ADMIN], conversationInfo: (channel) => api.conversationInfo(channel),
       routes: { ctx, buildApprovalRecheck: () => { throw new Error('not used'); } },
       respond: async (url, text) => {
         expect(url).toBe('https://hooks.slack.com/commands/T0/1/x');
@@ -71,7 +71,7 @@ describe('Slack /mneme handler', () => {
       return { type: fixture.type, body: { ...fixture.body, command: '/mneme', team_id: TEAM, channel_id: CHANNEL,
         channel_name: 'general', user_id: ADMIN, response_url: 'https://hooks.slack.com/commands/T0/1/x', text, ...over } };
     };
-    return { db, ctx, deps, replies, warnings, command };
+    return { db, ctx, api, deps, replies, warnings, command };
   }
 
   it('uses the recorded slash command payload shape', () => {
@@ -117,6 +117,44 @@ describe('Slack /mneme handler', () => {
     excludeSharedChannel(db, CHANNEL, NOW + 1);
     expect(await handleSlackCommand(deps, command('channels'))).toBe('refused');
     expect(replies[0]).toMatch(/not shared with another organization/);
+  });
+
+  const UNKNOWN = 'C0000000077';
+
+  it.each([
+    ['shared with another organization', { is_ext_shared: true }],
+    ['waiting to be shared', { is_pending_ext_shared: true }],
+  ])('refuses an unknown channel that is %s', async (_name, over) => {
+    const { api, deps, replies, command } = await setup();
+    api.conversations.set(UNKNOWN, conversation(UNKNOWN, over));
+    expect(await handleSlackCommand(deps, command('channels', { channel_id: UNKNOWN }))).toBe('refused');
+    expect(replies[0]).toMatch(/not shared with another organization/);
+  });
+
+  it('refuses an unknown channel that the bot cannot see', async () => {
+    const { deps, replies, command } = await setup();
+    expect(await handleSlackCommand(deps, command('channels', { channel_id: UNKNOWN }))).toBe('refused');
+    expect(replies[0]).toMatch(/not shared with another organization/);
+  });
+
+  it('refuses an unknown channel when the channel lookup fails', async () => {
+    const { api, deps, replies, command } = await setup();
+    api.failures.set('conversationInfo', [new Error('socket hang up')]);
+    expect(await handleSlackCommand(deps, command('channels', { channel_id: UNKNOWN }))).toBe('refused');
+    expect(replies[0]).toMatch(/not shared with another organization/);
+  });
+
+  it('refuses an unknown channel when the channel lookup does not answer in time', async () => {
+    const { deps, replies, command } = await setup();
+    const slow: SlackCommandDeps = { ...deps, conversationInfoTimeoutMs: 20, conversationInfo: () => new Promise(() => undefined) };
+    expect(await handleSlackCommand(slow, command('channels', { channel_id: UNKNOWN }))).toBe('refused');
+    expect(replies[0]).toMatch(/not shared with another organization/);
+  });
+
+  it('handles an unknown channel that is not shared', async () => {
+    const { api, deps, command } = await setup();
+    api.conversations.set(UNKNOWN, conversation(UNKNOWN));
+    expect(await handleSlackCommand(deps, command('channels', { channel_id: UNKNOWN }))).toBe('handled');
   });
 
   it('applies the deletion review-channel rule unchanged', async () => {

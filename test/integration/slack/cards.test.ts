@@ -208,6 +208,15 @@ describe('Slack review cards', () => {
     expect(getProposal(db, id)?.status).toBe('pending_review');
   });
 
+  it('changes nothing for a click after the review channel was shared with another organization', async () => {
+    const { db, actionDeps, responses, seedProposal } = await setup();
+    const id = seedProposal();
+    excludeSharedChannel(db, REVIEW, NOW + 1);
+    expect(await handleSlackAction(actionDeps, click(signReviewComponent('approve', id, SECRET)))).toBe('refused');
+    expect(getProposal(db, id)?.status).toBe('pending_review');
+    expect(responses[0]).toMatch(/shared with another organization/);
+  });
+
   it('refuses a non-admin through the shared fail-closed check', async () => {
     const { db, actionDeps, responses, seedProposal } = await setup();
     const id = seedProposal();
