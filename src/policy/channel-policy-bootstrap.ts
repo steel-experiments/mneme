@@ -65,7 +65,7 @@ function parseSelectionList(env: NodeJS.ProcessEnv, key: string): string[] {
     .filter((s) => s.length > 0);
   for (const part of parts) {
     if (!isPlatformId(part)) {
-      throw new ChannelPolicyError(`channel policy: "${part}" in ${key} is not a Discord snowflake`);
+      throw new ChannelPolicyError(`channel policy: "${part}" in ${key} is not a valid platform id`);
     }
   }
   return parts;
@@ -74,7 +74,7 @@ function parseSelectionList(env: NodeJS.ProcessEnv, key: string): string[] {
 /** Validate the review-channel id with the shared snowflake rule. */
 function parseReviewId(raw: string): string {
   if (!isPlatformId(raw)) {
-    throw new ChannelPolicyError(`channel policy: "${raw}" in ${REVIEW_ID_VAR} is not a Discord snowflake`);
+    throw new ChannelPolicyError(`channel policy: "${raw}" in ${REVIEW_ID_VAR} is not a valid platform id`);
   }
   return raw;
 }
