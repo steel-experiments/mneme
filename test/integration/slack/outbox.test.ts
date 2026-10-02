@@ -18,6 +18,9 @@ import type { SlackEnvelope } from '../../../src/platform/slack/connection.js';
 import { slackFormat } from '../../../src/platform/slack/format.js';
 import { createSlackSender, OUTBOX_METADATA_EVENT_TYPE } from '../../../src/platform/slack/sender.js';
 import { PermanentJobError, TransientJobError } from '../../../src/jobs/errors.js';
+import { createSlackRecentSentLookup } from '../../../src/platform/slack/recent-sent.js';
+import { claimOutboxForSending, enqueueOutbox, getOutbox } from '../../../src/outbox/repository.js';
+import { reconcileOutboxSending } from '../../../src/outbox/recovery.js';
 
 const PUBLIC = 'C0000000001';
 const PRIVATE = 'C0000000002';
@@ -40,6 +43,24 @@ function fixture(prefix: string): SlackEnvelope {
   return JSON.parse(readFileSync(`${FIXTURES}${name}`, 'utf8')) as SlackEnvelope;
 }
 
+/** A database with two member channels, one thread root, and one reply. */
+async function seedSlack(db: TestDb['db'], api: ReturnType<typeof fakeSlackApi>): Promise<void> {
+  seedSlackWorkspace(db);
+  api.conversations.set(PUBLIC, conversation(PUBLIC));
+  api.conversations.set(PRIVATE, conversation(PRIVATE, { is_private: true }));
+  await runStartupSync({ db, guildId: TEAM, policy: POLICY, now: NOW, completeThreadSnapshot: true,
+    channels: await listSlackChannels(api, db, TEAM), enqueueHistoricalBackfill: false });
+  const ctx = {
+    config: slackTestConfig(), db, logger: createLogger({ level: 'silent' }), counters: createCounters(),
+    now: () => NOW, snapshot: { channelPolicy: POLICY }, format: slackFormat,
+  } as unknown as BootstrapContext;
+  const live: SlackLiveContext = {
+    workspaceId: TEAM, selfUserId: BOT_USER, api, deps: createLiveIngestionDeps(ctx, BOT_USER),
+    enqueueHistory: false, seenSubtypes: new Set(),
+  };
+  for (const p of ['11', '12']) await handleSlackEnvelope(live, fixture(p));
+}
+
 describe('Slack outbox sender', () => {
   let t: TestDb | undefined;
   afterEach(() => t?.cleanup());
@@ -47,22 +68,8 @@ describe('Slack outbox sender', () => {
   async function setup() {
     t = createTestDb();
     const db = t.db;
-    seedSlackWorkspace(db);
     const api = fakeSlackApi();
-    api.conversations.set(PUBLIC, conversation(PUBLIC));
-    api.conversations.set(PRIVATE, conversation(PRIVATE, { is_private: true }));
-    await runStartupSync({ db, guildId: TEAM, policy: POLICY, now: NOW, completeThreadSnapshot: true,
-      channels: await listSlackChannels(api, db, TEAM), enqueueHistoricalBackfill: false });
-    const ctx = {
-      config: slackTestConfig(), db, logger: createLogger({ level: 'silent' }), counters: createCounters(),
-      now: () => NOW, snapshot: { channelPolicy: POLICY }, format: slackFormat,
-    } as unknown as BootstrapContext;
-    const live: SlackLiveContext = {
-      workspaceId: TEAM, selfUserId: BOT_USER, api, deps: createLiveIngestionDeps(ctx, BOT_USER),
-      enqueueHistory: false, seenSubtypes: new Set(),
-    };
-    // The root and one reply, so the thread row exists.
-    for (const p of ['11', '12']) await handleSlackEnvelope(live, fixture(p));
+    await seedSlack(db, api);
     const sender = createSlackSender({ api, db: () => db, teamDomain: () => 'acme' });
     return { db, api, sender };
   }
@@ -141,5 +148,86 @@ describe('Slack outbox sender', () => {
     const { api, sender } = await setup();
     api.failures.set('postMessage', [new Error('socket hang up')]);
     await expect(sender.send({ channelId: PUBLIC, content: 'x' })).rejects.toBeInstanceOf(TransientJobError);
+  });
+});
+
+describe('Slack outbox crash recovery', () => {
+  let t: TestDb | undefined;
+  afterEach(() => t?.cleanup());
+
+  async function setup() {
+    t = createTestDb();
+    const db = t.db;
+    const api = fakeSlackApi();
+    await seedSlack(db, api);
+    db.prepare(`INSERT INTO agent_runs (id, workspace_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
+      VALUES ('run-1', ?, NULL, 'episode', 'pv', 'faux', 'faux-1', 'completed', ?)`).run(TEAM, NOW);
+    const sending = (channelId: string) => {
+      const { outboxId } = enqueueOutbox(db, { proposalId: null, runId: 'run-1', channelId, content: 'hi', now: NOW });
+      claimOutboxForSending(db, outboxId, NOW);
+      return { id: outboxId, marker: getOutbox(db, outboxId)!.dedupeMarker! };
+    };
+    const lookup = createSlackRecentSentLookup(api, () => BOT_USER);
+    return { db, api, sending, lookup };
+  }
+
+  const botMessage = (ts: string, marker: string, user = BOT_USER) => ({
+    ts, user, bot_id: 'B0000000001', text: 'hi',
+    metadata: { event_type: OUTBOX_METADATA_EVENT_TYPE, event_payload: { marker } },
+  });
+
+  it('marks a sending row sent when its marker is found, with no new post', async () => {
+    const { db, api, sending, lookup } = await setup();
+    const row = sending(PUBLIC);
+    api.channelMessages.set(PUBLIC, [botMessage('1790934100.000100', row.marker)]);
+    const report = await reconcileOutboxSending(db, lookup, { now: NOW + 60_000 });
+    expect(report.confirmed).toBe(1);
+    expect(getOutbox(db, row.id)).toMatchObject({ status: 'sent', platformMessageId: `${PUBLIC}-1790934100.000100` });
+    expect(api.posted).toHaveLength(0);
+  });
+
+  it('looks in the thread for a thread-row target', async () => {
+    const { db, api, sending, lookup } = await setup();
+    const row = sending(THREAD);
+    api.threadMessages.set(`${PUBLIC}:1790933759.217369`, [
+      { ts: '1790933759.217369', user: 'U0000000001', text: 'root' },
+      botMessage('1790934100.000200', row.marker),
+    ]);
+    const report = await reconcileOutboxSending(db, lookup, { now: NOW + 60_000 });
+    expect(report.confirmed).toBe(1);
+    expect(getOutbox(db, row.id)?.platformMessageId).toBe(`${PUBLIC}-1790934100.000200`);
+  });
+
+  it('requeues a row whose marker is not found after a complete lookup', async () => {
+    const { db, api, sending, lookup } = await setup();
+    const row = sending(PUBLIC);
+    api.channelMessages.set(PUBLIC, [botMessage('1790934100.000100', 'another-marker')]);
+    const report = await reconcileOutboxSending(db, lookup, { now: NOW + 60_000 });
+    expect(report.requeued).toBe(1);
+    expect(getOutbox(db, row.id)?.status).toBe('queued');
+  });
+
+  it('ignores a message from another bot that carries the same marker', async () => {
+    const { db, api, sending, lookup } = await setup();
+    const row = sending(PUBLIC);
+    api.channelMessages.set(PUBLIC, [botMessage('1790934100.000100', row.marker, 'U0000000077')]);
+    const report = await reconcileOutboxSending(db, lookup, { now: NOW + 60_000 });
+    expect(report.confirmed).toBe(0);
+    expect(getOutbox(db, row.id)?.status).toBe('queued');
+  });
+
+  it('leaves the row sending when the lookup fails', async () => {
+    const { db, api, sending, lookup } = await setup();
+    const row = sending(PUBLIC);
+    api.failures.set('history', [new Error('socket hang up')]);
+    const report = await reconcileOutboxSending(db, lookup, { now: NOW + 60_000 });
+    expect(report.errored).toBe(1);
+    expect(getOutbox(db, row.id)?.status).toBe('sending');
+  });
+
+  it('returns no messages for a channel that is gone', async () => {
+    const { api, lookup } = await setup();
+    api.failures.set('history', [slackPlatformError('channel_not_found')]);
+    await expect(lookup.fetch(PUBLIC, NOW)).resolves.toEqual([]);
   });
 });

@@ -15,6 +15,7 @@ import { listSlackChannels, SLACK_REDISCOVERY_INTERVAL_MS } from './discovery.js
 import { handleSlackEnvelope, type SlackLiveContext } from './events.js';
 import { slackFormat } from './format.js';
 import { createSlackHistory } from './history.js';
+import { createSlackRecentSentLookup } from './recent-sent.js';
 import { createSlackSender } from './sender.js';
 import { slackMessageLink } from './links.js';
 
@@ -136,7 +137,7 @@ export function createSlackPlatform(
     listChannels: async () => listSlackChannels(api, connected().db, workspaceId),
     threadDiscovery: { mode: 'complete_snapshot', rediscoveryIntervalMs: SLACK_REDISCOVERY_INTERVAL_MS },
     history,
-    recentSent: { fetch: async () => [] },
+    recentSent: createSlackRecentSentLookup(api, () => connected().identity.selfUserId),
 
     sender: createSlackSender({ api, db: () => connected().db, teamDomain: () => connected().identity.teamDomain }),
     sendDirect: unavailable,
