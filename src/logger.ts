@@ -41,6 +41,8 @@ export const REDACT_PATHS = [
   '*.accessToken',
   '*.access_token',
   '*.oauthProviderClientSecret',
+  // config.mcp.oauthProviderClientSecret in a full config record.
+  '*.*.oauthProviderClientSecret',
   'req.headers.authorization',
   'req.headers.cookie',
   'headers.authorization',
