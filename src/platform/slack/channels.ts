@@ -81,3 +81,19 @@ export function markChannelUnavailable(db: DatabaseSync, channel: string, now: n
       WHERE channel_id=? OR channel_id IN (SELECT id FROM channels WHERE parent_id=?)`).run(now, channel, channel);
   });
 }
+
+/**
+ * A channel is shared with another organization: mark it and its threads
+ * excluded at once, before any network call (spec Section 7.1). The boundary
+ * never goes back to null, so a later failed or stale re-read cannot open it.
+ */
+export function excludeSharedChannel(db: DatabaseSync, channel: string, now: number): boolean {
+  if (!getChannel(db, channel)) return false;
+  transaction(db, () => {
+    db.prepare(`UPDATE channels SET platform_boundary='excluded', ingest_enabled=0, visibility_class='excluded',
+      allow_interventions=0, updated_at_ms=? WHERE id=? OR parent_id=?`).run(now, channel, channel);
+    db.prepare(`UPDATE sync_cursors SET state='excluded', updated_at_ms=?
+      WHERE channel_id=? OR channel_id IN (SELECT id FROM channels WHERE parent_id=?)`).run(now, channel, channel);
+  });
+  return true;
+}

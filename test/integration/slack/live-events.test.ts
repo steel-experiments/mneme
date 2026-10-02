@@ -137,6 +137,28 @@ describe('Slack live events', () => {
     expect((await handleSlackEnvelope(live, next)).reason).toBe('policy');
   });
 
+  it('excludes a shared channel and its threads before the channel re-read, even when the re-read fails', async () => {
+    const { db, api, live, feed } = await setup();
+    await feed('11', '12');
+    const rateLimited = Object.assign(new Error('rate limited'), { code: 'slack_webapi_rate_limited_error' });
+    api.failures.set('conversationInfo', [rateLimited]);
+    const outcome = await handleSlackEnvelope(live, { type: 'events_api', body: { team_id: TEAM, event: { type: 'channel_shared', channel: PUBLIC } } });
+    expect(outcome.handled).toBe(true);
+    expect(getChannel(db, PUBLIC)).toMatchObject({ platform_boundary: 'excluded', ingest_enabled: 0, visibility_class: 'excluded' });
+    expect(getChannel(db, `${PUBLIC}-T1790933759.217369`)).toMatchObject({ platform_boundary: 'excluded', ingest_enabled: 0, visibility_class: 'excluded' });
+  });
+
+  it('excludes the channel from a shared-channel envelope when the re-read fails', async () => {
+    const { db, api, live, feed } = await setup();
+    await feed('11', '12');
+    api.failures.set('conversationInfo', [new Error('socket hang up')]);
+    const env = fixture('16');
+    env.body = { ...env.body, is_ext_shared_channel: true };
+    expect(await handleSlackEnvelope(live, env)).toEqual({ handled: false, reason: 'shared_channel' });
+    expect(getChannel(db, PUBLIC)).toMatchObject({ platform_boundary: 'excluded', ingest_enabled: 0 });
+    expect(getChannel(db, `${PUBLIC}-T1790933759.217369`)).toMatchObject({ platform_boundary: 'excluded', ingest_enabled: 0 });
+  });
+
   it('drops content flagged as coming from a shared channel', async () => {
     const { db, api, live } = await setup();
     api.conversations.set(PUBLIC, conversation(PUBLIC, { is_ext_shared: true }));
