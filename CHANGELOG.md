@@ -9,7 +9,7 @@ and this project adheres to
 This changelog starts at the launch baseline. Changes before that point are
 not recorded.
 
-## [Unreleased]
+## [3.0.0] - 2026-10-02
 
 ### Added
 
@@ -36,9 +36,14 @@ not recorded.
 
 ### Upgrade notes
 
-- Make a backup and verify it before you upgrade. Older releases cannot run on
-  a database after migrations 041 and 042. To go back, restore the backup from
-  before the upgrade.
+- This release adds migrations 041 to 044. Make a backup and verify it before
+  you upgrade. Older releases cannot run on a database after migrations 041
+  and 042. To go back, restore the backup from before the upgrade.
+
+### Fixed
+
+- **Dependencies.** Update transitive dependencies with known advisories
+  (`fast-uri`, `hono`, `ip-address`, `qs`).
 
 ## [2.0.0] - 2026-10-01
 
