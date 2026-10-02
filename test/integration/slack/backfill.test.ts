@@ -97,6 +97,51 @@ describe('Slack backfill', () => {
     expect(getMessage(db, `${C}-1790930009.000100`)).toBeUndefined();
   });
 
+  it('excludes the channel and commits nothing when a channel page has a message from another team', async () => {
+    const { db, api, fetcher, opts } = await setup();
+    api.channelMessages.set(C, [msg('1790930002.000100', { team: 'T0000000099' }), msg('1790930001.000100', { team: TEAM })]);
+    const result = await backfillChannel({ db, opts, fetcher, channelId: C });
+    expect(result.messagesIngested).toBe(0);
+    expect(result.historyComplete).toBe(false);
+    expect(getMessage(db, `${C}-1790930002.000100`)).toBeUndefined();
+    expect(getMessage(db, `${C}-1790930001.000100`)).toBeUndefined();
+    const row = db.prepare('SELECT platform_boundary, ingest_enabled, visibility_class FROM channels WHERE id = ?').get(C);
+    expect(row).toEqual({ platform_boundary: 'excluded', ingest_enabled: 0, visibility_class: 'excluded' });
+  });
+
+  it.each(['user_team', 'source_team'])('treats a foreign %s in a reconcile page as a share', async (field) => {
+    const { db, api, fetcher, opts } = await setup();
+    api.channelMessages.set(C, [msg('1790930001.000100')]);
+    await backfillChannel({ db, opts, fetcher, channelId: C });
+    api.channelMessages.set(C, [msg('1790930009.000100', { [field]: 'T0000000099' }), msg('1790930001.000100')]);
+    await reconcileChannel({ db, opts: { ...opts, now: NOW + 60_000 }, fetcher, channelId: C });
+    expect(getMessage(db, `${C}-1790930009.000100`)).toBeUndefined();
+    expect((db.prepare('SELECT platform_boundary FROM channels WHERE id = ?').get(C) as { platform_boundary: string }).platform_boundary)
+      .toBe('excluded');
+  });
+
+  it('excludes the parent channel and its thread when a thread page has a reply from another team', async () => {
+    const { db, api, fetcher, opts } = await setup();
+    const root = msg(ROOT, { thread_ts: ROOT, reply_count: 2, latest_reply: '1790930000.000300' });
+    api.channelMessages.set(C, [root]);
+    api.threadMessages.set(`${C}:${ROOT}`, [root, msg('1790930000.000200', { thread_ts: ROOT }),
+      msg('1790930000.000300', { thread_ts: ROOT, user_team: 'T0000000099' })]);
+    await backfillChannel({ db, opts, fetcher, channelId: C });
+    const thread = await backfillChannel({ db, opts, fetcher, channelId: THREAD });
+    expect(thread.messagesIngested).toBe(0);
+    expect(getMessage(db, `${C}-1790930000.000200`)).toBeUndefined();
+    const rows = db.prepare('SELECT id, platform_boundary FROM channels WHERE id IN (?, ?) ORDER BY id').all(C, THREAD);
+    expect(rows).toEqual([{ id: C, platform_boundary: 'excluded' }, { id: THREAD, platform_boundary: 'excluded' }]);
+  });
+
+  it('returns no message and excludes the channel when a single fetched message is from another team', async () => {
+    const { db, api, fetcher } = await setup();
+    api.channelMessages.set(C, [msg('1790930001.000100', { team: 'T0000000099' })]);
+    expect(await fetcher.fetchMessage!(C, `${C}-1790930001.000100`)).toBeNull();
+    expect((db.prepare('SELECT platform_boundary FROM channels WHERE id = ?').get(C) as { platform_boundary: string }).platform_boundary)
+      .toBe('excluded');
+  });
+
   it('queues one thread job for a root with replies, then stores the replies without the root', async () => {
     const { db, api, fetcher, opts, jobs } = await setup();
     const root = msg(ROOT, { thread_ts: ROOT, reply_count: 2, latest_reply: '1790930000.000300' });
