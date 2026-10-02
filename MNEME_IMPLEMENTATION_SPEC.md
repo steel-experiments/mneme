@@ -567,6 +567,13 @@ Every ingested channel resolves to one of:
 The default is `restricted`.
 
 Threads inherit their parent channel’s class unless explicitly overridden.
+A Discord private thread (type 12) is the exception: without an explicit rule for its
+own id, it never inherits `org`. It resolves to `restricted` (policy source
+`private_thread`), and a narrower inherited class such as `excluded` stays. The
+precedence is the platform boundary, then an explicit rule for the thread id, then
+the private-thread default, then parent inheritance. `channels.is_private_thread`
+stores the flag, so policy and config reloads re-resolve the row the same way. Slack
+has no private threads.
 The policy resolver persists that resolved class on the thread row. Retrieval and
 outbound validation use the thread row's resolved class, so an explicit thread
 override is preserved; the live parent remains a required availability dependency,
