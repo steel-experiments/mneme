@@ -60,6 +60,12 @@ export function resolveScheduledFeedback(
   const targetChannel = getChannel(db, input.channelId);
   if (!currentTarget || !grant || !targetChannel || targetChannel.workspace_id !== input.guildId) return [];
 
+  // A reply in a thread whose root is the notice (a Slack thread row
+  // `<parent>-T<ts>`, plan 002 decision 3) answers a notice in the parent.
+  const threadParent = targetChannel.is_thread === 1 ? targetChannel.parent_id : null;
+  const threadRootId = threadParent && input.channelId.startsWith(`${threadParent}-T`)
+    ? `${threadParent}-${input.channelId.slice(threadParent.length + 2)}`
+    : null;
   const maxAssociations = Math.min(input.maxAssociations ?? 10, 10);
   const maxSubjects = Math.min(input.maxSubjects ?? 20, 20);
   const uniqueSubjects = new Set<string>();
@@ -92,7 +98,10 @@ export function resolveScheduledFeedback(
     }>;
     if (matches.length !== 1) continue;
     const match = matches[0]!;
-    if (match.channel_id !== input.channelId || match.target_channel_id !== input.channelId
+    const noticeChannelId = threadRootId !== null && reply.reply_to_message_id === threadRootId
+      ? threadParent
+      : input.channelId;
+    if (match.channel_id !== noticeChannelId || match.target_channel_id !== noticeChannelId
       || match.status !== 'sent' || match.proposal_status !== 'sent'
       || match.message === null || match.content !== match.message) continue;
 
