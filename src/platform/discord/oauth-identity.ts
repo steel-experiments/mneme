@@ -1,8 +1,8 @@
-// ABOUTME: Talks to Discord to identify the person who just signed in.
-// ABOUTME: Exchanges the authorization code and reads their guild membership and roles.
+// ABOUTME: The Discord MCP OAuth identity provider: sends a person to Discord and identifies them on return.
+// ABOUTME: Exchanges the authorization code, reads guild membership and roles, and makes the admin decision.
 
-import { discordCallbackUrl } from '../../mcp/oauth/authorize.js';
-import type { DiscordIdentityClient, DiscordIdentityOutcome } from '../types.js';
+import type { IdentityOutcome, IdentityProvider } from '../../mcp/oauth/identity.js';
+import { authorizeAdmin } from '../../policy/authorization.js';
 
 /**
  * The identity-provider boundary (Section 32.5.2, amended).
@@ -18,10 +18,23 @@ import type { DiscordIdentityClient, DiscordIdentityOutcome } from '../types.js'
  * credential a client receives is minted by Mneme and means something else
  * entirely.
  *
- * Everything is expressed through an injectable {@link DiscordIdentityClient} so
- * the callback logic can be tested without a network. The default implementation
- * is the only code here that performs I/O.
+ * The provider implements {@link IdentityProvider}, so the callback logic can be
+ * tested without a network. `fetchImpl` lets tests stub HTTP without touching
+ * globals.
  */
+
+/** Path Discord returns to. Must be registered on the Discord application. */
+export const DISCORD_CALLBACK_PATH = '/oauth/discord/callback';
+
+/** Discord's authorization endpoint. */
+const DISCORD_AUTHORIZE_URL = 'https://discord.com/oauth2/authorize';
+
+/**
+ * Discord scopes requested: the user's id, and their membership in one guild.
+ * `guilds.members.read` is what makes the role check possible; without it a
+ * person could be identified but not authorized, which is the whole decision.
+ */
+export const DISCORD_SCOPES = 'identify guilds.members.read';
 
 /** Discord's API origin. */
 const DISCORD_API = 'https://discord.com/api/v10';
@@ -40,19 +53,60 @@ export interface DiscordIdentityConfig {
   publicBaseUrl: string;
   /** The one guild Mneme serves. */
   guildId: string;
+  /** Role ids that may sign in (`MNEME_ADMIN_ROLE_IDS`). */
+  adminRoleIds: readonly string[];
+  fetchImpl?: typeof fetch;
+}
+
+/** A person's membership in the guild, as far as authorization cares. */
+interface DiscordMembership {
+  userId: string;
+  /** Role ids, or null when they could not be resolved (fails closed). */
+  roleIds: readonly string[] | null;
+}
+
+type MembershipOutcome =
+  | { ok: true; membership: DiscordMembership }
+  | { ok: false; reason: 'not_a_workspace_member' | 'identity_unavailable' };
+
+/** The callback URL, which must match the Discord application's registration exactly. */
+export function discordCallbackUrl(publicBaseUrl: string): string {
+  return `${publicBaseUrl}${DISCORD_CALLBACK_PATH}`;
 }
 
 /**
- * Build the real client. Failures are collapsed into the three reasons above:
- * the caller decides what a person sees, and a transport error, a rejected code,
- * and a malformed response are the same event to them.
+ * Build the real provider. Failures are collapsed into a few reasons: the caller
+ * decides what a person sees, and a transport error, a rejected code, and a
+ * malformed response are the same event to them.
  */
-export function createDiscordIdentityClient(config: DiscordIdentityConfig): DiscordIdentityClient {
+export function createDiscordIdentityClient(config: DiscordIdentityConfig): IdentityProvider {
   return {
-    async identify(code: string): Promise<DiscordIdentityOutcome> {
+    callbackPath: DISCORD_CALLBACK_PATH,
+    authorizationUrl(state: string): string {
+      // The `state` is the opaque handle of the stored request; nothing about the
+      // client's redirect travels through the browser.
+      const url = new URL(DISCORD_AUTHORIZE_URL);
+      url.searchParams.set('response_type', 'code');
+      url.searchParams.set('client_id', config.clientId);
+      url.searchParams.set('scope', DISCORD_SCOPES);
+      url.searchParams.set('redirect_uri', discordCallbackUrl(config.publicBaseUrl));
+      url.searchParams.set('state', state);
+      return url.toString();
+    },
+    async identify(code: string): Promise<IdentityOutcome> {
       const accessToken = await exchangeCode(config, code);
       if (accessToken === null) return { ok: false, reason: 'code_exchange_failed' };
-      return fetchMembership(config, accessToken);
+      const member = await fetchMembership(config, accessToken);
+      if (!member.ok) return member;
+      // The same admin roles that gate `/mneme mcp-token create` (Section 6.6).
+      // `authorizeAdmin` fails closed on no configured roles and on unresolved roles.
+      return {
+        ok: true,
+        identity: {
+          userId: member.membership.userId,
+          authorization: authorizeAdmin(member.membership.roleIds, config.adminRoleIds),
+        },
+      };
     },
   };
 }
@@ -73,7 +127,7 @@ async function exchangeCode(config: DiscordIdentityConfig, code: string): Promis
   });
   let response: Response;
   try {
-    response = await fetch(`${DISCORD_API}/oauth2/token`, {
+    response = await (config.fetchImpl ?? fetch)(`${DISCORD_API}/oauth2/token`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body,
@@ -101,29 +155,29 @@ async function exchangeCode(config: DiscordIdentityConfig, code: string): Promis
 async function fetchMembership(
   config: DiscordIdentityConfig,
   accessToken: string,
-): Promise<DiscordIdentityOutcome> {
+): Promise<MembershipOutcome> {
   let response: Response;
   try {
-    response = await fetch(`${DISCORD_API}/users/@me/guilds/${config.guildId}/member`, {
+    response = await (config.fetchImpl ?? fetch)(`${DISCORD_API}/users/@me/guilds/${config.guildId}/member`, {
       headers: { authorization: `Bearer ${accessToken}` },
       signal: AbortSignal.timeout(DISCORD_TIMEOUT_MS),
     });
   } catch {
-    return { ok: false, reason: 'membership_unavailable' };
+    return { ok: false, reason: 'identity_unavailable' };
   }
-  if (response.status === 404) return { ok: false, reason: 'not_a_guild_member' };
-  if (!response.ok) return { ok: false, reason: 'membership_unavailable' };
+  if (response.status === 404) return { ok: false, reason: 'not_a_workspace_member' };
+  if (!response.ok) return { ok: false, reason: 'identity_unavailable' };
 
   let payload: unknown;
   try {
     payload = await response.json();
   } catch {
-    return { ok: false, reason: 'membership_unavailable' };
+    return { ok: false, reason: 'identity_unavailable' };
   }
   const member = payload as { user?: { id?: unknown }; roles?: unknown } | null;
   const userId = member?.user?.id;
   if (typeof userId !== 'string' || userId.length === 0) {
-    return { ok: false, reason: 'membership_unavailable' };
+    return { ok: false, reason: 'identity_unavailable' };
   }
   // A missing roles array means the field could not be resolved. Passing null on
   // rather than an empty array is what lets the decision fail closed.

@@ -22,7 +22,7 @@ import { MCP_OAUTH_SCOPE } from './metadata.js';
  * The token endpoint (Section 32.5.2, amended; OAuth 2.1 Section 4.1.3).
  *
  * Two grants. `authorization_code` turns the single-use code from a completed
- * Discord sign-in into an access token; `refresh_token` renews one without
+ * platform sign-in into an access token; `refresh_token` renews one without
  * troubling the person again.
  *
  * **The access token is an `mcp_tokens` row.** Not a JWT, not a parallel store —

@@ -5,7 +5,8 @@ import { createOAuthRoutes } from '../../src/mcp/oauth/routes.js';
 import { createRateLimiter } from '../../src/mcp/rate-limit.js';
 import { CLAUDE_HOSTED_REDIRECT_URI } from '../../src/mcp/oauth/client.js';
 import { hashAuthorizationCode } from '../../src/mcp/oauth/callback.js';
-import type { DiscordIdentityClient, DiscordIdentityOutcome } from '../../src/platform/types.js';
+import type { IdentityFailure, IdentityOutcome, IdentityProvider } from '../../src/mcp/oauth/identity.js';
+import { authorizeAdmin } from '../../src/policy/authorization.js';
 import {
   consumeAuthorizationCode,
   createLoginSession,
@@ -14,10 +15,12 @@ import {
 import { createTestDb, type TestDb } from '../helpers/db.js';
 
 /**
- * The Discord return leg end to end (Section 32.5.2, amended).
+ * The identity provider's return leg end to end (Section 32.5.2.1).
  *
- * Discord is replaced by a fake so no test touches the network. What is under
- * test is the decision: a person's guild roles determine whether an authorization
+ * The provider is replaced by a fake so no test touches the network. The fake
+ * makes the admin decision from a scripted membership with the real
+ * `authorizeAdmin`, as the Discord provider does. What is under test is the
+ * decision: the provider's admin decision determines whether an authorization
  * code exists at all, every refusal looks identical to the client, and the code
  * that is issued is bound to the stored request rather than to anything in the
  * return URL.
@@ -34,16 +37,30 @@ const CHALLENGE = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
 let env: TestDb;
 let handle: HttpServerHandle;
 let base: string;
-/** Swapped per test to stand in for whatever Discord would have said. */
-let identityOutcome: DiscordIdentityOutcome;
+/** What the provider learned about the person, scripted per test. */
+type ScriptedIdentity =
+  | { ok: true; membership: { userId: string; roleIds: readonly string[] | null } }
+  | { ok: false; reason: IdentityFailure }
+  | { ok: true; direct: IdentityOutcome };
+
+/** Swapped per test to stand in for whatever the provider would have said. */
+let identityOutcome: ScriptedIdentity;
 let seenCodes: string[];
 
-const identity: DiscordIdentityClient = {
-  identify: async (code) => {
-    seenCodes.push(code);
-    return identityOutcome;
-  },
-};
+/** A fake provider at the Discord callback path that decides with `authorizeAdmin`. */
+function fakeProvider(adminRoleIds: readonly string[]): IdentityProvider {
+  return {
+    callbackPath: '/oauth/discord/callback',
+    authorizationUrl: (state) => `https://idp.example/authorize?state=${state}`,
+    identify: async (code) => {
+      seenCodes.push(code);
+      if ('direct' in identityOutcome) return identityOutcome.direct;
+      if (!identityOutcome.ok) return identityOutcome;
+      const { userId, roleIds } = identityOutcome.membership;
+      return { ok: true, identity: { userId, authorization: authorizeAdmin(roleIds, adminRoleIds) } };
+    },
+  };
+}
 
 beforeEach(async () => {
   env = createTestDb();
@@ -58,13 +75,11 @@ beforeEach(async () => {
       logger: createLogger({ level: 'silent' }),
       now: () => Date.now(),
       rateLimiter: createRateLimiter({ limit: 1_000 }),
-      identity,
-      adminRoleIds: [ADMIN_ROLE],
+      identity: fakeProvider([ADMIN_ROLE]),
       context: {
         client: { clientId: CLIENT_ID, redirectUris: [CLAUDE_HOSTED_REDIRECT_URI] },
         resource: `${BASE}/mcp`,
         publicBaseUrl: BASE,
-        discordClientId: '987654321098765432',
       },
     }),
   });
@@ -164,7 +179,7 @@ describe('GET /oauth/discord/callback', () => {
       [
         'not a guild member',
         () => {
-          identityOutcome = { ok: false, reason: 'not_a_guild_member' };
+          identityOutcome = { ok: false, reason: 'not_a_workspace_member' };
           return { code: 'discord-code' };
         },
       ],
@@ -175,9 +190,27 @@ describe('GET /oauth/discord/callback', () => {
           return { code: 'discord-code' };
         },
       ],
-      ['person declined at Discord', () => ({ error: 'access_denied' })],
+      [
+        'signed in to another workspace',
+        () => {
+          identityOutcome = { ok: false, reason: 'wrong_workspace' };
+          return { code: 'discord-code' };
+        },
+      ],
+      [
+        'provider decided not authorized',
+        () => {
+          identityOutcome = {
+            ok: true,
+            direct: { ok: true, identity: { userId: USER_ID, authorization: { authorized: false, reason: 'not_authorized' } } },
+          };
+          return { code: 'discord-code' };
+        },
+      ],
+      ['person declined at the provider', () => ({ error: 'access_denied' })],
     ];
 
+    const descriptions = new Set<string | null>();
     for (const [, setup] of cases) {
       const state = pendingSignIn();
       const res = await callback({ ...setup(), state });
@@ -188,7 +221,10 @@ describe('GET /oauth/discord/callback', () => {
       expect(location.searchParams.get('state')).toBe('client-state');
       expect(location.searchParams.get('iss')).toBe(BASE);
       expect(location.searchParams.has('code')).toBe(false);
+      descriptions.add(location.searchParams.get('error_description'));
     }
+    // One description for every refusal, which names no platform and no reason.
+    expect([...descriptions]).toEqual(['This account is not permitted to use this connector.']);
 
     // Not one refusal wrote a redeemable code.
     const count = env.db.prepare('SELECT COUNT(*) AS n FROM oauth_authorization_codes').get() as {
@@ -209,13 +245,11 @@ describe('GET /oauth/discord/callback', () => {
         logger: createLogger({ level: 'silent' }),
         now: () => Date.now(),
         rateLimiter: createRateLimiter({ limit: 1_000 }),
-        identity,
-        adminRoleIds: [],
+        identity: fakeProvider([]),
         context: {
           client: { clientId: CLIENT_ID, redirectUris: [CLAUDE_HOSTED_REDIRECT_URI] },
           resource: `${BASE}/mcp`,
           publicBaseUrl: BASE,
-          discordClientId: '987654321098765432',
         },
       }),
     });

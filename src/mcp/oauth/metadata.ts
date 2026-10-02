@@ -30,7 +30,7 @@
 
 /**
  * The single scope Mneme issues. Retrieval breadth is decided by the signed-in
- * Discord identity — guild membership and the channel-visibility rules in
+ * platform identity — workspace membership and the channel-visibility rules in
  * Section 7.3 — never by what a client asks for, so there is no second scope for a
  * client to request. Advertising per-visibility scopes would imply a client could
  * elect to read restricted channels, which it cannot.

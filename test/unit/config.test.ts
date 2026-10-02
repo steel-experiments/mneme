@@ -537,11 +537,17 @@ describe('config', () => {
     expectFail({ ...oauthEnv, DISCORD_OAUTH_CLIENT_ID: undefined }, 'DISCORD_OAUTH_CLIENT_ID');
     expectFail({ ...oauthEnv, DISCORD_OAUTH_CLIENT_SECRET: undefined }, 'DISCORD_OAUTH_CLIENT_SECRET');
     expectFail({ ...oauthEnv, MNEME_ADMIN_ROLE_IDS: undefined }, 'MNEME_ADMIN_ROLE_IDS');
+    // A Discord deployment ignores the Slack keys.
+    expectFail(
+      { ...oauthEnv, DISCORD_OAUTH_CLIENT_ID: undefined, SLACK_OAUTH_CLIENT_ID: '1111.2222' },
+      'DISCORD_OAUTH_CLIENT_ID',
+    );
 
     const cfg = loadConfig({ env: oauthEnv });
     expect(cfg.mcp.oauthEnabled).toBe(true);
     expect(cfg.mcp.oauthClientId).toBe('b7f3c1a9d24e40f8');
-    expect(cfg.mcp.oauthDiscordClientId).toBe('987654321098765432');
+    expect(cfg.mcp.oauthProviderClientId).toBe('987654321098765432');
+    expect(cfg.mcp.oauthProviderClientSecret).toBe('discord-oauth-secret-value');
   });
 
   it('rejects a redirect URI that cannot safely carry an authorization code', () => {

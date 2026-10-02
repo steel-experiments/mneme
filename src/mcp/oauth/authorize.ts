@@ -1,4 +1,4 @@
-// ABOUTME: The MCP authorization endpoint — validates a request and sends the person to Discord.
+// ABOUTME: The MCP authorization endpoint — validates a request before the person goes to the identity provider.
 // ABOUTME: Decides purely; the caller performs the redirect and the database write.
 
 import { MCP_OAUTH_SCOPE } from './metadata.js';
@@ -8,10 +8,11 @@ import { validateClient, type OAuthClientConfig } from './client.js';
  * The authorization endpoint (Section 32.5.2, amended; OAuth 2.1 Section 4.1.1).
  *
  * A client sends a person here to be identified. Mneme does not ask for a
- * password — it has none to check — and instead hands the person to Discord,
- * which already knows who they are and which roles they hold. Discord is the
- * identity provider; Mneme is the authorization server that decides, after
- * Discord answers, whether that identity may read the memory store.
+ * password — it has none to check — and instead hands the person to the active
+ * chat platform, which already knows who they are. The platform is the
+ * identity provider; Mneme is the authorization server that
+ * decides, after the provider answers, whether that identity may read the
+ * memory store.
  *
  * The module is deliberately a decision function rather than a request handler.
  * Where an error goes is the security-critical part of this endpoint, and a pure
@@ -28,19 +29,6 @@ import { validateClient, type OAuthClientConfig } from './client.js';
  *   to it as an `error` parameter, because the waiting client needs to hear about
  *   it and the destination is now trusted.
  */
-
-/** Path Discord returns to. Must be registered on the Discord application. */
-export const DISCORD_CALLBACK_PATH = '/oauth/discord/callback';
-
-/** Discord's authorization endpoint. */
-const DISCORD_AUTHORIZE_URL = 'https://discord.com/oauth2/authorize';
-
-/**
- * Discord scopes requested: the user's id, and their membership in one guild.
- * `guilds.members.read` is what makes the role check possible; without it a
- * person could be identified but not authorized, which is the whole decision.
- */
-export const DISCORD_SCOPES = 'identify guilds.members.read';
 
 /** The query parameters of an authorization request, as strings or absent. */
 export interface AuthorizationRequest {
@@ -59,10 +47,8 @@ export interface AuthorizationContext {
   client: OAuthClientConfig;
   /** Canonical MCP endpoint URL; the only audience a token may be issued for. */
   resource: string;
-  /** Mneme's public origin, used to build the Discord callback URL. */
+  /** Mneme's public origin. */
   publicBaseUrl: string;
-  /** The Discord application's client id (public). */
-  discordClientId: string;
 }
 
 /** Everything needed to start a sign-in, once the request is known good. */
@@ -171,27 +157,6 @@ export function planAuthorization(
     resource: ctx.resource,
     scope: MCP_OAUTH_SCOPE,
   };
-}
-
-/**
- * Build the URL that sends a person to Discord to identify themselves. The
- * `state` is the opaque handle of the stored request; nothing about the client's
- * redirect travels through the browser, so the return leg cannot influence where
- * an authorization code is eventually delivered.
- */
-export function discordAuthorizationUrl(ctx: AuthorizationContext, sessionId: string): string {
-  const url = new URL(DISCORD_AUTHORIZE_URL);
-  url.searchParams.set('response_type', 'code');
-  url.searchParams.set('client_id', ctx.discordClientId);
-  url.searchParams.set('scope', DISCORD_SCOPES);
-  url.searchParams.set('redirect_uri', discordCallbackUrl(ctx.publicBaseUrl));
-  url.searchParams.set('state', sessionId);
-  return url.toString();
-}
-
-/** The callback URL, which must match the Discord application's registration exactly. */
-export function discordCallbackUrl(publicBaseUrl: string): string {
-  return `${publicBaseUrl}${DISCORD_CALLBACK_PATH}`;
 }
 
 /** Build the redirect that carries a failure back to the waiting client. */

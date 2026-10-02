@@ -258,23 +258,21 @@ export interface McpConfig {
    */
   oauthRedirectUris: readonly string[];
   /**
-   * The Discord application's OAuth2 client id (`DISCORD_OAUTH_CLIENT_ID`).
-   * Discord is the identity provider for MCP sign-ins: Mneme has no password
-   * to check and instead asks Discord who the person is and which roles they
-   * hold. Public, unlike {@link McpConfig.oauthDiscordClientSecret}.
-   *
-   * The env names say `DISCORD_` because they belong to the Discord application,
-   * while the config fields sit under `mcp` because the MCP sign-in flow is their
-   * only consumer.
+   * The identity provider's OAuth client id: `DISCORD_OAUTH_CLIENT_ID` on
+   * Discord, `SLACK_OAUTH_CLIENT_ID` on Slack. The active chat platform is the
+   * identity provider for MCP sign-ins: Mneme has no password to check and
+   * instead asks the platform who the person is. Public, unlike
+   * {@link McpConfig.oauthProviderClientSecret}. The keys of the other platform
+   * are ignored.
    */
-  oauthDiscordClientId: string;
+  oauthProviderClientId: string;
   /**
-   * The Discord application's OAuth2 client secret
-   * (`DISCORD_OAUTH_CLIENT_SECRET`). Used once per sign-in, server to server, to
-   * exchange Discord's authorization code. Never logged and never sent to a
-   * browser.
+   * The identity provider's OAuth client secret: `DISCORD_OAUTH_CLIENT_SECRET`
+   * or `SLACK_OAUTH_CLIENT_SECRET`. Used once per sign-in, server to server, to
+   * exchange the provider's authorization code. Never logged and never sent to
+   * a browser.
    */
-  oauthDiscordClientSecret: string;
+  oauthProviderClientSecret: string;
 }
 
 /**
@@ -1088,6 +1086,10 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
   assertPositive(maintenance.shutdownTimeoutSeconds, 'SHUTDOWN_TIMEOUT_SECONDS');
 
   // ---- MCP ----
+  // The identity provider's OAuth keys belong to the active platform.
+  const oauthKeys = platform === 'slack'
+    ? { clientId: 'SLACK_OAUTH_CLIENT_ID', clientSecret: 'SLACK_OAUTH_CLIENT_SECRET' }
+    : { clientId: 'DISCORD_OAUTH_CLIENT_ID', clientSecret: 'DISCORD_OAUTH_CLIENT_SECRET' };
   const mcp: McpConfig = {
     enabled: parseBool(env(e, 'MCP_ENABLED'), false),
     path: env(e, 'MCP_PATH') ?? '/mcp',
@@ -1102,16 +1104,13 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
     oauthEnabled: parseBool(env(e, 'MCP_OAUTH_ENABLED'), false),
     oauthClientId: (env(e, 'MCP_OAUTH_CLIENT_ID') ?? '').trim(),
     oauthRedirectUris: parseRedirectUris(env(e, 'MCP_OAUTH_REDIRECT_URIS')),
-    oauthDiscordClientId: (env(e, 'DISCORD_OAUTH_CLIENT_ID') ?? '').trim(),
-    oauthDiscordClientSecret: (env(e, 'DISCORD_OAUTH_CLIENT_SECRET') ?? '').trim(),
+    oauthProviderClientId: (env(e, oauthKeys.clientId) ?? '').trim(),
+    oauthProviderClientSecret: (env(e, oauthKeys.clientSecret) ?? '').trim(),
   };
   assertPositive(mcp.rateLimitPerMinute, 'MCP_RATE_LIMIT_PER_MINUTE');
   assertPositive(mcp.unauthRateLimitPerMinute, 'MCP_UNAUTH_RATE_LIMIT_PER_MINUTE');
   if (mcp.path === '' || !mcp.path.startsWith('/')) {
     throw new ConfigError('MCP_PATH must start with "/"', 'MCP_PATH');
-  }
-  if (mcp.oauthEnabled && platform === 'slack') {
-    throw new ConfigError('MCP OAuth sign-in is not available on Slack', 'MCP_OAUTH_ENABLED');
   }
   // Fail closed: discovery that advertises an authorization endpoint no client
   // can be recognized at would send every user into a flow that cannot complete.
@@ -1120,16 +1119,17 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
   }
   // Without the identity provider's credentials there is nobody to ask who a
   // person is, so a sign-in could start and never complete.
-  if (mcp.oauthEnabled && mcp.oauthDiscordClientId === '') {
-    throw new ConfigError('required when MCP_OAUTH_ENABLED is set', 'DISCORD_OAUTH_CLIENT_ID');
+  if (mcp.oauthEnabled && mcp.oauthProviderClientId === '') {
+    throw new ConfigError('required when MCP_OAUTH_ENABLED is set', oauthKeys.clientId);
   }
-  if (mcp.oauthEnabled && mcp.oauthDiscordClientSecret === '') {
-    throw new ConfigError('required when MCP_OAUTH_ENABLED is set', 'DISCORD_OAUTH_CLIENT_SECRET');
+  if (mcp.oauthEnabled && mcp.oauthProviderClientSecret === '') {
+    throw new ConfigError('required when MCP_OAUTH_ENABLED is set', oauthKeys.clientSecret);
   }
-  // Admin roles are what the sign-in check consults. With none configured
-  // `authorizeAdmin` denies everyone, so OAuth would advertise a flow that can
-  // never succeed — surface that at boot instead of at a user's first attempt.
-  if (mcp.oauthEnabled && adminRoleIds.length === 0) {
+  // Admin roles are what the Discord sign-in check consults. With none
+  // configured `authorizeAdmin` denies everyone, so OAuth would advertise a flow
+  // that can never succeed — surface that at boot instead of at a user's first
+  // attempt. On Slack, MNEME_ADMIN_USER_IDS is already required.
+  if (mcp.oauthEnabled && platform === 'discord' && adminRoleIds.length === 0) {
     throw new ConfigError(
       'at least one admin role is required when MCP_OAUTH_ENABLED is set',
       'MNEME_ADMIN_ROLE_IDS',

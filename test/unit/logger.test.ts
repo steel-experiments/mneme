@@ -68,6 +68,24 @@ describe('logger', () => {
     }
   });
 
+  it('redacts MCP OAuth provider secrets and access tokens', () => {
+    const { chunks, stream } = capture();
+    const log = createLogger({ stream, level: 'info' });
+    log.info({
+      event: 'config.loaded',
+      DISCORD_OAUTH_CLIENT_SECRET: 'discord-oauth-leaked',
+      SLACK_OAUTH_CLIENT_SECRET: 'slack-oauth-leaked',
+      env: { DISCORD_OAUTH_CLIENT_SECRET: 'discord-oauth-nested', SLACK_OAUTH_CLIENT_SECRET: 'slack-oauth-nested' },
+      mcp: { oauthProviderClientSecret: 'provider-secret-config' },
+      identity: { clientSecret: 'client-secret-config', accessToken: 'access-token-camel', access_token: 'access-token-snake' },
+    }, 'event');
+    const out = chunks.join('');
+    for (const leaked of ['discord-oauth-leaked', 'slack-oauth-leaked', 'discord-oauth-nested', 'slack-oauth-nested',
+      'provider-secret-config', 'client-secret-config', 'access-token-camel', 'access-token-snake']) {
+      expect(out).not.toContain(leaked);
+    }
+  });
+
   it('retains ids, counts, statuses, durations, and error categories', () => {
     const { chunks, stream } = capture();
     const log = createLogger({ stream, level: 'info' });

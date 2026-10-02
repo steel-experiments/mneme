@@ -32,6 +32,7 @@ import { createSlackRecentSentLookup } from './recent-sent.js';
 import { escapeSlackText } from './mrkdwn.js';
 import { createSlackSender } from './sender.js';
 import { slackMessageLink } from './links.js';
+import { createSlackIdentityProvider } from './oauth-identity.js';
 
 /** Review-card HMAC secret derived from the bot token, as on Discord. */
 export function slackReviewSecret(botToken: string): string {
@@ -194,7 +195,13 @@ export function createSlackPlatform(
       build: buildSlackChannelPolicyCard,
     }),
 
-    oauthIdentity: { identify: async () => ({ ok: false, reason: 'membership_unavailable' }) },
+    oauthIdentity: createSlackIdentityProvider({
+      clientId: config.mcp.oauthProviderClientId,
+      clientSecret: config.mcp.oauthProviderClientSecret,
+      publicBaseUrl: config.mcp.publicBaseUrl,
+      workspaceId,
+      adminUserIds: slack.adminUserIds,
+    }),
     format: slackFormat,
     fetchBytes: createSlackFetchBytes(slack.botToken),
     isValidAttachmentId: (id) => isSlackAttachmentId(id),

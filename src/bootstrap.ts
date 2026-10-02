@@ -321,7 +321,6 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
           logger,
           now,
           identity: (await getPlatform()).oauthIdentity,
-          adminRoleIds: config.adminRoleIds,
           rateLimiter: unauthRateLimiter,
           context: {
             client: {
@@ -330,7 +329,6 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
             },
             resource: oauth.mcpResourceIdentifier(metadataConfig),
             publicBaseUrl: config.mcp.publicBaseUrl,
-            discordClientId: config.mcp.oauthDiscordClientId,
           },
         });
         logger.info(

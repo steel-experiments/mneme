@@ -12,7 +12,7 @@ import {
   purgeExpiredOAuthAccessTokens,
 } from '../../src/db/repositories/oauth-flows.js';
 import { insertMcpToken } from '../../src/db/repositories/mcp-tokens.js';
-import type { DiscordIdentityClient, DiscordIdentityOutcome } from '../../src/platform/types.js';
+import type { IdentityOutcome, IdentityProvider } from '../../src/mcp/oauth/identity.js';
 import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 
 /**
@@ -27,7 +27,6 @@ import { createTestDb, seedIdentity, type TestDb } from '../helpers/db.js';
 
 const BASE = 'https://mneme.example';
 const CLIENT_ID = 'b7f3c1a9d24e40f8';
-const ADMIN_ROLE = '456789012345678901';
 const USER_ID = '100000000000000007';
 const GUILD = '100000000000000001';
 const HOST = '127.0.0.1';
@@ -35,9 +34,11 @@ const HOST = '127.0.0.1';
 let env: TestDb;
 let handle: HttpServerHandle;
 let base: string;
-let identityOutcome: DiscordIdentityOutcome;
+let identityOutcome: IdentityOutcome;
 
-const identity: DiscordIdentityClient = {
+const identity: IdentityProvider = {
+  callbackPath: '/oauth/discord/callback',
+  authorizationUrl: (state) => `https://idp.example/authorize?state=${state}`,
   identify: async () => identityOutcome,
 };
 
@@ -50,7 +51,7 @@ function pkcePair(): { verifier: string; challenge: string } {
 beforeEach(async () => {
   env = createTestDb();
   seedIdentity(env.db, GUILD);
-  identityOutcome = { ok: true, membership: { userId: USER_ID, roleIds: [ADMIN_ROLE] } };
+  identityOutcome = { ok: true, identity: { userId: USER_ID, authorization: { authorized: true, reason: 'ok' } } };
   const mcp = createMcpServer({
     db: env.db,
     rateLimiter: createRateLimiter({ limit: 60 }),
@@ -69,12 +70,10 @@ beforeEach(async () => {
       now: () => Date.now(),
       rateLimiter: createRateLimiter({ limit: 1_000 }),
       identity,
-      adminRoleIds: [ADMIN_ROLE],
       context: {
         client: { clientId: CLIENT_ID, redirectUris: [CLAUDE_HOSTED_REDIRECT_URI] },
         resource: `${BASE}/mcp`,
         publicBaseUrl: BASE,
-        discordClientId: '987654321098765432',
       },
     }),
   });

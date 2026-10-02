@@ -324,11 +324,13 @@ semantic lifecycle states.
 | `MCP_RATE_LIMIT_PER_MINUTE` | `60` | Per-token limit. |
 | `MCP_UNAUTH_RATE_LIMIT_PER_MINUTE` | `30` | Shared budget of failed authentications per minute; excess returns `429`. |
 | `MCP_TOOL_LIST_TTL_MS` | `300000` | Tool-list cache hint. |
-| `MCP_OAUTH_ENABLED` | `false` | Enables OAuth discovery and Discord-backed sign-in for remote connectors. |
+| `MCP_OAUTH_ENABLED` | `false` | Enables OAuth discovery and sign-in with the active chat platform for remote connectors. |
 | `MCP_OAUTH_CLIENT_ID` | unset | Required OAuth public-client identifier when OAuth is enabled. |
 | `MCP_OAUTH_REDIRECT_URIS` | Claude callback | Comma-separated HTTPS redirect allowlist. Loopback HTTP is allowed for local clients. |
-| `DISCORD_OAUTH_CLIENT_ID` | unset | Discord application client ID used for OAuth sign-in. |
+| `DISCORD_OAUTH_CLIENT_ID` | unset | Discord application client ID used for OAuth sign-in. Discord only; Slack ignores it. |
 | `DISCORD_OAUTH_CLIENT_SECRET` | unset | Discord OAuth secret. |
+| `SLACK_OAUTH_CLIENT_ID` | unset | Slack app client ID used for Sign in with Slack. Slack only; Discord ignores it. |
+| `SLACK_OAUTH_CLIENT_SECRET` | unset | Slack app client secret. Slack only; Discord ignores it. |
 
 MCP tokens are created through Discord admin commands. They are separate from
 `HTTP_ADMIN_TOKEN`.

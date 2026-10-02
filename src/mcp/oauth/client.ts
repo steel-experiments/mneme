@@ -18,7 +18,7 @@
  *
  * The client id is an identifier, not a credential. It travels in redirect URLs
  * and appears in logs, and possessing it grants nothing: authorization still
- * requires a Discord sign-in and guild membership. An unguessable value is
+ * requires a platform sign-in and admin status. An unguessable value is
  * nonetheless preferred, because a stranger who finds the endpoint then cannot
  * even begin a flow.
  */

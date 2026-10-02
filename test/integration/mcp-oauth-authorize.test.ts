@@ -10,6 +10,7 @@ import {
   createLoginSession,
 } from '../../src/db/repositories/oauth-flows.js';
 import { createTestDb, type TestDb } from '../helpers/db.js';
+import { createDiscordIdentityClient } from '../../src/platform/discord/oauth-identity.js';
 
 /**
  * The authorization endpoint end to end over HTTP (Section 32.5.2, amended).
@@ -41,11 +42,15 @@ beforeEach(async () => {
       logger: createLogger({ level: 'silent' }),
       now: () => Date.now(),
       rateLimiter: createRateLimiter({ limit: OAUTH_RATE_LIMIT }),
+      // The authorize leg only builds the provider's URL; it makes no network call.
+      identity: createDiscordIdentityClient({
+        clientId: '987654321098765432', clientSecret: 'unused', publicBaseUrl: BASE,
+        guildId: '123456789012345678', adminRoleIds: [],
+      }),
       context: {
         client: { clientId: CLIENT_ID, redirectUris: [CLAUDE_HOSTED_REDIRECT_URI] },
         resource: `${BASE}/mcp`,
         publicBaseUrl: BASE,
-        discordClientId: '987654321098765432',
       },
     }),
   });
