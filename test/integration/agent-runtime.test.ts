@@ -5,6 +5,7 @@ import {
   fauxAssistantMessage,
   fauxToolCall,
   createAssistantMessageEventStream,
+  getCurrentTools,
   type Context,
   type SimpleStreamOptions,
   type AssistantMessage,
@@ -157,7 +158,7 @@ function observing(
       ? await options.onPayload(syntheticPayload, { ...model, api: 'openai-responses' })
       : undefined;
     seen.push({
-      tools: (context.tools ?? []).map((t) => t.name),
+      tools: getCurrentTools(context.messages).map((t) => t.name),
       lastRole: last?.role,
       lastText,
       sessionId: options?.sessionId,

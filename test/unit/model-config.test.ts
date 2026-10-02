@@ -69,6 +69,24 @@ describe('agent model configuration', () => {
     expect(resolved.primary.model.api).toBe('openai-responses');
   });
 
+  it.each(['gpt-6-astra', 'gpt-6-sol', 'gpt-6.1-sol', 'gpt-6-luna'])(
+    'resolves %s through the production catalog with billable pricing',
+    (id) => {
+      const resolved = resolveAgentModels({
+        providerId: 'openai', primaryModelId: id, triageModelId: null,
+        baseUrl: null, dailyBudgetUsd: 10, thinkingLevel: 'medium',
+      }, realLookup);
+      expect(resolved.primary.model.id).toBe(id);
+      expect(resolved.primary.model.api).toBe('openai-responses');
+      expect(hasBillablePricing(resolved.primary.model)).toBe(true);
+    },
+  );
+
+  it('prices gpt-5.6-sol at the published short-context rates', () => {
+    const { cost } = realLookup('openai', 'gpt-5.6-sol')!;
+    expect(cost).toMatchObject({ input: 4, output: 20, cacheRead: 0.4, cacheWrite: 5 });
+  });
+
   it('uses medium reasoning by default when AGENT_THINKING_LEVEL is unset', () => {
     const env = baseEnv();
     delete env.AGENT_THINKING_LEVEL;
