@@ -9,12 +9,15 @@ import { isSlackChannelId } from './ids.js';
 /** The Slack channel rediscovery interval. It applies Slack Connect changes that arrive without an event. */
 export const SLACK_REDISCOVERY_INTERVAL_MS = 15 * 60_000;
 
-/** A member can read and see a channel. Sending is off in the read path. */
+/**
+ * A member can read, see, and post in a channel (`chat:write`). The sender still
+ * refuses an archived, excluded, or Slack Connect channel.
+ */
 export const SLACK_MEMBER_CAPABILITIES: ChannelAccessCapabilities = {
   canView: true,
   canReadHistory: true,
-  canSend: false,
-  canSendInThreads: false,
+  canSend: true,
+  canSendInThreads: true,
   canManageThreads: false,
 };
 

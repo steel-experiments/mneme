@@ -26,6 +26,15 @@ export interface FakeSlackApi extends SlackApi {
   calls: Array<{ method: string; input: unknown }>;
   /** Errors to throw before answering, in order, per method. */
   failures: Map<string, unknown[]>;
+  /** Messages the bot posted, in order. */
+  posted: Array<Parameters<SlackApi['postMessage']>[0] & { ts: string }>;
+  /** Messages the bot updated, in order. */
+  updated: Array<Parameters<SlackApi['update']>[0]>;
+}
+
+/** A Slack Web API platform error, as `@slack/web-api` throws it. */
+export function slackPlatformError(code: string): Error {
+  return Object.assign(new Error(`An API error occurred: ${code}`), { code: 'slack_webapi_platform_error', data: { ok: false, error: code } });
 }
 
 function slice(messages: SlackObject[], input: { latest?: string; oldest?: string; inclusive?: boolean }): SlackObject[] {
@@ -44,6 +53,8 @@ export function fakeSlackApi(): FakeSlackApi {
     threadMessages: new Map(),
     calls: [],
     failures: new Map(),
+    posted: [],
+    updated: [],
     async authTest() {
       return { teamId: TEAM, userId: BOT_USER, url: 'https://acme.slack.com/' };
     },
@@ -77,6 +88,20 @@ export function fakeSlackApi(): FakeSlackApi {
       const page = all.slice(start, start + input.limit);
       const more = start + input.limit < all.length;
       return { messages: page, hasMore: more, nextCursor: more ? String(start + input.limit) : null };
+    },
+    async postMessage(input) {
+      api.calls.push({ method: 'postMessage', input });
+      const failure = api.failures.get('postMessage')?.shift();
+      if (failure) throw failure;
+      const ts = `1790940000.${String(api.posted.length + 1).padStart(6, '0')}`;
+      api.posted.push({ ...input, ts });
+      return { channel: input.channel, ts };
+    },
+    async update(input) {
+      api.calls.push({ method: 'update', input });
+      const failure = api.failures.get('update')?.shift();
+      if (failure) throw failure;
+      api.updated.push(input);
     },
   };
   return api;

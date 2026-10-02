@@ -18,6 +18,19 @@ export interface SlackApi {
   conversationInfo(channel: string): Promise<SlackObject | null>;
   history(input: { channel: string; latest?: string; oldest?: string; inclusive?: boolean; limit: number; cursor?: string }): Promise<SlackPage>;
   replies(input: { channel: string; ts: string; latest?: string; oldest?: string; inclusive?: boolean; limit: number; cursor?: string }): Promise<SlackPage>;
+  /** `chat.postMessage`. Returns the `ts` of the new message and its channel. */
+  postMessage(input: SlackPostMessageInput): Promise<{ channel: string; ts: string }>;
+  /** `chat.update` on a message that the bot posted. */
+  update(input: { channel: string; ts: string; text: string; blocks?: SlackObject[] }): Promise<void>;
+}
+
+/** The only `chat.postMessage` arguments the adapter sends. */
+export interface SlackPostMessageInput {
+  channel: string;
+  text: string;
+  thread_ts?: string;
+  blocks?: SlackObject[];
+  metadata?: { event_type: string; event_payload: Record<string, string> };
 }
 
 /** The most retries for one request after a rate limit (spec Section 9.5). */
@@ -97,6 +110,28 @@ export function createSlackApi(botToken: string): SlackApi {
     },
     async replies(input) {
       return page(await withRateLimitRetry(() => web.conversations.replies({ ...input, include_all_metadata: true })));
+    },
+    async postMessage(input) {
+      // Never `link_names`, `reply_broadcast`, `username`, or `icon_*`; no unfurls (spec Section 24.5).
+      const res = await withRateLimitRetry(() => web.chat.postMessage({
+        channel: input.channel,
+        text: input.text,
+        unfurl_links: false,
+        unfurl_media: false,
+        ...(input.thread_ts ? { thread_ts: input.thread_ts } : {}),
+        ...(input.blocks ? { blocks: input.blocks as never } : {}),
+        ...(input.metadata ? { metadata: input.metadata } : {}),
+      }));
+      return { channel: String(res.channel ?? input.channel), ts: String(res.ts ?? '') };
+    },
+    async update(input) {
+      await withRateLimitRetry(() => web.chat.update({
+        channel: input.channel,
+        ts: input.ts,
+        text: input.text,
+        // Replacing the blocks with one section removes any buttons the message had.
+        blocks: (input.blocks ?? [{ type: 'section', text: { type: 'mrkdwn', text: input.text } }]) as never,
+      }));
     },
   };
 }

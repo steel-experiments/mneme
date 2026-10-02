@@ -263,6 +263,11 @@ export interface PlatformFormat {
   parseMentions(content: string): ParsedMention[];
   /** True when text contains mention syntax that names an individual user. */
   hasIndividualMention(content: string): boolean;
+  /**
+   * True when model text contains a link to this platform's messages. Such a
+   * link is not host-built, so the sanitizer rejects it (Section 30.3).
+   */
+  containsNativeLink?(content: string): boolean;
 }
 
 /**
