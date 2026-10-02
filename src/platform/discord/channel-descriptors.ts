@@ -2,7 +2,7 @@
 // ABOUTME: Keeps the Discord channel shape out of the platform-neutral discovery code.
 import type { ChannelAccessCapabilities } from '../../db/repositories/channel-access.js';
 import type { DiscoveredChannelDescriptor } from '../../ingestion/discovery.js';
-import { channelKindOf } from './channel-types.js';
+import { PRIVATE_THREAD, channelKindOf } from './channel-types.js';
 
 /**
  * A discord.js adapter: build a descriptor list from guild channel objects. Accepts
@@ -31,6 +31,7 @@ export function descriptorsFromJsChannels(
       id: c.id,
       parentId: c.parentId ?? null,
       kind: channelKindOf(c.type),
+      isPrivateThread: c.type === PRIVATE_THREAD,
       name: c.name ?? null,
       topic: c.topic ?? null,
       position: c.position ?? null,

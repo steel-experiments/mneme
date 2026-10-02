@@ -17,7 +17,7 @@ import {
   type ReactionEventInput,
 } from '../../ingestion/ingest.js';
 import { emojiKeyOf, normalizeMessage, normalizeMessageUpdate } from './normalize.js';
-import { THREAD_TYPES, channelKindOf } from './channel-types.js';
+import { PRIVATE_THREAD, THREAD_TYPES, channelKindOf } from './channel-types.js';
 
 // ---- Gateway event dispatch (Section 9.3) -----------------------------------
 
@@ -93,6 +93,7 @@ export function channelInputFromRaw(
     topic: typeof r.topic === 'string' ? r.topic : null,
     position: typeof r.position === 'number' ? r.position : null,
     isThread: THREAD_TYPES.has(type),
+    isPrivateThread: type === PRIVATE_THREAD,
     isArchived: meta.archived === true || r.archived === true,
     isLocked: meta.locked === true || r.locked === true,
     ingestEnabled: true,

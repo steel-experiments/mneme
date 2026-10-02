@@ -272,6 +272,7 @@ interface StoredPolicyChannel {
   parent_id: string | null;
   is_thread: number;
   kind: ChannelKind;
+  is_private_thread: number;
 }
 
 /** Persist the candidate policy for every known channel before it becomes live. */
@@ -283,7 +284,7 @@ function reconcileStoredChannels(
   previousPolicy?: ChannelPolicy,
 ): void {
   const rows = db.prepare(
-    `SELECT id, parent_id, is_thread, kind
+    `SELECT id, parent_id, is_thread, kind, is_private_thread
        FROM channels
       WHERE workspace_id = ? AND deleted_at_ms IS NULL`,
   ).all(guildId) as unknown as StoredPolicyChannel[];
@@ -307,11 +308,13 @@ function reconcileStoredChannels(
       isThread: row.is_thread === 1,
       kind: row.kind,
       categoryId,
+      isPrivateThread: row.is_private_thread === 1,
     };
     const resolutionContext = {
       isThread: row.is_thread === 1,
       parentId: row.is_thread === 1 ? row.parent_id ?? undefined : undefined,
       categoryId,
+      isPrivateThread: row.is_private_thread === 1,
     };
     const staticResolved = resolveChannel(policy, row.id, resolutionContext);
     const previousStatic = previousPolicy

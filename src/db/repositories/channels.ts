@@ -40,6 +40,11 @@ export interface ChannelUpsertInput {
    * stored value. An 'excluded' boundary is permanent: null never clears it.
    */
   platformBoundary?: 'excluded' | null;
+  /**
+   * True for a platform private thread (Discord type 12), which defaults to
+   * restricted (Section 7.1). Omit it to keep the stored value.
+   */
+  isPrivateThread?: boolean;
 }
 
 export interface ChannelRow {
@@ -62,6 +67,7 @@ export interface ChannelRow {
   updated_at_ms: number;
   deleted_at_ms: number | null;
   platform_boundary: 'excluded' | null;
+  is_private_thread: 0 | 1;
 }
 
 const UPSERT_SQL = `
@@ -69,12 +75,14 @@ const UPSERT_SQL = `
     id, workspace_id, parent_id, kind, name, topic, position,
     is_thread, is_archived, is_locked, ingest_enabled, visibility_class,
     allow_interventions, permission_fingerprint, last_message_id,
-    discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json, platform_boundary
+    discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json, platform_boundary,
+    is_private_thread
   ) VALUES (
     @id, @workspace_id, @parent_id, @kind, @name, @topic, @position,
     @is_thread, @is_archived, @is_locked, @ingest_enabled, @visibility_class,
     @allow_interventions, @permission_fingerprint, @last_message_id,
-    @discovered_at_ms, @updated_at_ms, NULL, @raw_json, @platform_boundary
+    @discovered_at_ms, @updated_at_ms, NULL, @raw_json, @platform_boundary,
+    @is_private_thread
   )
   ON CONFLICT(id) DO UPDATE SET
     parent_id = excluded.parent_id,
@@ -93,6 +101,8 @@ const UPSERT_SQL = `
     raw_json = excluded.raw_json,
     platform_boundary = CASE WHEN channels.platform_boundary = 'excluded' THEN 'excluded'
       WHEN @boundary_set = 1 THEN excluded.platform_boundary ELSE channels.platform_boundary END,
+    is_private_thread = CASE WHEN @private_set = 1 THEN excluded.is_private_thread
+      ELSE channels.is_private_thread END,
     deleted_at_ms = NULL,
     updated_at_ms = excluded.updated_at_ms
   WHERE excluded.parent_id IS NOT channels.parent_id
@@ -110,6 +120,7 @@ const UPSERT_SQL = `
      OR excluded.last_message_id IS NOT channels.last_message_id
      OR excluded.raw_json IS NOT channels.raw_json
      OR (@boundary_set = 1 AND excluded.platform_boundary = 'excluded' AND channels.platform_boundary IS NULL)
+     OR (@private_set = 1 AND excluded.is_private_thread IS NOT channels.is_private_thread)
      OR channels.deleted_at_ms IS NOT NULL
 `;
 
@@ -137,6 +148,8 @@ export function upsertChannel(db: DatabaseSync, input: ChannelUpsertInput): numb
     raw_json: input.rawJson,
     platform_boundary: input.platformBoundary ?? null,
     boundary_set: input.platformBoundary === undefined ? 0 : 1,
+    is_private_thread: toInt(input.isPrivateThread ?? false),
+    private_set: input.isPrivateThread === undefined ? 0 : 1,
   });
   return Number(result.changes);
 }

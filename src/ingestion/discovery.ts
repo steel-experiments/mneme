@@ -58,6 +58,8 @@ export interface DiscoveredChannelDescriptor {
   capabilities?: ChannelAccessCapabilities;
   /** Platform boundary; 'excluded' closes the channel to every policy (plan 002 decision 9). */
   platformBoundary?: 'excluded' | null;
+  /** True for a platform private thread (Discord type 12); it defaults to restricted. */
+  isPrivateThread?: boolean;
 }
 
 export interface DiscoveryOptions {
@@ -211,6 +213,7 @@ export function discoverChannels(
         kind: d.kind,
         categoryId,
         platformBoundary: d.platformBoundary ?? null,
+        isPrivateThread: d.isPrivateThread ?? false,
       };
       const resolved = resolveObservedChannelPolicy(db, options.policy, identity, {
         channelPolicySource: options.channelPolicySource,
@@ -310,6 +313,7 @@ export function discoverChannels(
           updatedAtMs: options.now,
           rawJson: null,
           platformBoundary: d.platformBoundary ?? null,
+          isPrivateThread: d.isPrivateThread ?? false,
         });
         recordAccessAudit(db, {
           channelId: d.id,
@@ -354,6 +358,7 @@ export function discoverChannels(
         updatedAtMs: options.now,
         rawJson: null,
         platformBoundary: d.platformBoundary ?? null,
+        isPrivateThread: d.isPrivateThread ?? false,
       });
 
       recordAccessAudit(db, {
