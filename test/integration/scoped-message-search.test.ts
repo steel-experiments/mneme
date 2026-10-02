@@ -126,7 +126,7 @@ describe('scoped message search', () => {
     expect(idsOf(r).has('m-rev')).toBe(false);
   });
 
-  it('honors explicit thread visibility overrides while anchoring restricted scope to the parent', () => {
+  it('honors explicit thread visibility overrides and anchors a restricted thread below an org parent on itself', () => {
     const orgParent = 'override-org-parent';
     const restrictedThread = 'override-restricted-thread';
     const restrictedParent = 'override-restricted-parent';
@@ -148,6 +148,10 @@ describe('scoped message search', () => {
       channelIds: [orgParent],
     };
     expect(idsOf(searchMessages(env.db, parentGrant, { query: 'override privacy' })).has(
+      'm-explicit-restricted-thread',
+    )).toBe(false);
+    const threadGrant: RetrievalGrant = { ...parentGrant, channelIds: [restrictedThread] };
+    expect(idsOf(searchMessages(env.db, threadGrant, { query: 'override privacy' })).has(
       'm-explicit-restricted-thread',
     )).toBe(true);
   });

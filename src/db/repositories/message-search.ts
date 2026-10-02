@@ -9,6 +9,7 @@ import {
   DEFAULT_LIMIT,
 } from '../fts-query.js';
 import { messageLink } from '../../platform/links.js';
+import { scopeAnchorSql } from '../../policy/scope-anchor.js';
 
 /**
  * Scope-bound message retrieval (Sections 7.3, 22.1, 30, 32.5.2).
@@ -122,12 +123,13 @@ export function channelVisibilityPredicate(grant: RetrievalGrant): {
        AND parent.deleted_at_ms IS NULL)`;
   // The thread row stores its fully resolved policy, including an explicit
   // override. Its parent is required to remain live, but does not replace that
-  // resolved visibility; it is only the restricted-scope anchor below.
+  // resolved visibility. It is the restricted-scope anchor below only when the
+  // parent itself is restricted (Section 7.2).
   const effectiveVisibility = `(CASE
     WHEN c.is_thread = 1 AND ${liveThreadParent} IS NULL THEN NULL
     ELSE c.visibility_class
   END)`;
-  const scopeAnchor = '(CASE WHEN c.is_thread = 1 THEN c.parent_id ELSE c.id END)';
+  const scopeAnchor = scopeAnchorSql('c');
   if (grant.includeOrgMessages) conds.push(`(${current} AND ${effectiveVisibility} = 'org')`);
   if (grant.includeReviewOnly) {
     conds.push(`(${current} AND ${effectiveVisibility} = 'review_only')`);

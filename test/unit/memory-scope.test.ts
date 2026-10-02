@@ -78,16 +78,17 @@ describe('computeEffectiveScope', () => {
     });
   });
 
-  it('uses the thread\'s resolved visibility when it explicitly overrides its parent', () => {
+  it('uses the thread\'s resolved visibility and its own anchor below an org parent', () => {
     const l = lookup([
       { id: 'org-parent', visibility: 'org' },
       { id: 'restricted-thread', visibility: 'restricted', parent: 'org-parent', isThread: true },
       { id: 'restricted-parent', visibility: 'restricted' },
       { id: 'org-thread', visibility: 'org', parent: 'restricted-parent', isThread: true },
     ]);
+    // A restricted thread below an org parent anchors on itself (Section 7.2).
     expect(computeEffectiveScope([ev('restricted-thread', true)], l)).toEqual({
       scopeType: 'channel',
-      scopeKey: 'org-parent',
+      scopeKey: 'restricted-thread',
     });
     expect(computeEffectiveScope([ev('org-thread', true)], l)).toEqual({
       scopeType: 'org',

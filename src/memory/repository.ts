@@ -131,9 +131,11 @@ function resolveEvidenceScope(
   const pred = channelVisibilityPredicate(grant);
   const ph = uniqueIds.map(() => '?').join(',');
   const sql = `
-    SELECT m.id AS message_id, m.channel_id, c.visibility_class, c.parent_id, c.is_thread
+    SELECT m.id AS message_id, m.channel_id, c.visibility_class, c.parent_id, c.is_thread,
+           parent.visibility_class AS parent_visibility_class
       FROM messages m
       JOIN channels c ON c.id = m.channel_id
+      LEFT JOIN channels parent ON parent.id = c.parent_id AND c.is_thread = 1
      WHERE m.deleted_at_ms IS NULL AND ${pred.sql} AND m.id IN (${ph})
   `;
   const cacheKey = `memory.evidence_scope:${pred.sql}:${uniqueIds.length}`;
@@ -146,6 +148,7 @@ function resolveEvidenceScope(
     visibility_class: string;
     parent_id: string | null;
     is_thread: number;
+    parent_visibility_class: string | null;
   }>;
 
   if (rows.length < uniqueIds.length) {
@@ -168,8 +171,16 @@ function resolveEvidenceScope(
       });
     }
   }
+  // A thread's anchor depends on its parent's class (Section 7.2), so the
+  // lookup also knows the parents of thread evidence.
+  const parentVisibility = new Map<string, string>();
+  for (const r of rows) {
+    if (r.is_thread === 1 && r.parent_id !== null && r.parent_visibility_class !== null) {
+      parentVisibility.set(r.parent_id, r.parent_visibility_class);
+    }
+  }
   const lookup: VisibilityLookup = {
-    visibilityClass: (id) => chanMap.get(id)?.visibility as never,
+    visibilityClass: (id) => (chanMap.get(id)?.visibility ?? parentVisibility.get(id)) as never,
     parentChannelId: (id) => chanMap.get(id)?.parentId ?? null,
   };
   const scopeEvidence: ScopeEvidenceChannel[] = rows.map((r) => ({

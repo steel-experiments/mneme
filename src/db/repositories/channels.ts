@@ -3,6 +3,7 @@ import type { SQLOutputValue } from 'node:sqlite';
 import { prepareCached, toInt } from './util.js';
 import type { RetrievalGrant } from './message-search.js';
 import type { ChannelKind } from '../../platform/types.js';
+import { scopeAnchorId, scopeAnchorSql } from '../../policy/scope-anchor.js';
 
 /**
  * Idempotent channel metadata persistence (Section 9.1, 29.1).
@@ -160,7 +161,10 @@ export function sourceLinkChannelLabel(db: DatabaseSync, channelId: string): str
 export interface CurrentChannelScope {
   /** The concrete Discord channel in which the message lives. */
   channelId: string;
-  /** Parent channel for a thread, otherwise the concrete channel id. */
+  /**
+   * Canonical restricted-scope anchor (spec Section 7.2): the parent for a
+   * thread below a restricted parent, otherwise the concrete channel id.
+   */
   scopeChannelId: string;
   /** Current resolved visibility; a thread row already stores any override/inheritance. */
   visibility: VisibilityClass;
@@ -170,8 +174,9 @@ export interface CurrentChannelScope {
  * Resolve the current scope anchor for a live channel. A deleted channel, or a
  * thread whose parent is missing/deleted, is unresolvable and therefore fails
  * closed. A thread row already stores the policy resolver's effective class,
- * including any explicit thread override; the parent is only the canonical
- * restricted-scope anchor and an availability dependency. Ingestion policy is
+ * including any explicit thread override; the parent is an availability
+ * dependency, and the canonical restricted-scope anchor only when the parent
+ * itself is restricted. Ingestion policy is
  * intentionally separate: an ingest-disabled command console can still be a
  * valid reply target even though ordinary conversation rows from it are not
  * retrievable.
@@ -190,7 +195,7 @@ export function resolveCurrentChannelScope(
   if (!parent || parent.deleted_at_ms !== null) return undefined;
   return {
     channelId,
-    scopeChannelId: parent.id,
+    scopeChannelId: scopeAnchorId({ id: channel.id, isThread: true, parentId: parent.id }, parent.visibility_class),
     visibility: channel.visibility_class,
   };
 }
@@ -226,7 +231,7 @@ export function resolveRetrievableChannelScope(
   ) return undefined;
   return {
     channelId,
-    scopeChannelId: parent.id,
+    scopeChannelId: scopeAnchorId({ id: channel.id, isThread: true, parentId: parent.id }, parent.visibility_class),
     visibility: channel.visibility_class,
   };
 }
@@ -316,9 +321,8 @@ export function listChannelsForGrant(db: DatabaseSync, grant: RetrievalGrant): V
               AND parent.ingest_enabled = 1
          ))
          AND (c.visibility_class IN (${classList})
-              OR (c.visibility_class = 'restricted'
-                  AND (c.id IN (${ph}) OR (c.is_thread = 1 AND c.parent_id IN (${ph})))))
+              OR (c.visibility_class = 'restricted' AND ${scopeAnchorSql('c')} IN (${ph})))
        ORDER BY COALESCE(name, id) ASC`,
-  ).all(...ids, ...ids) as Array<Record<string, SQLOutputValue>>;
+  ).all(...ids) as Array<Record<string, SQLOutputValue>>;
   return rows.map(toVisibleChannel);
 }

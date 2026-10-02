@@ -195,9 +195,10 @@ export function validateMcpTokenGrant(
     if (vc !== 'restricted') {
       return invalid('non_restricted_channel', `channel ${id} is not restricted (${vc})`);
     }
-    // Restricted thread content is scoped to its parent. Persist the canonical
-    // anchor so the resulting grant can read that thread (and other content in
-    // the same host-defined restricted scope) even when the parent itself is org.
+    // Persist the canonical restricted-scope anchor (Section 7.2): the parent
+    // for a thread below a restricted parent, otherwise the channel itself. A
+    // restricted thread below an org parent therefore grants only that thread,
+    // never its sibling threads.
     scopeAnchors.push(current.scopeChannelId);
   }
 

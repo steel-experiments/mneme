@@ -2,7 +2,8 @@ import { transactionImmediate, type DatabaseSync } from '../db/database.js';
 import { prepareCached } from '../db/repositories/util.js';
 import { getUser } from '../db/repositories/users.js';
 import type { RetrievalGrant } from '../db/repositories/message-search.js';
-import { getChannel, resolveRetrievableChannelScope } from '../db/repositories/channels.js';
+import { getChannel, resolveRetrievableChannelScope, type ChannelRow } from '../db/repositories/channels.js';
+import { scopeAnchorId } from '../policy/scope-anchor.js';
 import { getMessage } from '../db/repositories/messages.js';
 import { getMemoryDetails } from '../memory/search.js';
 import {
@@ -240,9 +241,10 @@ interface EvidenceMeta {
 
 /**
  * A restricted provenance anchor is satisfied only by cited evidence that is
- * itself currently restricted and normalizes to that same anchor. An org
- * parent may be the canonical key for an explicitly restricted thread, but its
- * org messages cannot stand in for restricted evidence from that family.
+ * itself currently restricted and normalizes to that same anchor. A thread
+ * normalizes to its parent only when the parent is restricted, so an org
+ * parent's messages and a sibling restricted thread below an org parent can
+ * never stand in for a restricted thread's own evidence.
  */
 function hasRestrictedCitationForAnchor(
   db: DatabaseSync,
@@ -252,12 +254,17 @@ function hasRestrictedCitationForAnchor(
   for (const channelId of citedChannelIds) {
     const channel = getChannel(db, channelId);
     if (channel?.visibility_class !== 'restricted') continue;
-    const citedAnchor = channel.is_thread === 1
-      ? channel.parent_id ?? channel.id
-      : channel.id;
-    if (citedAnchor === requiredAnchor) return true;
+    if (channelScopeAnchor(db, channel) === requiredAnchor) return true;
   }
   return false;
+}
+
+/** The canonical restricted-scope anchor of a stored channel row (Section 7.2). */
+function channelScopeAnchor(db: DatabaseSync, channel: ChannelRow): string {
+  const parentVisibility = channel.is_thread === 1 && channel.parent_id
+    ? getChannel(db, channel.parent_id)?.visibility_class
+    : undefined;
+  return scopeAnchorId({ id: channel.id, isThread: channel.is_thread === 1, parentId: channel.parent_id }, parentVisibility);
 }
 
 /**
@@ -432,7 +439,7 @@ function applyOne(
         return reject(base, 'evidence_out_of_scope', 'run provenance is not safe for durable memory');
       }
       if (channel.visibility_class === 'restricted') {
-        const anchor = channel.is_thread === 1 ? channel.parent_id ?? channel.id : channel.id;
+        const anchor = channelScopeAnchor(deps.db, channel);
         if (!hasRestrictedCitationForAnchor(deps.db, citedChannels, anchor)) {
           return reject(base, 'evidence_out_of_scope', `restricted run provenance lacks cited evidence: ${channelId}`);
         }
