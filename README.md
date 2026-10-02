@@ -60,6 +60,34 @@ Mneme was inspired by Sunil Pai's essay
 [Every company needs a Cassandra](https://sunilpai.dev/posts/every-company-needs-a-cassandra/).
 The name comes from Mneme, the Greek muse of memory.
 
+### Formerly Cassandra for Discord
+
+Until v2.0.0 (2026-10-01), this project was named Cassandra for Discord. The
+repository was `steel-experiments/cassandra-discord`, and the image was
+`ghcr.io/steel-experiments/cassandra-discord`. Old repository links redirect
+here.
+
+We changed the name for two reasons:
+
+- Searches for the name found the Apache Cassandra database first. The two
+  projects are not related.
+- The project now supports Slack too, so a Discord-only name was not correct.
+
+In the myth, Cassandra speaks true prophecies that nobody believes. Mneme
+keeps what a team decided and brings it back when it matters, so the muse of
+memory is a closer fit.
+
+If you run a release before v2.0.0, rename these items when you upgrade:
+
+- every `CASSANDRA_*` environment variable to `MNEME_*`;
+- `config/cassandra.yml` to `config/mneme.yml`;
+- the slash command `/cassandra` to `/mneme` (Mneme registers it at startup);
+- test channels whose names contain `cassandra`, so that their names contain
+  `mneme`. If you do not rename them, Mneme ingests them as ordinary channels.
+
+From v3.0.0, also set `MNEME_PLATFORM=discord`. See the
+[changelog](CHANGELOG.md) for all upgrade notes.
+
 ## Give your agents the team's memory
 
 Mneme's MCP server lets a connected agent search team conversations,
