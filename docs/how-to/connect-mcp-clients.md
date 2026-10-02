@@ -117,7 +117,7 @@ On a Slack deployment, the operator does these steps once:
 2. Copy the **Client ID** and **Client Secret** from **Basic Information** into
    `SLACK_OAUTH_CLIENT_ID` and `SLACK_OAUTH_CLIENT_SECRET`.
 3. Set `MCP_OAUTH_ENABLED=true` and `MCP_OAUTH_CLIENT_ID`.
-4. Make sure your own Slack user id (for example `U0123ABCDEF`) is in
+4. Make sure your own Slack user id (for example `UXXXXXXXXX`) is in
    `MNEME_ADMIN_USER_IDS`. A person whose id is not in that list cannot sign in.
 
 A person who signs in to a different Slack workspace is refused, even if their user id

@@ -97,6 +97,10 @@ describe('production-credential guard', () => {
     expect(() => assertFixtureModeSafe({ DISCORD_TOKEN: 'a-real-token' })).toThrow(/DISCORD_TOKEN/);
   });
 
+  it.each(['SLACK_BOT_TOKEN', 'SLACK_APP_TOKEN'])('throws when %s is set', (name) => {
+    expect(() => assertFixtureModeSafe({ [name]: 'a-real-token' })).toThrow(new RegExp(`${name}.*Slack credentials`));
+  });
+
   it('is silent when DISCORD_TOKEN is unset', () => {
     expect(() => assertFixtureModeSafe({})).not.toThrow();
   });

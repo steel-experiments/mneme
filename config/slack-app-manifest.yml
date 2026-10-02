@@ -1,0 +1,74 @@
+# Slack app manifest for Mneme (spec Section 6.7).
+#
+# Paste this file into "Create New App" -> "From a manifest" in your own
+# workspace.
+#
+# Do not turn on public distribution. Mneme is an internal app. A distributed
+# app that is not in the Slack Marketplace gets much lower history rate limits
+# (1 request per minute, 15 messages per page) and other Slack API Terms.
+#
+# Replace mneme.example.com with your public base URL. If you do not use MCP
+# OAuth, remove the oauth_config.redirect_urls block.
+#
+# test/unit/slack/manifest.test.ts keeps the scopes and events equal to the
+# code. Change src/platform/slack/scopes.ts and this file together.
+display_information:
+  name: Mneme
+  description: Quiet organizational memory for this workspace.
+features:
+  app_home:
+    home_tab_enabled: false
+    # The Messages tab stays visible so admins can read backup notices, but
+    # it does not accept input. Mneme does not read DMs.
+    messages_tab_enabled: true
+    messages_tab_read_only_enabled: true
+  bot_user:
+    display_name: Mneme
+    always_online: true
+  slash_commands:
+    - command: /mneme
+      description: Mneme admin commands. Type /mneme help.
+      usage_hint: help
+      should_escape: true
+oauth_config:
+  redirect_urls:
+    - https://mneme.example.com/oauth/slack/callback
+  scopes:
+    bot:
+      - channels:history
+      - channels:read
+      - chat:write
+      - commands
+      - files:read
+      - groups:history
+      - groups:read
+      - im:write
+      - reactions:read
+      - users:read
+settings:
+  event_subscriptions:
+    bot_events:
+      - channel_archive
+      - channel_created
+      - channel_deleted
+      - channel_left
+      - channel_rename
+      - channel_shared
+      - channel_unarchive
+      - channel_unshared
+      - group_archive
+      - group_deleted
+      - group_left
+      - group_rename
+      - group_unarchive
+      - member_joined_channel
+      - member_left_channel
+      - message.channels
+      - message.groups
+      - reaction_added
+      - reaction_removed
+  interactivity:
+    is_enabled: true
+  org_deploy_enabled: false
+  socket_mode_enabled: true
+  token_rotation_enabled: false
