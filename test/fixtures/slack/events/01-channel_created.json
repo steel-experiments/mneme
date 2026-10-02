@@ -1,0 +1,53 @@
+{
+  "type": "events_api",
+  "body": {
+    "team_id": "T0000000001",
+    "event": {
+      "type": "channel_created",
+      "channel": {
+        "id": "C0000000001",
+        "name": "REDACTED",
+        "is_channel": true,
+        "is_group": false,
+        "is_im": false,
+        "is_mpim": false,
+        "is_private": false,
+        "created": 1790933614,
+        "is_archived": false,
+        "is_general": false,
+        "unlinked": 0,
+        "name_normalized": "REDACTED",
+        "is_shared": false,
+        "is_frozen": false,
+        "is_org_shared": false,
+        "is_pending_ext_shared": false,
+        "pending_shared": [],
+        "updated": 1790933614981,
+        "parent_conversation": null,
+        "creator": "U0000000001",
+        "is_ext_shared": false,
+        "shared_team_ids": [
+          "T0000000001"
+        ],
+        "pending_connected_team_ids": [],
+        "topic": {
+          "value": "",
+          "creator": "",
+          "last_set": 0
+        },
+        "purpose": {
+          "value": "",
+          "creator": "",
+          "last_set": 0
+        },
+        "previous_names": [],
+        "is_slackbot_channel_enabled": false
+      },
+      "event_ts": "1790933615.449600"
+    },
+    "type": "event_callback",
+    "event_id": "Ev000000000",
+    "event_time": 1790933615,
+    "is_ext_shared_channel": false
+  }
+}

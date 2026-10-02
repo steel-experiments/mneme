@@ -1,0 +1,57 @@
+{
+  "type": "events_api",
+  "body": {
+    "team_id": "T0000000001",
+    "event": {
+      "type": "message",
+      "subtype": "message_changed",
+      "message": {
+        "user": "U0000000001",
+        "type": "message",
+        "text": "REDACTED",
+        "team": "T0000000001",
+        "blocks": [
+          {
+            "type": "rich_text",
+            "block_id": "REDACTED",
+            "elements": []
+          }
+        ],
+        "ts": "1790934079.184319"
+      },
+      "previous_message": {
+        "user": "U0000000001",
+        "type": "message",
+        "ts": "1790934079.184319",
+        "text": "REDACTED",
+        "team": "T0000000001",
+        "thread_ts": "1790934079.184319",
+        "reply_count": 1,
+        "reply_users_count": 1,
+        "latest_reply": "1790934092.555719",
+        "reply_users": [
+          "U0000000001"
+        ],
+        "is_locked": false,
+        "subscribed": true,
+        "last_read": "1790934092.555719",
+        "blocks": [
+          {
+            "type": "rich_text",
+            "block_id": "REDACTED",
+            "elements": []
+          }
+        ]
+      },
+      "channel": "C0000000001",
+      "hidden": true,
+      "ts": "1790934104.002700",
+      "event_ts": "1790934104.002700",
+      "channel_type": "channel"
+    },
+    "type": "event_callback",
+    "event_id": "Ev000000000",
+    "event_time": 1790934104,
+    "is_ext_shared_channel": false
+  }
+}

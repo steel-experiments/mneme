@@ -1,0 +1,16 @@
+{
+  "type": "events_api",
+  "body": {
+    "team_id": "T0000000001",
+    "event": {
+      "type": "channel_left",
+      "channel": "C0000000001",
+      "actor_id": "U0000000001",
+      "event_ts": "1790933951.000800"
+    },
+    "type": "event_callback",
+    "event_id": "Ev000000000",
+    "event_time": 1790933951,
+    "is_ext_shared_channel": false
+  }
+}
