@@ -158,6 +158,29 @@ describe('Slack review cards', () => {
     expect(await port.findByMarker(REVIEW, marker)).toEqual({ id: `${REVIEW}-1790940000.000008` });
   });
 
+  it('finds a channel-policy card that is older than the first page of history', async () => {
+    const { api, cardDeps } = await setup();
+    const card = buildSlackChannelPolicyCard({ reviewId: 'r-2', channelId: TARGET, channelName: 'product', channelKind: 'text',
+      parentId: null, parentName: null }, SECRET);
+    const marker = channelPolicyReviewMarker('r-2');
+    const newer = Array.from({ length: 150 }, (_, i) => ({
+      ts: `1790940100.${String(200 - i).padStart(6, '0')}`, user: 'U0000000001', text: 'chat',
+    }));
+    api.channelMessages.set(REVIEW, [...newer, { ts: '1790940000.000008', user: BOT_USER, blocks: card.blocks }]);
+    expect(await createSlackChannelPolicyPort(cardDeps).findByMarker(REVIEW, marker))
+      .toEqual({ id: `${REVIEW}-1790940000.000008` });
+  });
+
+  it('stops looking for a channel-policy card after a bounded number of pages', async () => {
+    const { api, cardDeps } = await setup();
+    const marker = channelPolicyReviewMarker('r-3');
+    api.channelMessages.set(REVIEW, Array.from({ length: 1000 }, (_, i) => ({
+      ts: `1790940100.${String(2000 - i).padStart(6, '0')}`, user: 'U0000000001', text: 'chat',
+    })));
+    expect(await createSlackChannelPolicyPort(cardDeps).findByMarker(REVIEW, marker)).toBeUndefined();
+    expect(api.calls.filter((c) => c.method === 'history')).toHaveLength(5);
+  });
+
   it('resolves a card by replacing its buttons with the label', async () => {
     const { api } = await setup();
     await createSlackReviewResolver(api)({ reviewMessageId: `${REVIEW}-1790940000.000001`, label: 'Approved by <@U1>', removeControls: true });

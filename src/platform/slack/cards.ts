@@ -161,6 +161,9 @@ export function createSlackReviewResolver(api: SlackApi): ReviewResolver {
   };
 }
 
+/** The most history pages that one marker search reads (100 messages each). */
+const MARKER_SEARCH_PAGES = 5;
+
 /** The channel-policy card port: post, find by marker after a crash, and resolve. */
 export function createSlackChannelPolicyPort(slack: SlackCardDeps): ChannelPolicyReviewPort<SlackCardPayload> {
   return {
@@ -171,10 +174,15 @@ export function createSlackChannelPolicyPort(slack: SlackCardDeps): ChannelPolic
     },
     async findByMarker(channelId, marker) {
       const blockId = channelPolicyMarkerBlockId(marker);
-      const page = await slack.api.history({ channel: channelId, limit: 100 });
-      for (const m of page.messages) {
-        if (m.user !== slack.selfUserId() || typeof m.ts !== 'string' || !Array.isArray(m.blocks)) continue;
-        if ((m.blocks as SlackObject[]).some((b) => b.block_id === blockId)) return { id: slackMessageId(channelId, m.ts) };
+      let cursor: string | undefined;
+      for (let page = 0; page < MARKER_SEARCH_PAGES; page++) {
+        const result = await slack.api.history({ channel: channelId, limit: 100, ...(cursor ? { cursor } : {}) });
+        for (const m of result.messages) {
+          if (m.user !== slack.selfUserId() || typeof m.ts !== 'string' || !Array.isArray(m.blocks)) continue;
+          if ((m.blocks as SlackObject[]).some((b) => b.block_id === blockId)) return { id: slackMessageId(channelId, m.ts) };
+        }
+        if (!result.hasMore || !result.nextCursor) return undefined;
+        cursor = result.nextCursor;
       }
       return undefined;
     },
