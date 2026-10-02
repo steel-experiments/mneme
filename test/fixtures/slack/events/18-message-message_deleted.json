@@ -1,0 +1,40 @@
+{
+  "type": "events_api",
+  "body": {
+    "team_id": "T0000000001",
+    "event": {
+      "type": "message",
+      "subtype": "message_deleted",
+      "previous_message": {
+        "user": "U0000000001",
+        "type": "message",
+        "ts": "1790933785.989349",
+        "edited": {
+          "user": "U0000000001",
+          "ts": "1790933793.000000"
+        },
+        "text": "REDACTED",
+        "team": "T0000000001",
+        "thread_ts": "1790933759.217369",
+        "parent_user_id": "U0000000001",
+        "blocks": [
+          {
+            "type": "rich_text",
+            "block_id": "REDACTED",
+            "elements": []
+          }
+        ]
+      },
+      "channel": "C0000000001",
+      "hidden": true,
+      "deleted_ts": "1790933785.989349",
+      "event_ts": "1790933796.001100",
+      "ts": "1790933796.001100",
+      "channel_type": "channel"
+    },
+    "type": "event_callback",
+    "event_id": "Ev000000000",
+    "event_time": 1790933796,
+    "is_ext_shared_channel": false
+  }
+}

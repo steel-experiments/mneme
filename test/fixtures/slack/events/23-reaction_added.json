@@ -1,0 +1,23 @@
+{
+  "type": "events_api",
+  "body": {
+    "team_id": "T0000000001",
+    "event": {
+      "type": "reaction_added",
+      "user": "U0000000001",
+      "reaction": "+1",
+      "item": {
+        "type": "message",
+        "channel": "C0000000001",
+        "ts": "1790933803.455219",
+        "channel_type": "channel"
+      },
+      "item_user": "U0000000001",
+      "event_ts": "1790933811.001600"
+    },
+    "type": "event_callback",
+    "event_id": "Ev000000000",
+    "event_time": 1790933811,
+    "is_ext_shared_channel": false
+  }
+}

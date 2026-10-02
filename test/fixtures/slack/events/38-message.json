@@ -1,0 +1,48 @@
+{
+  "type": "events_api",
+  "body": {
+    "team_id": "T0000000001",
+    "event": {
+      "type": "message",
+      "user": "U0000000002",
+      "ts": "1790934014.273839",
+      "bot_id": "B0000000001",
+      "app_id": "A0C60KK4W9H",
+      "text": "REDACTED",
+      "team": "T0000000001",
+      "bot_profile": {
+        "id": "B0000000001",
+        "deleted": false,
+        "name": "REDACTED",
+        "updated": 1790920916,
+        "app_id": "A0C60KK4W9H",
+        "user_id": "U0000000002",
+        "icons": {
+          "image_36": "https://a.slack-edge.com/80588/img/plugins/app/bot_36.png",
+          "image_48": "https://a.slack-edge.com/80588/img/plugins/app/bot_48.png",
+          "image_72": "https://a.slack-edge.com/80588/img/plugins/app/service_72.png"
+        },
+        "team_id": "T0000000001"
+      },
+      "metadata": {
+        "event_type": "mneme_outbox",
+        "event_payload": {
+          "dedupe": "spike-123"
+        }
+      },
+      "blocks": [
+        {
+          "type": "section",
+          "block_id": "REDACTED"
+        }
+      ],
+      "channel": "C0000000001",
+      "event_ts": "1790934014.273839",
+      "channel_type": "channel"
+    },
+    "type": "event_callback",
+    "event_id": "Ev000000000",
+    "event_time": 1790934014,
+    "is_ext_shared_channel": false
+  }
+}

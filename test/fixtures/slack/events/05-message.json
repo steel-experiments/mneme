@@ -1,0 +1,27 @@
+{
+  "type": "events_api",
+  "body": {
+    "team_id": "T0000000001",
+    "event": {
+      "type": "message",
+      "user": "U0000000001",
+      "ts": "1790933671.789009",
+      "text": "REDACTED",
+      "team": "T0000000001",
+      "blocks": [
+        {
+          "type": "rich_text",
+          "block_id": "REDACTED",
+          "elements": []
+        }
+      ],
+      "channel": "C0000000002",
+      "event_ts": "1790933671.789009",
+      "channel_type": "group"
+    },
+    "type": "event_callback",
+    "event_id": "Ev000000000",
+    "event_time": 1790933671,
+    "is_ext_shared_channel": false
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "type": "events_api",
+  "body": {
+    "team_id": "T0000000001",
+    "event": {
+      "type": "member_joined_channel",
+      "user": "U0000000002",
+      "channel": "C0000000002",
+      "channel_type": "C",
+      "team": "T0000000001",
+      "inviter": "U0000000001",
+      "event_ts": "1790933639.000200"
+    },
+    "type": "event_callback",
+    "event_id": "Ev000000000",
+    "event_time": 1790933639,
+    "is_ext_shared_channel": false
+  }
+}

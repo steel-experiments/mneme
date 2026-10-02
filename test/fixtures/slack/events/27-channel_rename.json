@@ -1,0 +1,22 @@
+{
+  "type": "events_api",
+  "body": {
+    "team_id": "T0000000001",
+    "event": {
+      "type": "channel_rename",
+      "channel": {
+        "id": "C0000000001",
+        "is_channel": true,
+        "is_mpim": false,
+        "name": "REDACTED",
+        "name_normalized": "REDACTED",
+        "created": 1790933614
+      },
+      "event_ts": "1790933913.454300"
+    },
+    "type": "event_callback",
+    "event_id": "Ev000000000",
+    "event_time": 1790933913,
+    "is_ext_shared_channel": false
+  }
+}

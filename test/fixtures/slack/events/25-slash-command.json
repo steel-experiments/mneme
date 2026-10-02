@@ -1,0 +1,13 @@
+{
+  "type": "slash_commands",
+  "body": {
+    "team_id": "T0000000001",
+    "team_domain": "REDACTED",
+    "channel_id": "C0000000001",
+    "channel_name": "REDACTED",
+    "user_id": "U0000000001",
+    "user_name": "REDACTED",
+    "command": "/mneme",
+    "text": "REDACTED"
+  }
+}

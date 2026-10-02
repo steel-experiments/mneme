@@ -1,0 +1,16 @@
+{
+  "type": "events_api",
+  "body": {
+    "team_id": "T0000000001",
+    "event": {
+      "type": "channel_unarchive",
+      "channel": "C0000000001",
+      "user": "U0000000001",
+      "event_ts": "1790933939.455200"
+    },
+    "type": "event_callback",
+    "event_id": "Ev000000000",
+    "event_time": 1790933939,
+    "is_ext_shared_channel": false
+  }
+}
