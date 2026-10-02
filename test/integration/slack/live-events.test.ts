@@ -152,6 +152,20 @@ describe('Slack live events', () => {
     expect(getChannel(db, 'C0000000077')).toBeUndefined();
   });
 
+  it('drops a reaction in an excluded channel without storing reaction or user rows', async () => {
+    const { db, live, feed } = await setup();
+    await feed('11', '20');
+    await handleSlackEnvelope(live, { type: 'events_api', body: { team_id: TEAM, event: { type: 'channel_shared', channel: PUBLIC } } });
+    const reaction = fixture('21');
+    const event = reaction.body.event as Record<string, unknown>;
+    reaction.body = { ...reaction.body, event: { ...event, user: 'U0000000055' } };
+    expect(await handleSlackEnvelope(live, reaction)).toEqual({ handled: false, reason: 'policy' });
+    const reactions = db.prepare('SELECT COUNT(*) AS n FROM reactions').get() as { n: number };
+    expect(reactions.n).toBe(0);
+    const user = db.prepare('SELECT COUNT(*) AS n FROM users WHERE id = ?').get('U0000000055') as { n: number };
+    expect(user.n).toBe(0);
+  });
+
   it('drops events from a channel that is not known', async () => {
     const { live } = await setup();
     const env = fixture('08');

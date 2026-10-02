@@ -155,7 +155,10 @@ function handleReaction(ctx: SlackLiveContext, event: SlackObject, add: boolean)
     return { handled: false, reason: 'missing_fields' };
   }
   const messageId = slackMessageId(item.channel, item.ts);
-  if (!getMessage(ctx.deps.db, messageId)) return { handled: false, reason: 'missing_message' };
+  const stored = getMessage(ctx.deps.db, messageId);
+  if (!stored) return { handled: false, reason: 'missing_message' };
+  // An excluded, test, or otherwise ineligible channel stores no reactions.
+  if (channelIngestionIneligibilityReason(ctx.deps.db, stored.channel_id) !== null) return { handled: false, reason: 'policy' };
   const input = { messageId, userId: event.user, emojiKey: event.reaction, emojiName: event.reaction };
   if (add) ingestReactionAdd(ctx.deps.db, input, optsOf(ctx.deps));
   else ingestReactionRemove(ctx.deps.db, input, optsOf(ctx.deps));
