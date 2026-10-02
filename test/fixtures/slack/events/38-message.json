@@ -7,7 +7,7 @@
       "user": "U0000000002",
       "ts": "1790934014.273839",
       "bot_id": "B0000000001",
-      "app_id": "A0C60KK4W9H",
+      "app_id": "A0000000001",
       "text": "REDACTED",
       "team": "T0000000001",
       "bot_profile": {
@@ -15,7 +15,7 @@
         "deleted": false,
         "name": "REDACTED",
         "updated": 1790920916,
-        "app_id": "A0C60KK4W9H",
+        "app_id": "A0000000001",
         "user_id": "U0000000002",
         "icons": {
           "image_36": "https://a.slack-edge.com/80588/img/plugins/app/bot_36.png",
