@@ -13,6 +13,10 @@ const checks = [
   { name: 'Discord snowflake value', pattern: /(?<!\d)\d{17,20}(?!\d)/g },
   { name: 'Railway deployment hostname', pattern: /\b[a-z0-9-]+\.up\.railway\.app\b/gi },
   { name: 'Railway dashboard resource URL', pattern: /https:\/\/railway\.com\/(?:project|service)\//gi },
+  { name: 'Slack token', pattern: /\bxox[abposr]-[A-Za-z0-9-]{8,}/g },
+  { name: 'Slack app-level token', pattern: /\bxapp-\d-[A-Za-z0-9-]{8,}/g },
+  // A real Slack id has at least one digit. Docs use placeholders such as CXXXXXXXXX.
+  { name: 'Slack id', pattern: /\b[TCGUWF](?=[A-Z0-9]*\d)[A-Z0-9]{8,11}\b/g },
 ];
 
 function filesUnder(target) {

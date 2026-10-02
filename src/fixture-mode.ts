@@ -345,19 +345,29 @@ function isMain(): boolean {
   }
 }
 
+/** Platform credentials that fixture mode refuses to run with. */
+const PLATFORM_CREDENTIALS = [
+  { name: 'DISCORD_TOKEN', platform: 'Discord' },
+  { name: 'SLACK_BOT_TOKEN', platform: 'Slack' },
+  { name: 'SLACK_APP_TOKEN', platform: 'Slack' },
+] as const;
+
 /**
- * Hard guard: fixture mode must never run where production Discord credentials
- * are present. Throws (rather than exiting) so the check is unit-testable;
- * {@link main} turns the throw into a stderr message and a non-zero exit.
+ * Hard guard: fixture mode must never run where production Discord or Slack
+ * credentials are present. Throws (rather than exiting) so the check is
+ * unit-testable; {@link main} turns the throw into a stderr message and a
+ * non-zero exit.
  */
 export function assertFixtureModeSafe(env: NodeJS.ProcessEnv = process.env): void {
-  const token = env.DISCORD_TOKEN;
-  if (token && token.trim() !== '') {
-    throw new Error(
-      'fixture-mode: refusing to start because DISCORD_TOKEN is set. ' +
-        'Fixture mode replays synthetic data offline and must not run with ' +
-        'production Discord credentials.',
-    );
+  for (const { name, platform } of PLATFORM_CREDENTIALS) {
+    const value = env[name];
+    if (value && value.trim() !== '') {
+      throw new Error(
+        `fixture-mode: refusing to start because ${name} is set. ` +
+          'Fixture mode replays synthetic data offline and must not run with ' +
+          `production ${platform} credentials.`,
+      );
+    }
   }
 }
 

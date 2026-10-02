@@ -499,8 +499,7 @@ has `connections:write`. The bot token starts with `xoxb-`.
 
 Request these bot scopes: `channels:history`, `groups:history`,
 `channels:read`, `groups:read`, `users:read`, `reactions:read`, `files:read`,
-`chat:write`, `commands`, and `im:write`. The read path uses the first seven
-(`SLACK_READ_SCOPES` in the adapter).
+`chat:write`, `commands`, and `im:write` (`SLACK_BOT_SCOPES` in the adapter).
 
 Do not request `channels:join`, `im:history`, `mpim:history`, or `mpim:read`.
 
@@ -542,7 +541,9 @@ a sync always require an admin.
 #### 6.7.7 App manifest
 
 The repository ships `config/slack-app-manifest.yml` with the scopes and
-events above. Plan 010 adds it.
+events above (`SLACK_BOT_SCOPES` and `SLACK_BOT_EVENTS` in the adapter). A unit
+test keeps the manifest equal to these constants. The `/mneme` command has
+`should_escape: true`, and the Messages tab is visible and read-only.
 
 ---
 

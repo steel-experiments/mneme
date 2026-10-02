@@ -65,13 +65,17 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # The containers below receive no host environment, so no credential can
-      # reach them. This step documents that intent (Section 46.6: no Discord or
-      # provider credentials) and fails if the job environment ever carries one.
-      # It is not a leak test; fixture mode itself refuses to start when
-      # DISCORD_TOKEN is set (src/fixture-mode.ts).
+      # reach them. This step documents that intent (Section 46.6: no Discord,
+      # Slack, or provider credentials) and fails if the job environment ever
+      # carries one. It is not a leak test; fixture mode itself refuses to start
+      # when DISCORD_TOKEN, SLACK_BOT_TOKEN, or SLACK_APP_TOKEN is set
+      # (src/fixture-mode.ts).
       - name: Assert no credentials are present in the job environment
         run: |
           test -z "${DISCORD_TOKEN:-}"
+          test -z "${SLACK_BOT_TOKEN:-}"
+          test -z "${SLACK_APP_TOKEN:-}"
+          test -z "${SLACK_OAUTH_CLIENT_SECRET:-}"
           test -z "${OPENAI_API_KEY:-}"
           test -z "${ANTHROPIC_API_KEY:-}"
           test -z "${GOOGLE_API_KEY:-}"
