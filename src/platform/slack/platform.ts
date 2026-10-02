@@ -74,6 +74,7 @@ export function createSlackPlatform(
     applyChannelPolicy: () => connected().deps.applyChannelPolicy,
     enqueueHistory: config.ingestion.fullHistory,
     now: clock,
+    logger,
   });
 
   return {

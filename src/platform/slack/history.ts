@@ -1,6 +1,7 @@
 // ABOUTME: Pages Slack channel and thread history for backfill and reconcile (spec Sections 9.5, 9.6).
 // ABOUTME: Channel pages come from conversations.history; thread pages from conversations.replies, without the root.
 import type { DatabaseSync } from '../../db/database.js';
+import type { Logger } from '../../logger.js';
 import { getSyncCursor } from '../../db/repositories/sync-cursors.js';
 import type { BackfillMessageFetcher } from '../../ingestion/backfill.js';
 import { channelIngestionIneligibilityReason } from '../../ingestion/ingestion-eligibility.js';
@@ -9,9 +10,9 @@ import { enqueue } from '../../jobs/queue.js';
 import { RECONCILE_CHANNEL_KEY } from '../../jobs/scheduler.js';
 import type { NormalizedMessage } from '../types.js';
 import type { SlackApi, SlackObject } from './api.js';
-import { ensureThreadRow, type ApplyChannelPolicy } from './channels.js';
+import { ensureThreadRow, excludeSharedChannel, type ApplyChannelPolicy } from './channels.js';
 import { isSlackReply, parseSlackMessageId, parseSlackThreadRowId, slackMessageId } from './ids.js';
-import { isStoredSlackMessage, normalizeSlackMessage } from './normalize.js';
+import { isStoredSlackMessage, normalizeSlackMessage, slackForeignTeam } from './normalize.js';
 
 /** The largest page Slack returns for internal apps (spec Section 6.7.1). */
 export const SLACK_MAX_PAGE = 999;
@@ -32,6 +33,20 @@ export interface SlackHistoryDeps {
   /** `FULL_HISTORY`: import a new thread's whole history, or only reconcile it. */
   enqueueHistory: boolean;
   now: () => number;
+  logger?: Pick<Logger, 'warn'>;
+}
+
+/**
+ * A fetched page has a message from another team: the channel is shared.
+ * Exclude it and its threads at once. The caller discards the whole page, so
+ * nothing from it is stored (spec Section 7.1).
+ */
+function foreignTeamInPage(deps: SlackHistoryDeps, channel: string, messages: SlackObject[]): boolean {
+  if (!messages.some((m) => slackForeignTeam(m, deps.workspaceId) !== null)) return false;
+  excludeSharedChannel(deps.db(), channel, deps.now());
+  deps.logger?.warn({ event: 'slack.history_foreign_team', channelId: channel },
+    'history page has a message from another team; the channel is excluded as shared');
+  return true;
 }
 
 function item(channel: string, message: SlackObject): SlackHistoryItem {
@@ -79,6 +94,7 @@ async function channelPage(deps: SlackHistoryDeps, channel: string, beforeTs: st
   for (;;) {
     const page = await deps.api.history({ channel, latest, inclusive: false, limit: Math.min(SLACK_MAX_PAGE, limit) });
     if (page.messages.length === 0) break;
+    if (foreignTeamInPage(deps, channel, page.messages)) return [];
     for (const message of page.messages) {
       latest = String(message.ts);
       if (isSlackReply(message) || !isStoredSlackMessage(message)) continue;
@@ -97,6 +113,7 @@ async function threadPage(deps: SlackHistoryDeps, channel: string, threadTs: str
   let cursor: string | undefined;
   do {
     const page = await deps.api.replies({ channel, ts: threadTs, latest: beforeTs, inclusive: false, limit: Math.min(SLACK_MAX_PAGE, limit), cursor });
+    if (foreignTeamInPage(deps, channel, page.messages)) return [];
     for (const message of page.messages) {
       if (message.ts === threadTs || !isStoredSlackMessage(message)) continue;
       replies.push(item(channel, message));
@@ -124,7 +141,8 @@ export function createSlackHistory(deps: SlackHistoryDeps): BackfillMessageFetch
         ? await deps.api.replies({ channel: thread.channel, ts: thread.threadTs, latest: target.ts, oldest: target.ts, inclusive: true, limit: 1 })
         : await deps.api.history({ channel: target.channel, latest: target.ts, oldest: target.ts, inclusive: true, limit: 1 });
       const found = page.messages.find((m) => m.ts === target.ts);
-      return found ? item(target.channel, found) : null;
+      if (!found || foreignTeamInPage(deps, target.channel, [found])) return null;
+      return item(target.channel, found);
     },
     normalize(raw): NormalizedMessage {
       const entry = raw as SlackHistoryItem;

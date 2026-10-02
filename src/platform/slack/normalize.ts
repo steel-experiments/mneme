@@ -148,3 +148,21 @@ export function slackDeletedMessage(event: SlackObject): { id: string; channelId
   const previous = (event.previous_message as SlackObject | undefined) ?? { ts };
   return { id: slackMessageId(channel, ts), channelId: slackRowChannelId(channel, { ...previous, ts }) };
 }
+
+const TEAM_FIELDS = ['team', 'user_team', 'source_team'] as const;
+
+/**
+ * The first team id on a Slack message (or the message, previous message, or
+ * root that an event carries) that is not this workspace. A foreign team is
+ * proof that the channel is shared with another organization (spec Section 7.1).
+ */
+export function slackForeignTeam(message: SlackObject, workspaceId: string): string | null {
+  for (const candidate of [message, message.message, message.previous_message, message.root]) {
+    if (!candidate || typeof candidate !== 'object') continue;
+    for (const field of TEAM_FIELDS) {
+      const team = (candidate as SlackObject)[field];
+      if (typeof team === 'string' && team !== '' && team !== workspaceId) return team;
+    }
+  }
+  return null;
+}
