@@ -1,5 +1,5 @@
 // ABOUTME: Maps Slack Socket Mode envelopes to the neutral live ingestion operations (spec Section 9.3).
-// ABOUTME: Foreign-team, shared-channel, and unknown-channel events are dropped; channel changes re-read the channel.
+// ABOUTME: Foreign-team and unknown-channel events are dropped; a shared channel keeps only deletes; channel changes re-read the channel.
 import type { DatabaseSync } from '../../db/database.js';
 import { getChannel, tombstoneChannel, upsertChannel } from '../../db/repositories/channels.js';
 import { getMessage } from '../../db/repositories/messages.js';
@@ -14,6 +14,7 @@ import {
 } from '../../ingestion/ingest.js';
 import type { LiveIngestionDeps } from '../../ingestion/live.js';
 import { backfillJobKey } from '../../ingestion/sync.js';
+import { channelIngestionIneligibilityReason } from '../../ingestion/ingestion-eligibility.js';
 import { isMnemeTestSurface } from '../../ingestion/test-channels.js';
 import { enqueue } from '../../jobs/queue.js';
 import type { SlackApi, SlackObject } from './api.js';
@@ -136,6 +137,9 @@ function handleMessageChanged(ctx: SlackLiveContext, event: SlackObject): SlackE
   if (!patch) return { handled: false, reason: 'missing_fields' };
   const stored = getMessage(db, patch.id);
   if (!stored) return { handled: false, reason: 'unknown_message' };
+  // An excluded channel (for example a shared one) keeps no new content, edits included.
+  const ineligible = channelIngestionIneligibilityReason(db, stored.channel_id);
+  if (ineligible !== null && ineligible !== 'control_surface') return { handled: false, reason: 'policy' };
   // A reply delete updates the root's reply count, and a broadcast post repeats
   // the broadcast. Neither is a content edit.
   const message = event.message as SlackObject;
@@ -155,6 +159,14 @@ function handleReaction(ctx: SlackLiveContext, event: SlackObject, add: boolean)
   const input = { messageId, userId: event.user, emojiKey: event.reaction, emojiName: event.reaction };
   if (add) ingestReactionAdd(ctx.deps.db, input, optsOf(ctx.deps));
   else ingestReactionRemove(ctx.deps.db, input, optsOf(ctx.deps));
+  return { handled: true };
+}
+
+/** Tombstone a deleted message. Applies in every channel state, excluded channels included. */
+function applyDelete(ctx: SlackLiveContext, event: SlackObject): SlackEventOutcome {
+  const deleted = slackDeletedMessage(event);
+  if (!deleted) return { handled: false, reason: 'missing_fields' };
+  ingestMessageDelete(ctx.deps.db, deleted.id, optsOf(ctx.deps), deleted.channelId);
   return { handled: true };
 }
 
@@ -186,6 +198,8 @@ export async function handleSlackEnvelope(ctx: SlackLiveContext, envelope: Slack
       ctx.deps.onChannelChange?.('update', channel);
       await refreshAfterShare(ctx, channel);
     }
+    // A delete still applies: content that users remove must not stay stored.
+    if (event.type === 'message' && event.subtype === 'message_deleted') return applyDelete(ctx, event);
     return { handled: false, reason: 'shared_channel' };
   }
 
@@ -193,12 +207,7 @@ export async function handleSlackEnvelope(ctx: SlackLiveContext, envelope: Slack
     case 'message': {
       if (!channel || !isSlackChannelId(channel)) return { handled: false, reason: 'missing_fields' };
       if (event.subtype === 'message_changed') return handleMessageChanged(ctx, event);
-      if (event.subtype === 'message_deleted') {
-        const deleted = slackDeletedMessage(event);
-        if (!deleted) return { handled: false, reason: 'missing_fields' };
-        ingestMessageDelete(db, deleted.id, optsOf(ctx.deps), deleted.channelId);
-        return { handled: true };
-      }
+      if (event.subtype === 'message_deleted') return applyDelete(ctx, event);
       return handleMessageCreate(ctx, event, channel);
     }
     case 'reaction_added':
