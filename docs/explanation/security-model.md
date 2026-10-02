@@ -65,8 +65,10 @@ channel, or a child thread below one, is also unavailable evidence regardless of
 persisted visibility flag.
 
 Thread policy is resolved and stored on each thread. Read-time checks use that resolved
-thread class—including explicit overrides—while requiring a live parent and using the
-parent ID only as the restricted-scope anchor.
+thread class—including explicit overrides—while requiring a live parent. The parent ID
+is the restricted-scope anchor only when the parent is itself restricted. A restricted
+thread below an org channel anchors on its own ID, so its content and memories stay in
+that thread and the secure review channel and never reach sibling threads.
 
 Test-surface isolation is a parent-aware boundary, not a retrieval-only name filter. The
 same predicate excludes a Mneme-named channel and its child threads from live

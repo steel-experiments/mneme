@@ -569,8 +569,13 @@ The default is `restricted`.
 Threads inherit their parent channel’s class unless explicitly overridden.
 The policy resolver persists that resolved class on the thread row. Retrieval and
 outbound validation use the thread row's resolved class, so an explicit thread
-override is preserved; the live parent remains a required availability dependency
-and the canonical restricted-scope anchor, but does not replace the thread's class.
+override is preserved; the live parent remains a required availability dependency,
+but does not replace the thread's class. The parent is the canonical
+restricted-scope anchor only when the parent itself is `restricted`. A restricted
+thread below a parent of any other class, for example an explicitly restricted
+thread below an `org` channel, anchors on its own id: its content and memories stay
+in that thread and the secure review channel, and never reach sibling threads.
+A top-level channel anchors on itself, never on its category.
 
 Slack visibility rules:
 
@@ -632,12 +637,13 @@ A memory inherits the strictest scope among all evidence used to create it:
 - evidence from multiple restricted channels → memory scope is `review_only`;
 - any `review_only` evidence → memory scope is `review_only`.
 
-Evidence from a thread scopes to the thread's parent channel, not the thread ID. This
-keeps a memory created from a restricted thread retrievable in runs whose target grant
-includes that parent-anchored restricted scope. The evidence visibility still comes
-from the thread's resolved class, including an explicit override; only the scope key is
-normalized to the parent. An explicitly restricted thread under an `org` parent does
-not make its memory readable from the org parent itself.
+Evidence from a thread below a `restricted` parent scopes to that parent channel, not
+the thread ID. This keeps a memory created from such a thread retrievable in runs whose
+target grant includes the parent-anchored restricted scope. Evidence from a restricted
+thread below a parent of any other class scopes to the thread ID itself (Section 7.1).
+The evidence visibility always comes from the thread's resolved class, including an
+explicit override; only the scope key can move to the parent. A memory stored with an
+older parent scope key fails closed when the recomputed key differs.
 
 The model may suggest a scope, but the host computes the final scope from source messages.
 
@@ -1681,7 +1687,9 @@ The same run-exposure and visibility anchoring applies to `update` as to `create
 `supersede`. An update may not cite an unexposed message or use restricted evidence that
 the run grant could not retrieve.
 A citation is valid for a restricted channel or channel-scoped memory only when the cited
-channel is itself restricted and has the same canonical scope anchor.
+channel is itself restricted and has the same canonical scope anchor (Section 7.1). A
+sibling restricted thread below an `org` parent has a different anchor, so it cannot
+stand in for another thread's evidence.
 
 New and superseding records declare durability as `transient`, `project`, or
 `organizational`. Transient material is never persisted as durable memory. The host
@@ -5219,7 +5227,8 @@ Admin-issued tokens:
 - Each token carries a visibility grant:
   - default: `org` scope only;
   - optional: named restricted channels, granted explicitly at creation;
-    a restricted thread ref is normalized to its canonical parent scope anchor;
+    a restricted thread ref is normalized to its canonical scope anchor (Section 7.1):
+    the parent only when the parent is restricted, otherwise the thread itself;
   - never: `review_only` content. Review-only material stays reachable only through
     the secure review channel.
 - Tokens support expiry and revocation; every use updates `last_used_at_ms`.
