@@ -245,7 +245,9 @@ export async function runStartupSync(deps: StartupSyncDeps): Promise<StartupSync
         archivedBackfillEnqueued.push(thread.id);
       }
     }
-  } else {
+  } else if (!deps.completeThreadSnapshot) {
+    // A complete snapshot (Slack) has no archive source by design: omitted
+    // threads are closed, not quarantined, so there is nothing to warn about.
     deps.logger?.warn(
       {
         event: 'thread_discovery.archive_source_unavailable',

@@ -122,4 +122,19 @@ describe('Slack discovery', () => {
     expect(getChannel(db, MEMBER)).toMatchObject({ visibility_class: 'excluded', platform_boundary: 'excluded' });
     expect(getChannel(db, THREAD)).toMatchObject({ visibility_class: 'excluded' });
   });
+
+  it('logs no thread-discovery warning for a complete Slack snapshot, and still warns on Discord without an archive source', async () => {
+    const db = setup();
+    const api = fakeSlackApi();
+    api.conversations.set(MEMBER, conversation(MEMBER));
+    const warns: Array<Record<string, unknown>> = [];
+    const logger = { warn: (o: Record<string, unknown>) => warns.push(o), info: () => {}, debug: () => {}, error: () => {} };
+    const channels = await listSlackChannels(api, db, TEAM);
+    await runStartupSync({ db, guildId: TEAM, policy: POLICY, now: NOW, channels, completeThreadSnapshot: true,
+      enqueueHistoricalBackfill: false, logger: logger as never });
+    expect(warns).toEqual([]);
+    await runStartupSync({ db, guildId: TEAM, policy: POLICY, now: NOW + 1, channels,
+      enqueueHistoricalBackfill: false, logger: logger as never });
+    expect(warns.map((w) => w.event)).toEqual(['thread_discovery.archive_source_unavailable']);
+  });
 });
