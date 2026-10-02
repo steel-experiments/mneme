@@ -7,9 +7,10 @@ can name the exact external action that blocks progress.
 
 The canonical repository is
 <https://github.com/steel-experiments/mneme>. The default install
-uses the published [Railway template](https://railway.com/template/mneme)
-and its released, digest-pinned container image. Use a source deployment or a
-different host only when the person asks for one.
+runs the released, digest-pinned container image as one Railway service, as
+[Deploy on Railway](docs/how-to/railway.md) describes. Mneme has no Railway
+template. Use a source deployment or a different host only when the person
+asks for one.
 
 ## Definition of done
 
@@ -80,12 +81,12 @@ Read these local files before operating the installation:
 - `.env.example`
 
 The checkout supplies versioned instructions and a safe directory for Railway's
-ignored local link state. When using the released Railway template, do **not**
-run `railway up` from this checkout: that would deploy the checkout as a new
-source build instead of using the template's pinned release image.
+ignored local link state. When you deploy the released image, do **not** run
+`railway up` from this checkout: that would deploy the checkout as a new source
+build instead of the pinned release image.
 
 If cloning is impossible, fetch the four files above from the canonical
-repository's raw `main` URLs and continue with the template path.
+repository's raw `main` URLs and continue with the image path.
 
 ## 2. Establish the install choices
 
@@ -95,7 +96,7 @@ answer, and follow only that platform's branch in the steps below.
 
 Use these defaults unless the person asks for something else:
 
-- hosting: Railway template;
+- hosting: Railway, from the released image;
 - model provider: OpenAI;
 - model: `gpt-5.6-terra`;
 - mode: `observe`;
@@ -183,57 +184,10 @@ Have the person complete these browser-only steps at
 Pause only for browser authentication, MFA, consent, or secret entry that the
 person must perform. Resume the setup as soon as that action is complete.
 
-## 4. Deploy the Railway template
+## 4. Install and connect the Railway CLI
 
-Open <https://railway.com/template/mneme>. The template should
-create one service from the released image and one volume mounted at
-`/app/data`.
-
-Have the person enter the secrets directly in Railway:
-
-- Discord: `DISCORD_TOKEN`
-- Slack: `SLACK_BOT_TOKEN` and `SLACK_APP_TOKEN`
-- `OPENAI_API_KEY` for the default provider
-
-Then fill in the non-secret values established earlier:
-
-```text
-MNEME_PLATFORM=discord
-DISCORD_APPLICATION_ID
-DISCORD_GUILD_ID
-ORG_NAME
-ORG_TIMEZONE
-MNEME_ADMIN_ROLE_IDS
-ORG_VISIBLE_CHANNEL_IDS
-RESTRICTED_CHANNEL_IDS
-FULL_HISTORY
-LLM_DAILY_BUDGET_USD=2
-```
-
-For Slack, use `MNEME_PLATFORM=slack`, replace the three Discord rows and
-`MNEME_ADMIN_ROLE_IDS` with `SLACK_TEAM_ID` and `MNEME_ADMIN_USER_IDS`, and
-remove the Discord variables that the template created. See
-[Deploy for Slack](docs/how-to/railway.md#deploy-for-slack).
-
-Leave an empty restricted list unset if Railway rejects an empty value. Do not
-set `MNEME_MODE`; its default is `observe`. Do not add a pre-deploy command.
-
-Before deploying, inspect the template summary with the person and confirm:
-
-- there is one application service;
-- there is one volume mounted at `/app/data`;
-- the service is configured for one replica;
-- the health check path is `/readyz`;
-- the required values are present and the secret fields are masked.
-
-If the person chooses Anthropic or Google instead, set `LLM_PROVIDER` and the
-matching provider key described in `.env.example`; do not also require an
-OpenAI key.
-
-## 5. Install and connect the Railway CLI
-
-Use the CLI for inspection and verification after the template has created the
-project. First check whether it is installed:
+Use the CLI to create the project and to verify it. First check whether it is
+installed:
 
 ```bash
 command -v railway
@@ -265,22 +219,85 @@ it:
 railway status --json
 ```
 
-If the checkout is unlinked, run `railway link` and select the
-template-created project, production environment, and Mneme service. If it
-is already linked to a different project, preserve that state: use a fresh
-checkout for this installation or pass explicit project, environment, and
-service IDs. Do not silently relink somebody's working directory. Run
-`railway status --json` again after linking and verify the selected names and
-IDs with the person.
+If the checkout is already linked to a different project, preserve that state:
+use a fresh checkout for this installation or pass explicit project,
+environment, and service IDs. Do not silently relink somebody's working
+directory. Section 5 creates and links the new project.
 
 Do not run or display `railway variable list`; its output formats can include raw
 values. The application's readiness and Discord checks provide safer validation
 of the configuration.
 
+## 5. Create the Railway service from the released image
+
+Ask the person which release to install. Take the image reference with its
+digest from the release notes on
+<https://github.com/steel-experiments/mneme/releases>, for example
+`ghcr.io/steel-experiments/mneme@sha256:<digest>`. Use the digest, not a tag.
+
+From the Mneme checkout, create the project, the service, and the volume:
+
+```bash
+railway init --name mneme
+railway add --service mneme --image ghcr.io/steel-experiments/mneme@sha256:<digest>
+railway service link mneme
+railway volume add --mount-path /app/data
+railway status --json
+```
+
+Verify the project, environment, and service names and IDs with the person.
+Railway can start a first deployment at once; it stops with a configuration
+error until the variables are set. That is expected.
+
+Have the person set these values in the service **Settings** in the
+dashboard, because the CLI does not set them: health check path `/readyz`,
+health check timeout `300`, restart policy `Always`, teardown overlap `0`
+seconds and draining `45` seconds, and one replica.
+
+Have the person enter the secrets directly in Railway (the service
+**Variables** tab), never in the chat:
+
+- Discord: `DISCORD_TOKEN`
+- Slack: `SLACK_BOT_TOKEN` and `SLACK_APP_TOKEN`
+- `OPENAI_API_KEY` for the default provider
+
+Then set the non-secret values established earlier, with `--skip-deploys` so
+that no deployment starts for each value:
+
+```bash
+railway variable set MNEME_PLATFORM=discord DISCORD_APPLICATION_ID=<id> \
+  DISCORD_GUILD_ID=<id> ORG_NAME="<name>" ORG_TIMEZONE=<zone> \
+  MNEME_ADMIN_ROLE_IDS=<ids> ORG_VISIBLE_CHANNEL_IDS=<ids> \
+  FULL_HISTORY=<true|false> LLM_DAILY_BUDGET_USD=2 --skip-deploys
+```
+
+For Slack, use `MNEME_PLATFORM=slack`, and replace the three Discord values
+and `MNEME_ADMIN_ROLE_IDS` with `SLACK_TEAM_ID` and `MNEME_ADMIN_USER_IDS`.
+See [Deploy for Slack](docs/how-to/railway.md#deploy-for-slack).
+
+Set `RESTRICTED_CHANNEL_IDS` only when the list is not empty. Do not set
+`MNEME_MODE`; its default is `observe`. Do not add a pre-deploy command.
+
+Before the first real deployment, inspect the service with the person and
+confirm:
+
+- there is one application service;
+- there is one volume mounted at `/app/data`;
+- the service is configured for one replica;
+- the health check path is `/readyz`;
+- the required values are present and the secret fields are masked.
+
+If the person chooses Anthropic or Google instead, set `LLM_PROVIDER` and the
+matching provider key described in `.env.example`; do not also require an
+OpenAI key.
+
+Then start the deployment with `railway service redeploy`, or with **Deploy**
+in the dashboard.
+
 ## 6. Verify Railway and the chat platform
 
 Use Railway's structured status commands and follow the exact deployment that
-the template created:
+section 5 started:
 
 ```bash
 railway volume list --json
@@ -289,7 +306,7 @@ railway logs <deployment-id> --lines 100 --json
 ```
 
 Confirm that the volume is attached to the Mneme service at `/app/data` and
-the exact deployment ID created by the template reaches `SUCCESS`. If it is
+the exact deployment ID from section 5 reaches `SUCCESS`. If it is
 still building or deploying, keep polling that deployment. If it fails or
 crashes, inspect that deployment's build and runtime logs, correct the named
 configuration issue, redeploy, and then follow the replacement deployment ID

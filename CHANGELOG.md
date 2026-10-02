@@ -9,6 +9,14 @@ and this project adheres to
 This changelog starts at the launch baseline. Changes before that point are
 not recorded.
 
+## [Unreleased]
+
+### Removed
+
+- **Railway template.** The Railway template is retired. To run Mneme on
+  Railway, deploy the released image by hand, as
+  [Deploy on Railway](docs/how-to/railway.md) describes.
+
 ## [3.1.0] - 2026-10-02
 
 ### Security
