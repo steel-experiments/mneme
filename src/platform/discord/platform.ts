@@ -35,7 +35,9 @@ export function discordReviewSecret(token: string): string {
 /** Build the Discord platform. The discord.js client is created on `connect`. */
 export function createDiscordPlatform(config: AppConfig, logger: Logger, clock: () => number): ChatPlatform {
   const workspaceId = config.workspaceId;
-  const token = config.discord.token;
+  const discordConfig = config.discord;
+  if (!discordConfig) throw new Error('MNEME_PLATFORM=discord requires the Discord settings');
+  const token = discordConfig.token;
   let client: Client | undefined;
   let tracker: ClientHealthTracker | undefined;
   const connected = (): Client => {
@@ -46,7 +48,7 @@ export function createDiscordPlatform(config: AppConfig, logger: Logger, clock: 
   return {
     id: 'discord',
     workspaceId,
-    selfUserId: config.discord.applicationId,
+    selfUserId: discordConfig.applicationId,
     reviewSecret: discordReviewSecret(token),
     hasCredentials: Boolean(token),
 
@@ -102,7 +104,7 @@ export function createDiscordPlatform(config: AppConfig, logger: Logger, clock: 
     async registerCommands() {
       const rest = client?.rest;
       if (!rest) return { ok: false, message: 'Discord client has no REST adapter; commands cannot be registered' };
-      const result = await registerGuildCommands({ rest, applicationId: config.discord.applicationId, guildId: workspaceId });
+      const result = await registerGuildCommands({ rest, applicationId: discordConfig.applicationId, guildId: workspaceId });
       return result.ok ? { ok: true } : { ok: false, message: `Discord command registration failed: ${result.error}` };
     },
 
@@ -158,7 +160,7 @@ export function createDiscordPlatform(config: AppConfig, logger: Logger, clock: 
       },
     },
     recentSent: {
-      fetch: async (channelId, sinceMs) => createDiscordRecentSentLookup(connected(), config.discord.applicationId).fetch(channelId, sinceMs),
+      fetch: async (channelId, sinceMs) => createDiscordRecentSentLookup(connected(), discordConfig.applicationId).fetch(channelId, sinceMs),
     },
 
     sender: { send: async (input) => createDiscordSender(connected()).send(input) },
