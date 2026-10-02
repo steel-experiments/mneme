@@ -5,6 +5,7 @@ import type { Logger } from '../logger.js';
 import { discordFormat } from './discord/format.js';
 import { createDiscordPlatform } from './discord/platform.js';
 import { slackFormat } from './slack/format.js';
+import { createSlackPlatform } from './slack/platform.js';
 import type { ChatPlatform, PlatformFormat } from './types.js';
 
 export function createPlatform(config: AppConfig, logger: Logger, clock: () => number): ChatPlatform {
@@ -12,7 +13,7 @@ export function createPlatform(config: AppConfig, logger: Logger, clock: () => n
     case 'discord':
       return createDiscordPlatform(config, logger, clock);
     case 'slack':
-      throw new Error('the Slack platform adapter is not available in this build');
+      return createSlackPlatform(config, logger, clock);
   }
 }
 

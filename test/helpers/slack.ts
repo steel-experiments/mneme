@@ -1,6 +1,7 @@
 // ABOUTME: Test doubles for the Slack Web API boundary and a Slack workspace seed.
 // ABOUTME: Tests replay recorded or hand-built responses; nothing opens a network connection.
 import type { DatabaseSync } from 'node:sqlite';
+import { loadConfig, type AppConfig } from '../../src/config.js';
 import type { SlackApi, SlackObject, SlackPage } from '../../src/platform/slack/api.js';
 
 export const TEAM = 'T0000000001';
@@ -77,4 +78,26 @@ export function fakeSlackApi(): FakeSlackApi {
     },
   };
   return api;
+}
+
+/** A valid Slack configuration for tests (observe mode, direct answers off). */
+export function slackTestConfig(overrides: Record<string, string | undefined> = {}): AppConfig {
+  return loadConfig({
+    yamlText: '',
+    env: {
+      MNEME_PLATFORM: 'slack',
+      SLACK_BOT_TOKEN: 'xoxb-test-bot-token',
+      SLACK_APP_TOKEN: 'xapp-test-app-token',
+      SLACK_TEAM_ID: TEAM,
+      MNEME_ADMIN_USER_IDS: 'U0000000001',
+      MNEME_MODE: 'observe',
+      DIRECT_ANSWER_ENABLED: 'false',
+      LLM_PROVIDER: 'openai',
+      OPENAI_API_KEY: 'sk-test-key-value',
+      ORG_NAME: 'Test Org',
+      ORG_TIMEZONE: 'UTC',
+      FULL_HISTORY: 'true',
+      ...overrides,
+    },
+  });
 }

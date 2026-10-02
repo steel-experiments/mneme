@@ -37,8 +37,10 @@ export interface LiveIngestionDeps {
 }
 
 /** Build the production live-ingestion hooks for one deployment. */
-export function createLiveIngestionDeps(ctx: BootstrapContext, selfUserId: string): LiveIngestionDeps {
+export function createLiveIngestionDeps(ctx: BootstrapContext, self: string | (() => string)): LiveIngestionDeps {
   const ing = ctx.config.ingestion;
+  // An adapter can learn its own bot id only while it connects, so the id is read at event time.
+  const selfId = typeof self === 'function' ? self : () => self;
   return {
     db: ctx.db,
     opts: () => ({
@@ -56,7 +58,7 @@ export function createLiveIngestionDeps(ctx: BootstrapContext, selfUserId: strin
       now: ctx.now(),
     }),
     shouldIngestMessage: (channelId, message) => {
-      const isDirectMention = mentionsMneme(message.mentions, selfUserId);
+      const isDirectMention = mentionsMneme(message.mentions, selfId());
       const channel = getChannel(ctx.db, channelId);
       if (channel) {
         if (isMnemeTestSurface(ctx.db, channelId)) {
@@ -92,7 +94,7 @@ export function createLiveIngestionDeps(ctx: BootstrapContext, selfUserId: strin
       if (!isMnemeTestSurface(ctx.db, message.channelId)) {
         ingestEpisodeActivity(
           message,
-          { mnemeId: selfUserId },
+          { mnemeId: selfId() },
           {
             db: ctx.db,
             guildId: ctx.config.workspaceId,
@@ -107,7 +109,7 @@ export function createLiveIngestionDeps(ctx: BootstrapContext, selfUserId: strin
       }
       const direct = enqueueDirectAnswerForMention(message, {
         db: ctx.db,
-        mnemeId: selfUserId,
+        mnemeId: selfId(),
         enabled: ctx.config.directAnswerEnabled,
         now: observedAt,
       });
