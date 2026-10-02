@@ -1,4 +1,3 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Client } from 'discord.js';
 import {
   EmbedBuilder,
@@ -9,6 +8,14 @@ import {
 import { type DatabaseSync } from '../../db/database.js';
 import { setProposalReviewMessage } from '../../db/repositories/proposals.js';
 import type { ReviewProposalInput } from '../types.js';
+import { signReviewComponent } from '../../review/controls.js';
+
+export {
+  parseReviewComponent,
+  signReviewComponent,
+  type ParsedReviewComponent,
+  type ReviewAction,
+} from '../../review/controls.js';
 
 /**
  * Secure-channel review proposal message (Section 25).
@@ -26,12 +33,6 @@ import type { ReviewProposalInput } from '../types.js';
  * or prompt text are embedded.
  */
 
-/** The two review actions a button can request. */
-export type ReviewAction = 'approve' | 'dismiss';
-
-const PREFIX = 'cass';
-const VERSION = 'rv';
-const SIG_BYTES = 8; // 16 hex chars — 64 bits of signature, well under the 100-char custom_id cap
 const EMBED_FIELD_MAX_CHARS = 1024;
 
 function boundedFieldValue(value: string): string {
@@ -43,54 +44,6 @@ function boundedFieldValue(value: string): string {
 export interface ReviewMessagePayload {
   embeds: EmbedBuilder[];
   components: ActionRowBuilder<ButtonBuilder>[];
-}
-
-/** HMAC-SHA256 signature for one (action, proposal) pair, truncated to hex. */
-function signature(action: ReviewAction, proposalId: string, secret: string): string {
-  return createHmac('sha256', secret)
-    .update(`${action}:${proposalId}`)
-    .digest('hex')
-    .slice(0, SIG_BYTES * 2);
-}
-
-/**
- * Build the signed custom_id for a review button. Format:
- * `cass:rv:<action>:<proposalId>:<sig>` — under Discord's 100-char limit for a
- * UUID proposal id.
- */
-export function signReviewComponent(
-  action: ReviewAction,
-  proposalId: string,
-  secret: string,
-): string {
-  return `${PREFIX}:${VERSION}:${action}:${proposalId}:${signature(action, proposalId, secret)}`;
-}
-
-export interface ParsedReviewComponent {
-  action: ReviewAction;
-  proposalId: string;
-}
-
-/**
- * Verify and parse a review button's custom_id against `secret`. Returns the
- * parsed action+proposal when the signature matches (constant-time compare), or
- * `undefined` for any malformed, unknown-action, or bad-signature id.
- */
-export function parseReviewComponent(
-  customId: string,
-  secret: string,
-): ParsedReviewComponent | undefined {
-  const parts = customId.split(':');
-  if (parts.length !== 5 || parts[0] !== PREFIX || parts[1] !== VERSION) return undefined;
-  const action = parts[2] ?? '';
-  const proposalId = parts[3] ?? '';
-  const sig = parts[4] ?? '';
-  if (action !== 'approve' && action !== 'dismiss') return undefined;
-  const expected = signature(action, proposalId, secret);
-  const a = Buffer.from(sig, 'utf8');
-  const b = Buffer.from(expected, 'utf8');
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return undefined;
-  return { action, proposalId };
 }
 
 /**
