@@ -8,7 +8,7 @@ import type {
   NormalizedReactionCount,
 } from '../types.js';
 import type { SlackObject } from './api.js';
-import { isSlackReply, slackMessageId, slackThreadRowId, slackTsToMs } from './ids.js';
+import { isSlackReply, slackAttachmentId, slackMessageId, slackThreadRowId, slackTsToMs } from './ids.js';
 
 /** Subtypes that carry conversation content (spec Section 9.3). */
 export const STORED_SUBTYPES = new Set(['bot_message', 'file_share', 'thread_broadcast', 'me_message']);
@@ -38,20 +38,30 @@ function mentionsOf(text: string): NormalizedMention[] {
   return out;
 }
 
+/** File modes that carry no downloadable content. */
+const UNAVAILABLE_FILE_MODES = new Set(['tombstone', 'hidden_by_limit']);
+
+/** The URL to download a file from, or null for an external file (Section 9.10). */
+function fileSourceUrl(f: SlackObject): string | null {
+  if (f.is_external === true) return null;
+  if (typeof f.url_private_download === 'string') return f.url_private_download;
+  return typeof f.url_private === 'string' ? f.url_private : null;
+}
+
 function attachmentsOf(messageId: string, files: unknown): NormalizedAttachment[] {
   if (!Array.isArray(files)) return [];
   const out: NormalizedAttachment[] = [];
   for (const f of files as SlackObject[]) {
-    if (typeof f.id !== 'string') continue;
+    if (typeof f.id !== 'string' || UNAVAILABLE_FILE_MODES.has(f.mode as string)) continue;
     out.push({
       // One file can be shared into more than one message (plan 002 decision 18).
-      id: `${messageId}-${f.id}`,
+      id: slackAttachmentId(messageId, f.id),
       filename: typeof f.name === 'string' ? f.name : f.id,
       mimeType: typeof f.mimetype === 'string' ? f.mimetype : null,
       sizeBytes: typeof f.size === 'number' ? f.size : null,
       width: typeof f.original_w === 'number' ? f.original_w : null,
       height: typeof f.original_h === 'number' ? f.original_h : null,
-      sourceUrl: typeof f.url_private === 'string' ? f.url_private : null,
+      sourceUrl: fileSourceUrl(f),
       proxyUrl: null,
     });
   }

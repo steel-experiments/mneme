@@ -1,5 +1,6 @@
 // ABOUTME: Platform-neutral types shared by the core and every chat-platform adapter.
 // ABOUTME: Adapters normalize platform payloads into these shapes before the core sees them.
+import type { FetchBytes } from '../ingestion/attachments.js';
 import type { BootstrapContext } from '../bootstrap.js';
 import type { ChannelPolicySource, PlatformId } from '../config.js';
 import type { DatabaseSync } from '../db/database.js';
@@ -304,4 +305,9 @@ export interface ChatPlatform {
 
   readonly oauthIdentity: DiscordIdentityClient;
   readonly format: PlatformFormat;
+
+  /** Download an attachment for the archive (Section 9.10). Slack adds the bot token for its file host only. */
+  readonly fetchBytes: FetchBytes;
+  /** The platform rule for an attachment id; the archive path is built from an id that passes it. */
+  isValidAttachmentId(id: string): boolean;
 }

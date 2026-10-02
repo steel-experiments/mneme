@@ -1,19 +1,30 @@
 import type { DatabaseSync } from '../../db/database.js';
 import { getAttachment, setAttachmentArchive } from '../../db/repositories/attachments.js';
-import { archiveAttachment, type AttachmentArchiveConfig, type FetchBytes } from '../../ingestion/attachments.js';
+import { getMessage } from '../../db/repositories/messages.js';
+import { channelIngestionIneligibilityReason } from '../../ingestion/ingestion-eligibility.js';
+import { archiveAttachment, type AttachmentDownloadConfig, type FetchBytes } from '../../ingestion/attachments.js';
 import type { JobHandler } from '../worker.js';
 import { unlinkSync } from 'node:fs';
 
 /** Download one authorized attachment outside a transaction and persist its outcome. */
 export function createArchiveAttachmentHandler(deps: {
   db: DatabaseSync;
-  config: AttachmentArchiveConfig;
+  config: AttachmentDownloadConfig;
   now?: () => number;
   fetcher?: FetchBytes;
 }): JobHandler<'archive_attachment'> {
   return async ({ attachmentId }) => {
     const row = getAttachment(deps.db, attachmentId);
     if (!row || row.archive_status === 'stored' || row.archive_status === 'deleted') return;
+    // Check the channel again at download time: it can be excluded, stop being
+    // ingested, or become a test surface after the job was queued.
+    const message = getMessage(deps.db, row.message_id);
+    if (!message || message.deleted_at_ms !== null
+      || channelIngestionIneligibilityReason(deps.db, message.channel_id) !== null) {
+      setAttachmentArchive(deps.db, { id: row.id, localPath: null, sha256: null, status: 'metadata',
+        updatedAtMs: (deps.now ?? Date.now)() });
+      return;
+    }
     const result = await archiveAttachment({
       id: row.id, filename: row.filename, mimeType: row.mime_type, sizeBytes: row.size_bytes,
       width: row.width, height: row.height, sourceUrl: row.source_url, proxyUrl: row.proxy_url,

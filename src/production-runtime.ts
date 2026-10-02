@@ -1453,7 +1453,8 @@ export async function createProductionJobRuntime(
     maxBytes: ctx.config.ingestion.attachmentMaxBytes,
     mimeAllowlist: ctx.config.ingestion.attachmentMimeAllowlist,
     dataDir: ctx.config.dataDir,
-  }, now: ctx.now }));
+    isValidAttachmentId: (id) => platform.isValidAttachmentId(id),
+  }, now: ctx.now, fetcher: platform.fetchBytes }));
   worker.register('purge_attachment_file', 1, createPurgeAttachmentFileHandler({ db: ctx.db, now: ctx.now }));
   worker.register('reconcile_channel', ctx.config.ingestion.backfillConcurrency,
     createReconcileChannelHandler({ db: ctx.db, fetcher, makeIngestOptions: ingestOptions, now: ctx.now,

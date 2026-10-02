@@ -37,8 +37,7 @@ Mneme is a quiet organizational-memory agent for one Discord server or one Slack
 
 (Amendment (plan 007): on Slack, Mneme reads, remembers, answers mentions,
 posts review cards, and delivers messages in every mode, as on Discord. Sign in
-with Slack for MCP (plan 008) and attachment archives (plan 009) are not
-implemented yet.)
+with Slack for MCP (plan 008) is not implemented yet.)
 
 The v1 system is intentionally small:
 
@@ -189,8 +188,7 @@ The following are out of scope:
 
 The Slack row: (Amendment (plan 007): on Slack, Mneme reads, remembers, answers mentions,
 posts review cards, and delivers messages in every mode, as on Discord. Sign in
-with Slack for MCP (plan 008) and attachment archives (plan 009) are not
-implemented yet.)
+with Slack for MCP (plan 008) is not implemented yet.)
 
 ### 4.1 Pi usage decision
 
@@ -488,8 +486,7 @@ fail-closed check applies to commands and to review-card buttons.
 
 (Amendment (plan 007): on Slack, Mneme reads, remembers, answers mentions,
 posts review cards, and delivers messages in every mode, as on Discord. Sign in
-with Slack for MCP (plan 008) and attachment archives (plan 009) are not
-implemented yet.)
+with Slack for MCP (plan 008) is not implemented yet.)
 
 #### 6.7.1 App type
 
@@ -1282,8 +1279,6 @@ Slack threads:
   read. Reconcile does not infer deletes on Slack, as on Discord (Section 9.6).
 - A Slack attachment id is `<messageId>-<fileId>`. One Slack file can be shared
   into more than one message, so a bare file id is not unique to one message.
-  (Amendment (plan 003): specified, not implemented. Plan 009 implements this
-  rule. Until then, Mneme runs only on Discord.)
 
 ### 9.8 Edits and deletes
 
@@ -1339,6 +1334,28 @@ Recommended v1:
 - never pass executable attachments to tools;
 - enforce a byte limit;
 - treat attachment text as untrusted data.
+
+Platform download:
+
+- The archive path is built from the attachment id. The id must pass the
+  platform attachment id rule and contain only letters, digits, `.`, and `-`,
+  with no leading `.` and no `..`. A containment check runs after that.
+- A download job checks the channel again before it downloads. A channel that
+  is excluded, no longer ingested, deleted, or a test surface gets no download;
+  the attachment keeps its metadata only.
+- Discord downloads with no credential.
+- Slack downloads with the bot token and needs the `files:read` scope. The token
+  goes only to `https://files.slack.com` on the default port. A redirect is
+  followed only to `https` on `files.slack.com`, `*.slack.com`, or
+  `*.slack-edge.com`, at most three times, and only `files.slack.com` receives
+  the token. An HTML response is rejected, because it is a sign-in page, not a
+  file. Error messages name the status and the host, never the URL query or the
+  token.
+- Slack prefers `url_private_download`, else `url_private`. An external file
+  (`is_external`) keeps metadata only and is never downloaded. A file in
+  `tombstone` or `hidden_by_limit` mode stores no attachment row.
+- A Slack attachment id is `<messageId>-<fileId>` (Section 9.7). A file that is
+  shared into two messages is downloaded once for each message.
 
 ---
 

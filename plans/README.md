@@ -16,7 +16,7 @@ honor its STOP conditions, and update the row when done.
 | 006 | Add the Slack read path: connection, discovery, visibility, ingestion, backfill | P1 | L | 005 | DONE |
 | 007 | Add the Slack write path: send, outbox recovery, cards, commands | P1 | L | 006 | DONE |
 | 008 | Add Sign in with Slack for MCP OAuth | P2 | M | 006 | TODO |
-| 009 | Archive Slack attachments | P2 | S | 006 | TODO |
+| 009 | Archive Slack attachments | P2 | S | 006 | DONE |
 | 010 | Document Slack setup and ship the app manifest | P1 | M | 007, 008, 009 | TODO |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale — finding fixed independently or approach abandoned)

@@ -7,6 +7,7 @@ const TEAM = /^T[A-Z0-9]{8,}$/;
 const TS = /^\d{10}\.\d{6}$/;
 const MESSAGE_ID = /^([CG][A-Z0-9]{8,})-(\d{10}\.\d{6})$/;
 const THREAD_ID = /^([CG][A-Z0-9]{8,})-T(\d{10}\.\d{6})$/;
+const FILE = /^F[A-Z0-9]{8,}$/;
 
 export const isSlackChannelId = (v: unknown): v is string => typeof v === 'string' && CHANNEL.test(v);
 export const isSlackUserId = (v: unknown): v is string => typeof v === 'string' && USER.test(v);
@@ -16,6 +17,18 @@ export const isSlackTs = (v: unknown): v is string => typeof v === 'string' && T
 /** The stored message id for a Slack message (unique across the workspace). */
 export function slackMessageId(channel: string, ts: string): string {
   return `${channel}-${ts}`;
+}
+
+/** The attachment id for a file in a message: `<messageId>-<fileId>` (plan 002 decision 18). */
+export function slackAttachmentId(messageId: string, fileId: string): string {
+  return `${messageId}-${fileId}`;
+}
+
+/** True for a message-scoped Slack attachment id, `<channel>-<ts>-<file>`. */
+export function isSlackAttachmentId(v: unknown): v is string {
+  if (typeof v !== 'string') return false;
+  const cut = v.lastIndexOf('-');
+  return cut > 0 && MESSAGE_ID.test(v.slice(0, cut)) && FILE.test(v.slice(cut + 1));
 }
 
 /** The synthetic channel-row id for the thread whose root has `threadTs`. */

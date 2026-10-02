@@ -8,6 +8,7 @@ import {
   normalizeSlackMessageUpdate,
   slackDeletedMessage,
 } from '../../../src/platform/slack/normalize.js';
+import { isSlackAttachmentId } from '../../../src/platform/slack/ids.js';
 
 const TEAM = 'T0000000001';
 const BOT = 'U0000000002';
@@ -51,6 +52,53 @@ describe('normalizeSlackMessage', () => {
     expect(msg.channelId).toBe(`${C}-T${ROOT}`);
     expect(msg.attachments).toHaveLength(1);
     expect(msg.attachments[0]).toMatchObject({ id: `${msg.id}-F0000000001`, mimeType: 'image/jpeg', sizeBytes: 1219994 });
+  });
+
+  describe('attachments', () => {
+    const file = (id: string, over: Record<string, unknown> = {}): Record<string, unknown> => ({
+      id, name: `${id}.txt`, mimetype: 'text/plain', size: 12,
+      url_private: `https://files.slack.com/files-pri/${TEAM}-${id}/x.txt`,
+      url_private_download: `https://files.slack.com/files-pri/${TEAM}-${id}/download/x.txt`, ...over,
+    });
+    const msg = (ts: string, files: unknown[]) => normalizeSlackMessage(
+      { type: 'message', subtype: 'file_share', user: 'U0000000001', ts, text: '', files }, C, TEAM, BOT)!;
+
+    it('gives each file in a message its own id and prefers the download url', () => {
+      const m = msg('1790933741.000010', [file('F0000000001'), file('F0000000002')]);
+      expect(m.attachments.map((a) => a.id)).toEqual([`${m.id}-F0000000001`, `${m.id}-F0000000002`]);
+      expect(m.attachments[0]!.sourceUrl).toBe(`https://files.slack.com/files-pri/${TEAM}-F0000000001/download/x.txt`);
+      expect(m.attachments[0]!.proxyUrl).toBeNull();
+      for (const a of m.attachments) expect(isSlackAttachmentId(a.id)).toBe(true);
+    });
+
+    it('uses the private url when there is no download url', () => {
+      const m = msg('1790933741.000011', [file('F0000000001', { url_private_download: undefined })]);
+      expect(m.attachments[0]!.sourceUrl).toBe(`https://files.slack.com/files-pri/${TEAM}-F0000000001/x.txt`);
+    });
+
+    it('gives the same file in two messages two attachment ids', () => {
+      const a = msg('1790933741.000012', [file('F0000000001')]).attachments[0]!.id;
+      const b = msg('1790933741.000013', [file('F0000000001')]).attachments[0]!.id;
+      expect(a).not.toBe(b);
+    });
+
+    it.each(['tombstone', 'hidden_by_limit'])('stores no attachment for a %s file', (mode) => {
+      expect(msg('1790933741.000014', [file('F0000000001', { mode })]).attachments).toEqual([]);
+    });
+
+    it('keeps the metadata of an external file without a source url', () => {
+      const m = msg('1790933741.000015', [file('F0000000001', { is_external: true, url_private: 'https://drive.example/x' })]);
+      expect(m.attachments).toHaveLength(1);
+      expect(m.attachments[0]!.sourceUrl).toBeNull();
+    });
+
+    it('accepts only message-scoped Slack attachment ids', () => {
+      expect(isSlackAttachmentId('C0123ABCD-1712345678.000100-F0123ABCD')).toBe(true);
+      expect(isSlackAttachmentId('F0123ABCD')).toBe(false);
+      expect(isSlackAttachmentId('C0123ABCD-1712345678.000100')).toBe(false);
+      expect(isSlackAttachmentId('C0123ABCD-1712345678.000100-F0123ABCD/..')).toBe(false);
+      expect(isSlackAttachmentId('555000000000000001')).toBe(false);
+    });
   });
 
   it('stores bot and me messages', () => {
