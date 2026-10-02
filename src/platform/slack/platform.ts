@@ -176,7 +176,7 @@ export function createSlackPlatform(
     listChannels: async () => listSlackChannels(api, connected().db, workspaceId),
     threadDiscovery: { mode: 'complete_snapshot', rediscoveryIntervalMs: SLACK_REDISCOVERY_INTERVAL_MS },
     history,
-    recentSent: createSlackRecentSentLookup(api, () => connected().identity.selfUserId),
+    recentSent: createSlackRecentSentLookup(api, () => connected().identity.selfUserId, () => connected().db),
 
     sender: createSlackSender({ api, db: () => connected().db, teamDomain: () => connected().identity.teamDomain }),
     async sendDirect(userId, text) {

@@ -67,7 +67,7 @@ export function slackSendRefusal(db: DatabaseSync, channelId: string): string | 
 }
 
 /** The thread root for a reply to `anchorId` in the Slack channel `channel`. */
-function anchorThreadTs(db: DatabaseSync, anchorId: string, channel: string): string {
+export function anchorThreadTs(db: DatabaseSync, anchorId: string, channel: string): string {
   const parsed = parseSlackMessageId(anchorId);
   if (!parsed || parsed.channel !== channel) {
     throw new PermanentJobError(`reply anchor ${anchorId} is not in the target channel`);

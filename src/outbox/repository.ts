@@ -345,6 +345,7 @@ export interface SendingOutboxRow {
   proposalId: string | null;
   attempts: number;
   dedupeMarker: string | null;
+  replyToMessageId: string | null;
 }
 
 /**
@@ -356,7 +357,7 @@ export function listOutboxSending(db: DatabaseSync): SendingOutboxRow[] {
   const rows = prepareCached(
     db,
     'outbox.list_sending',
-    `SELECT id, channel_id, content, proposal_id, attempts, dedupe_marker
+    `SELECT id, channel_id, content, proposal_id, attempts, dedupe_marker, reply_to_message_id
      FROM outbox WHERE status = 'sending'`,
   ).all() as Array<{
     id: string;
@@ -365,6 +366,7 @@ export function listOutboxSending(db: DatabaseSync): SendingOutboxRow[] {
     proposal_id: string | null;
     attempts: number;
     dedupe_marker: string | null;
+    reply_to_message_id: string | null;
   }>;
   return rows.map((r) => ({
     id: r.id,
@@ -373,6 +375,7 @@ export function listOutboxSending(db: DatabaseSync): SendingOutboxRow[] {
     proposalId: r.proposal_id,
     attempts: r.attempts,
     dedupeMarker: r.dedupe_marker,
+    replyToMessageId: r.reply_to_message_id,
   }));
 }
 

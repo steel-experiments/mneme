@@ -167,7 +167,7 @@ describe('Slack outbox crash recovery', () => {
       claimOutboxForSending(db, outboxId, NOW);
       return { id: outboxId, marker: getOutbox(db, outboxId)!.dedupeMarker! };
     };
-    const lookup = createSlackRecentSentLookup(api, () => BOT_USER);
+    const lookup = createSlackRecentSentLookup(api, () => BOT_USER, () => db);
     return { db, api, sending, lookup };
   }
 
@@ -196,6 +196,33 @@ describe('Slack outbox crash recovery', () => {
     const report = await reconcileOutboxSending(db, lookup, { now: NOW + 60_000 });
     expect(report.confirmed).toBe(1);
     expect(getOutbox(db, row.id)?.platformMessageId).toBe(`${PUBLIC}-1790934100.000200`);
+  });
+
+  it('finds a reply that started a new thread under a top-level anchor, with no new post', async () => {
+    const { db, api, lookup } = await setup();
+    const { outboxId } = enqueueOutbox(db, { proposalId: null, runId: 'run-1', channelId: PUBLIC, content: 'hi',
+      replyToMessageId: ROOT, now: NOW });
+    claimOutboxForSending(db, outboxId, NOW);
+    const marker = getOutbox(db, outboxId)!.dedupeMarker!;
+    api.threadMessages.set(`${PUBLIC}:1790933759.217369`, [
+      { ts: '1790933759.217369', user: 'U0000000001', text: 'root' },
+      botMessage('1790934100.000300', marker),
+    ]);
+    const report = await reconcileOutboxSending(db, lookup, { now: NOW + 60_000 });
+    expect(report).toMatchObject({ confirmed: 1, requeued: 0 });
+    expect(getOutbox(db, outboxId)).toMatchObject({ status: 'sent', platformMessageId: `${PUBLIC}-1790934100.000300` });
+    expect(api.posted).toHaveLength(0);
+  });
+
+  it('finds a reply to an anchor inside a thread under the thread root', async () => {
+    const { db, api, lookup } = await setup();
+    const { outboxId } = enqueueOutbox(db, { proposalId: null, runId: 'run-1', channelId: PUBLIC, content: 'hi',
+      replyToMessageId: REPLY, now: NOW });
+    claimOutboxForSending(db, outboxId, NOW);
+    const marker = getOutbox(db, outboxId)!.dedupeMarker!;
+    api.threadMessages.set(`${PUBLIC}:1790933759.217369`, [botMessage('1790934100.000400', marker)]);
+    const report = await reconcileOutboxSending(db, lookup, { now: NOW + 60_000 });
+    expect(report.confirmed).toBe(1);
   });
 
   it('requeues a row whose marker is not found after a complete lookup', async () => {

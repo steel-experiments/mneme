@@ -1,9 +1,10 @@
 // ABOUTME: Reads Mneme's own recent Slack messages for outbox crash recovery (spec Section 10.1).
 // ABOUTME: Matches each message to its outbox row by the dedupe marker in the message metadata.
+import type { DatabaseSync } from '../../db/database.js';
 import type { RecentSentMessage, RecentSentMessageLookup } from '../../outbox/recovery.js';
 import type { SlackApi, SlackObject, SlackPage } from './api.js';
 import { slackMessageId, slackTsToMs } from './ids.js';
-import { slackTarget, OUTBOX_METADATA_EVENT_TYPE } from './sender.js';
+import { anchorThreadTs, slackTarget, OUTBOX_METADATA_EVENT_TYPE } from './sender.js';
 
 /** The most pages one lookup reads, as on Discord. */
 const MAX_PAGES = 100;
@@ -22,16 +23,37 @@ function isNotFound(err: unknown): boolean {
 }
 
 /**
- * Slack recent-message lookup: reads the channel (or the thread, for a thread
- * row) back to `sinceMs` and keeps only messages that Mneme's bot user posted.
+ * The thread that a send to `channelId` posted into, as the sender chose it:
+ * the thread row's thread, or the reply anchor's thread root. An anchor that
+ * the sender refuses gives the target alone; that send posted nothing.
+ */
+function lookupThreadTs(db: DatabaseSync, channelId: string, replyToMessageId: string | null | undefined): string | undefined {
+  const target = slackTarget(channelId);
+  if (target.threadTs || !replyToMessageId) return target.threadTs;
+  try {
+    return anchorThreadTs(db, replyToMessageId, target.channel);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Slack recent-message lookup: reads the channel, or the thread that the send
+ * posted into (a thread row, or a reply anchor's thread root), back to
+ * `sinceMs`, and keeps only messages that Mneme's bot user posted.
  * A message from another bot with the same marker is not Mneme's and is
  * ignored. A missing channel gives an empty list; a lookup that reaches the
  * page limit throws, as on Discord.
  */
-export function createSlackRecentSentLookup(api: SlackApi, selfUserId: () => string): RecentSentMessageLookup {
+export function createSlackRecentSentLookup(
+  api: SlackApi,
+  selfUserId: () => string,
+  db: () => DatabaseSync,
+): RecentSentMessageLookup {
   return {
-    async fetch(channelId, sinceMs) {
+    async fetch(channelId, sinceMs, context) {
       const target = slackTarget(channelId);
+      const threadTs = lookupThreadTs(db(), channelId, context?.replyToMessageId);
       const oldest = (Math.floor(sinceMs / 1000) - 1).toFixed(6);
       const self = selfUserId();
       const out: RecentSentMessage[] = [];
@@ -39,8 +61,8 @@ export function createSlackRecentSentLookup(api: SlackApi, selfUserId: () => str
       for (let page = 0; page < MAX_PAGES; page++) {
         let result: SlackPage;
         try {
-          result = target.threadTs
-            ? await api.replies({ channel: target.channel, ts: target.threadTs, oldest, limit: PAGE_SIZE, ...(cursor ? { cursor } : {}) })
+          result = threadTs
+            ? await api.replies({ channel: target.channel, ts: threadTs, oldest, limit: PAGE_SIZE, ...(cursor ? { cursor } : {}) })
             : await api.history({ channel: target.channel, oldest, limit: PAGE_SIZE, ...(cursor ? { cursor } : {}) });
         } catch (err) {
           if (isNotFound(err)) return [];

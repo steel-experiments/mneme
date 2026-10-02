@@ -32,9 +32,15 @@ export interface RecentSentMessage {
   dedupeMarker?: string | null;
 }
 
+/** What the lookup knows about the row it searches for. */
+export interface RecentSentLookupContext {
+  /** The row's reply anchor. On Slack, a reply lives in the anchor's thread. */
+  replyToMessageId?: string | null;
+}
+
 /** Port for fetching Mneme's recent own messages in a channel. */
 export interface RecentSentMessageLookup {
-  fetch(channelId: string, sinceMs: number): Promise<readonly RecentSentMessage[]>;
+  fetch(channelId: string, sinceMs: number, context?: RecentSentLookupContext): Promise<readonly RecentSentMessage[]>;
 }
 
 export interface ReconcileOptions {
@@ -97,7 +103,7 @@ export async function reconcileOutboxSending(
   for (const row of rows) {
     let messages: readonly RecentSentMessage[];
     try {
-      messages = await lookup.fetch(row.channelId, sinceMs);
+      messages = await lookup.fetch(row.channelId, sinceMs, { replyToMessageId: row.replyToMessageId });
     } catch (err) {
       // A failed lookup must not requeue — the message may actually have been
       // sent. Leave it `sending` for the next recovery pass.
