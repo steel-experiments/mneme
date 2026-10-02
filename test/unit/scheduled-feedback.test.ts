@@ -108,3 +108,59 @@ describe('scheduled notification feedback', () => {
     })).toEqual([]);
   });
 });
+
+describe('scheduled notification feedback in a thread under the notice', () => {
+  const NOTICE_TS = '1700000000.000100';
+  const NOTICE = `${CHANNEL}-${NOTICE_TS}`;
+  const THREAD = `${CHANNEL}-T${NOTICE_TS}`;
+
+  function thread(id: string, parentId = CHANNEL) {
+    env.db.prepare(`INSERT INTO channels
+      (id,workspace_id,parent_id,kind,name,is_thread,ingest_enabled,visibility_class,allow_interventions,
+       discovered_at_ms,updated_at_ms)
+      VALUES (?,?,?,'thread',NULL,1,1,'org',1,?,?)`).run(id, GUILD, parentId, NOW, NOW);
+  }
+
+  beforeEach(() => {
+    env.db.prepare("UPDATE outbox SET platform_message_id=? WHERE id='outbox'").run(NOTICE);
+  });
+
+  it('associates a thread reply whose root is the notice', () => {
+    thread(THREAD);
+    reply('thread-reply', THREAD, NOTICE);
+    const result = resolveScheduledFeedback(env.db, {
+      guildId: GUILD, channelId: THREAD, messageIds: ['thread-reply'], mnemeId: BOT,
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ replyMessageId: 'thread-reply', notificationMessageId: NOTICE });
+  });
+
+  it('does not associate a thread under another parent', () => {
+    env.db.prepare(`INSERT INTO channels
+      (id,workspace_id,parent_id,kind,name,is_thread,ingest_enabled,visibility_class,allow_interventions,
+       discovered_at_ms,updated_at_ms)
+      VALUES ('100000000000000009',?,NULL,'text','other',0,1,'org',1,?,?)`).run(GUILD, NOW, NOW);
+    const other = `100000000000000009-T${NOTICE_TS}`;
+    thread(other, '100000000000000009');
+    reply('other-reply', other, NOTICE);
+    expect(resolveScheduledFeedback(env.db, {
+      guildId: GUILD, channelId: other, messageIds: ['other-reply'], mnemeId: BOT,
+    })).toEqual([]);
+  });
+
+  it('does not associate a thread whose root is another message', () => {
+    const otherThread = `${CHANNEL}-T1700000000.000200`;
+    thread(otherThread);
+    reply('wrong-root', otherThread, NOTICE);
+    expect(resolveScheduledFeedback(env.db, {
+      guildId: GUILD, channelId: otherThread, messageIds: ['wrong-root'], mnemeId: BOT,
+    })).toEqual([]);
+  });
+
+  it('does not associate a top-level message in the notice channel', () => {
+    reply('top-level', CHANNEL, 'ordinary');
+    expect(resolveScheduledFeedback(env.db, {
+      guildId: GUILD, channelId: CHANNEL, messageIds: ['top-level'], mnemeId: BOT,
+    })).toEqual([]);
+  });
+});

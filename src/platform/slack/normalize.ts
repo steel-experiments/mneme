@@ -100,7 +100,8 @@ export function normalizeSlackMessage(
     content: text,
     createdAtMs: slackTsToMs(raw.ts),
     editedAtMs: typeof edited?.ts === 'string' ? slackTsToMs(edited.ts) : null,
-    replyToMessageId: null,
+    // A thread reply answers its root (plan 007, Step 6).
+    replyToMessageId: isSlackReply(raw) ? slackMessageId(channel, String(raw.thread_ts)) : null,
     messageType: null,
     flags: null,
     pinned: Array.isArray(raw.pinned_to) && raw.pinned_to.length > 0,

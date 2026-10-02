@@ -32,6 +32,11 @@ describe('normalizeSlackMessage', () => {
     expect(msg.channelId).toBe(`${C}-T${ROOT}`);
   });
 
+  it('anchors a reply to its thread root, and a top-level message to nothing', () => {
+    expect(normalizeSlackMessage(event('12-message-reply.json'), C, TEAM, BOT)!.replyToMessageId).toBe(`${C}-${ROOT}`);
+    expect(normalizeSlackMessage(event('11-message.json'), C, TEAM, BOT)!.replyToMessageId).toBeNull();
+  });
+
   it('maps a broadcast reply to the same thread row and id from channel history and from the thread', () => {
     const live = event('40-message-thread_broadcast.json');
     const fromThread = normalizeSlackMessage(live, C, TEAM, BOT)!;
