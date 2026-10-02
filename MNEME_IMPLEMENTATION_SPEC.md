@@ -3467,7 +3467,8 @@ On Slack:
   becomes plain text;
 - reject model text that contains a Slack URL or a `slack:` link, as Discord
   jump URLs are rejected;
-- keep a host-built `<@U…>` user token only in an ephemeral admin reply;
+- turn every `<@U…>` user token into code text, in ephemeral admin replies too,
+  because reply text can contain stored message text or echoed arguments;
 - never send `link_names`, `reply_broadcast`, `username`, or icon overrides,
   and turn off link and media unfurls;
 - keep the 1,800-character model limit and the 2,000-character assembled limit;

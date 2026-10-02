@@ -1,5 +1,5 @@
 // ABOUTME: Sends ephemeral replies to Slack slash commands and button clicks through their response_url.
-// ABOUTME: Posts only to https://hooks.slack.com; text goes through the mrkdwn converter in ephemeral mode.
+// ABOUTME: Posts only to https://hooks.slack.com; text goes through the mrkdwn converter, so no mention stays live.
 import { toSlackMrkdwn } from './mrkdwn.js';
 
 /** Slack's practical limit for one ephemeral reply. */
@@ -37,7 +37,7 @@ export function createSlackResponder(
     const body = JSON.stringify({
       response_type: 'ephemeral',
       replace_original: false,
-      text: toSlackMrkdwn(bounded(text), { teamDomain: teamDomain(), ephemeral: true }),
+      text: toSlackMrkdwn(bounded(text), { teamDomain: teamDomain() }),
     });
     try {
       const res = await fetchImpl(responseUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body, redirect: 'error' });

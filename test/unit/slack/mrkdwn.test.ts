@@ -7,7 +7,7 @@ import { SCHEDULED_NOTIFICATION_FOOTER } from '../../../src/outbound/message-saf
 const DOMAIN = 'acme';
 const LINK = 'https://acme.slack.com/archives/C0123ABCD/p1712345678000100';
 const REPLY_LINK = 'https://acme.slack.com/archives/C0123ABCD/p1712345679000200?thread_ts=1712345678.000100&cid=C0123ABCD';
-const convert = (text: string, ephemeral = false): string => toSlackMrkdwn(text, { teamDomain: DOMAIN, ephemeral });
+const convert = (text: string): string => toSlackMrkdwn(text, { teamDomain: DOMAIN });
 
 /** Any Slack control token other than the allowed date form. */
 const MENTION_TOKEN = /<[!@#](?!date\^)/;
@@ -64,9 +64,18 @@ describe('toSlackMrkdwn constructs', () => {
     expect(convert('Expires <t:1712345678:F>')).toBe('Expires <!date^1712345678^{date_long} {time}|2024-04-05T19:34:38.000Z>');
   });
 
-  it('keeps a user token only in an ephemeral reply', () => {
-    expect(convert('Requested by <@U0123ABCDE>', true)).toBe('Requested by <@U0123ABCDE>');
+  it('never keeps a user token live', () => {
     expect(convert('Requested by <@U0123ABCDE>')).toBe('Requested by `U0123ABCDE`');
+  });
+
+  it('neutralizes mention syntax from memory text and echoed command arguments', () => {
+    const memory = 'm-1  [decision]  (Ship on Friday, says <@U0999ZZZZZ> to <!subteam^S0123ABCDE> in <#C0123ABCDE>)';
+    const echoed = 'Unknown option `scope` value: <!here> <@W0123ABCDE|boss>';
+    for (const text of [memory, echoed]) {
+      const out = convert(text);
+      expect(out).not.toMatch(/<[@!#]/);
+    }
+    expect(convert(memory)).toContain('`U0999ZZZZZ`');
   });
 });
 

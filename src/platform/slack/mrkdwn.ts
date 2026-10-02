@@ -5,12 +5,6 @@
 export interface SlackMrkdwnOptions {
   /** The workspace domain from `auth.test` (`acme` in `acme.slack.com`). */
   teamDomain: string;
-  /**
-   * True for an ephemeral admin command reply. Only then a `<@U…>` user token
-   * from host-built reply text stays a user mention; the reply is visible to
-   * the admin alone. In every other message it becomes plain code text.
-   */
-  ephemeral?: boolean;
 }
 
 // Private-use code points mark placeholders. Input copies of them are removed
@@ -67,7 +61,7 @@ function convertQuotes(text: string): string {
 /**
  * Convert host text in the core Markdown subset to Slack mrkdwn. The output
  * contains no `<!…>`, `<@…>`, `<#…>`, or `<!subteam^…>` token, except a
- * `<!date^…>` timestamp and, in an ephemeral reply, a host-built user token.
+ * `<!date^…>` timestamp.
  */
 export function toSlackMrkdwn(content: string, options: SlackMrkdwnOptions): string {
   const kept: string[] = [];
@@ -90,7 +84,10 @@ export function toSlackMrkdwn(content: string, options: SlackMrkdwnOptions): str
     const iso = new Date(Number(seconds) * 1000).toISOString();
     return keep(`<!date^${seconds}^{date_long} {time}|${iso}>`);
   });
-  text = text.replace(USER_TOKEN, (_raw, id: string) => keep(options.ephemeral ? `<@${id}>` : `\`${id}\``));
+  // A user token becomes code text in every message. The text reaches the
+  // converter as one string, so a host-built token cannot be told apart from
+  // one in stored message text or an echoed command argument.
+  text = text.replace(USER_TOKEN, (_raw, id: string) => keep(`\`${id}\``));
 
   text = convertQuotes(convertEmphasis(escapeControl(text)));
   return text.replace(PLACEHOLDER, (_raw, index: string) => kept[Number(index)] ?? '');
