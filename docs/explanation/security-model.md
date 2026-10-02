@@ -64,6 +64,10 @@ retrieval does not return the inaccessible source content. A stale Mneme-named t
 channel, or a child thread below one, is also unavailable evidence regardless of its
 persisted visibility flag.
 
+A Discord private thread defaults to restricted. Without an explicit policy rule for
+that thread, it never inherits an org parent's class, so only the thread and the secure
+review channel can use its content.
+
 Thread policy is resolved and stored on each thread. Read-time checks use that resolved
 thread class—including explicit overrides—while requiring a live parent. The parent ID
 is the restricted-scope anchor only when the parent is itself restricted. A restricted
