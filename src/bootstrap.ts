@@ -548,7 +548,7 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
  */
 async function defaultConnectPlatform(ctx: BootstrapContext, platform: ChatPlatform): Promise<PlatformWiring> {
   const { createLiveIngestionDeps } = await import('./ingestion/live.js');
-  const connection = await platform.connect(createLiveIngestionDeps(ctx, platform.selfUserId));
+  const connection = await platform.connect(createLiveIngestionDeps(ctx, () => platform.selfUserId));
   return { platform, tracker: connection.tracker, destroy: () => connection.destroy() };
 }
 
