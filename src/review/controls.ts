@@ -21,6 +21,7 @@ import { authorizeAdmin } from '../policy/authorization.js';
 import { resolveChannel, type ChannelPolicy } from '../policy/channel-policy.js';
 import { REVIEWED_CHANNEL_RULES } from '../policy/channel-policy-review.js';
 import type { ChannelKind } from '../platform/types.js';
+import type { ApproveOutcome, DismissOutcome } from './workflow.js';
 
 /** The two review actions a button can request. */
 export type ReviewAction = 'approve' | 'dismiss';
@@ -361,3 +362,45 @@ export function applyChannelPolicyReviewDecision(input: {
   });
 }
 
+/** The reviewer-facing reply for an approve outcome. */
+export function labelForApprove(outcome: ApproveOutcome): string {
+  switch (outcome) {
+    case 'approved':
+      return 'Approved — the message is queued for delivery.';
+    case 'unauthorized':
+      return 'You are not authorized to approve Mneme proposals.';
+    case 'expired':
+      return 'This proposal has expired.';
+    case 'policy_blocked':
+      return 'Not sent — this proposal remains pending review and can be retried after the current policy block clears.';
+    case 'stale':
+      return 'This proposal has already been resolved.';
+    case 'not_found':
+      return 'This proposal could not be found.';
+  }
+}
+
+/** The reviewer-facing reply for a dismiss outcome. */
+export function labelForDismiss(outcome: DismissOutcome): string {
+  switch (outcome) {
+    case 'dismissed':
+      return 'Proposal dismissed.';
+    case 'unauthorized':
+      return 'You are not authorized to dismiss Mneme proposals.';
+    case 'stale':
+      return 'This proposal has already been resolved.';
+    case 'not_found':
+      return 'This proposal could not be found.';
+  }
+}
+
+/** The reviewer-facing reply for each channel-policy decision outcome. */
+export const CHANNEL_POLICY_REVIEW_LABELS: Readonly<Record<ChannelPolicyReviewInteractionOutcome, string>> = {
+  decided: 'Channel classification saved.',
+  unauthorized: 'You are not authorized to classify Mneme channels.',
+  stale: 'This channel review is stale or already resolved.',
+  not_found: 'This channel review could not be found.',
+  basic_mode:
+    'This deployment selects channels with environment variables, so classification cards are disabled. '
+    + 'Change ORG_VISIBLE_CHANNEL_IDS or RESTRICTED_CHANNEL_IDS, or set CHANNEL_POLICY_SOURCE=file, then restart Mneme.',
+};

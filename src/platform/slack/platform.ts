@@ -15,6 +15,16 @@ import { listSlackChannels, SLACK_REDISCOVERY_INTERVAL_MS } from './discovery.js
 import { handleSlackEnvelope, type SlackLiveContext } from './events.js';
 import { slackFormat } from './format.js';
 import { createSlackHistory } from './history.js';
+import { handleSlackAction, type SlackActionDeps } from './actions.js';
+import {
+  buildSlackChannelPolicyCard,
+  createSlackChannelPolicyPort,
+  createSlackReviewResolver,
+  deliverSlackProposalReview,
+  type SlackCardDeps,
+} from './cards.js';
+import { createChannelPolicyReviewDeliveryHandler } from '../../review/controls.js';
+import { createSlackResponder } from './respond.js';
 import { createSlackRecentSentLookup } from './recent-sent.js';
 import { createSlackSender } from './sender.js';
 import { slackMessageLink } from './links.js';
@@ -68,6 +78,16 @@ export function createSlackPlatform(
   const unavailable = async (): Promise<never> => {
     throw new SlackWritePathUnavailableError();
   };
+  const cardDeps: SlackCardDeps = {
+    api,
+    db: () => connected().db,
+    teamDomain: () => connected().identity.teamDomain,
+    selfUserId: () => connected().identity.selfUserId,
+  };
+  const respond = createSlackResponder(() => connected().identity.teamDomain, fetch, (err) => {
+    logger.warn({ event: 'slack.respond_failed', err: err instanceof Error ? err.message : String(err) }, 'slack reply failed');
+  });
+  let actionDeps: SlackActionDeps | undefined;
   const history = createSlackHistory({
     api,
     workspaceId,
@@ -111,6 +131,10 @@ export function createSlackPlatform(
         seenSubtypes: new Set(),
       };
       attachSocket(socket, tracker, async (envelope) => {
+        if (envelope.type === 'interactive') {
+          if (actionDeps) await handleSlackAction(actionDeps, envelope);
+          return;
+        }
         await handleSlackEnvelope(ctx, envelope);
       }, (err) => {
         logger.warn({ event: 'slack.event_failed', err: err instanceof Error ? err.message : String(err) }, 'slack event failed');
@@ -132,7 +156,22 @@ export function createSlackPlatform(
       return { ok: true };
     },
     registerCommandDispatch() {},
-    registerReviewControls() {},
+    registerReviewControls(deps) {
+      actionDeps = {
+        db: deps.db,
+        workspaceId: deps.workspaceId,
+        secret: deps.secret,
+        adminUserIds: slack.adminUserIds,
+        reviewChannelId: deps.reviewChannelId,
+        buildRecheck: deps.buildRecheck,
+        policy: deps.policy,
+        channelPolicySource: deps.channelPolicySource,
+        resolveReview: deps.reviewChannelId ? createSlackReviewResolver(api) : undefined,
+        channelPolicyPort: deps.reviewChannelId ? createSlackChannelPolicyPort(cardDeps) : undefined,
+        respond,
+        now: deps.now,
+      };
+    },
 
     listChannels: async () => listSlackChannels(api, connected().db, workspaceId),
     threadDiscovery: { mode: 'complete_snapshot', rediscoveryIntervalMs: SLACK_REDISCOVERY_INTERVAL_MS },
@@ -141,9 +180,13 @@ export function createSlackPlatform(
 
     sender: createSlackSender({ api, db: () => connected().db, teamDomain: () => connected().identity.teamDomain }),
     sendDirect: unavailable,
-    deliverProposalReview: unavailable,
-    reviewResolver: () => unavailable,
-    createChannelPolicyReviewDeliveryHandler: () => unavailable,
+    deliverProposalReview: async (input, deps) => deliverSlackProposalReview(input, deps, cardDeps),
+    reviewResolver: () => createSlackReviewResolver(api),
+    createChannelPolicyReviewDeliveryHandler: (deps) => createChannelPolicyReviewDeliveryHandler({
+      ...deps,
+      port: createSlackChannelPolicyPort(cardDeps),
+      build: buildSlackChannelPolicyCard,
+    }),
 
     oauthIdentity: { identify: async () => ({ ok: false, reason: 'membership_unavailable' }) },
     format: slackFormat,
