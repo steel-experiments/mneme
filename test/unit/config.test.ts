@@ -384,7 +384,7 @@ describe('config', () => {
   });
 
   it('fails when MNEME_PLATFORM names an unsupported platform', () => {
-    expectFail({ ...baseEnv(), MNEME_PLATFORM: 'slack' }, 'MNEME_PLATFORM');
+    expectFail({ ...baseEnv(), MNEME_PLATFORM: 'teams' }, 'MNEME_PLATFORM');
   });
 
   it('selects the Discord platform when MNEME_PLATFORM=discord', () => {

@@ -11,7 +11,8 @@ import {
   protectedResourceMetadataPath,
 } from './mcp/oauth/metadata.js';
 import { DEFAULT_SETTLE_SECONDS, DEFAULT_SETTLE_MAX_MINUTES } from './episodes/settle.js';
-import { isPlatformId } from './platform/ids.js';
+import { isDiscordId } from './platform/ids.js';
+import { isSlackChannelId, isSlackTeamId, isSlackUserId } from './platform/slack/ids.js';
 
 /**
  * Typed application configuration (Sections 14, 35).
@@ -60,12 +61,20 @@ export class ConfigError extends Error {
 }
 
 /** Chat platforms a deployment can run on (plan 002 decision 1). */
-export const PLATFORM_IDS = ['discord'] as const;
+export const PLATFORM_IDS = ['discord', 'slack'] as const;
 export type PlatformId = (typeof PLATFORM_IDS)[number];
 
 export interface DiscordConfig {
   token: string;
   applicationId: string;
+}
+
+/** Slack credentials and admins (spec Section 6.7). Present only when `MNEME_PLATFORM=slack`. */
+export interface SlackConfig {
+  botToken: string;
+  appToken: string;
+  /** Slack user ids allowed to run admin operations (Slack has no roles). */
+  adminUserIds: string[];
 }
 
 export interface LlmConfig {
@@ -325,7 +334,10 @@ export interface AppConfig {
   /** The active chat platform (`MNEME_PLATFORM`). */
   platform: PlatformId;
   workspaceId: string;
-  discord: DiscordConfig;
+  /** Present only when `MNEME_PLATFORM=discord`. */
+  discord?: DiscordConfig;
+  /** Present only when `MNEME_PLATFORM=slack`. */
+  slack?: SlackConfig;
   llm: LlmConfig;
   organization: { name: string; timezone: string };
   agent: { name: string; role: string };
@@ -525,10 +537,60 @@ function parseSnowflake(raw: string | undefined, setting: string): string {
   if (raw === undefined || raw === '') {
     throw new ConfigError('required setting is missing', setting);
   }
-  if (!isPlatformId(raw)) {
+  if (!isDiscordId(raw)) {
     throw new ConfigError('expected a Discord snowflake (17–20 digits)', setting);
   }
   return raw;
+}
+
+type IdKind = 'channel' | 'user' | 'role';
+
+/** Parse one id in the format of the active platform. */
+function parseId(raw: string | undefined, setting: string, platform: PlatformId, kind: IdKind): string {
+  if (platform === 'discord') return parseSnowflake(raw, setting);
+  if (raw === undefined || raw === '') throw new ConfigError('required setting is missing', setting);
+  const ok = kind === 'channel' ? isSlackChannelId(raw) : kind === 'user' ? isSlackUserId(raw) : false;
+  if (!ok) throw new ConfigError(`expected a Slack ${kind} id`, setting);
+  return raw;
+}
+
+/** Parse a comma-separated id list in the format of the active platform. */
+function parseIdList(raw: string | undefined, setting: string, platform: PlatformId, kind: IdKind): string[] {
+  if (platform === 'discord') return parseSnowflakeList(raw, setting);
+  if (raw === undefined || raw === '') return [];
+  const parts = raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+  for (const part of parts) parseId(part, setting, platform, kind);
+  return parts;
+}
+
+
+/** Parse the credentials and workspace of the active platform (spec Sections 6, 6.7). */
+function parsePlatformCredentials(
+  e: NodeJS.ProcessEnv,
+  platform: PlatformId,
+): { discord?: DiscordConfig; slack?: SlackConfig; workspaceId: string } {
+  if (platform === 'discord') {
+    const token = env(e, 'DISCORD_TOKEN');
+    if (!token) throw new ConfigError('required setting is missing', 'DISCORD_TOKEN');
+    const applicationId = parseSnowflake(env(e, 'DISCORD_APPLICATION_ID'), 'DISCORD_APPLICATION_ID');
+    const workspaceId = parseSnowflake(env(e, 'DISCORD_GUILD_ID'), 'DISCORD_GUILD_ID');
+    return { discord: { token, applicationId }, workspaceId };
+  }
+  const botToken = env(e, 'SLACK_BOT_TOKEN');
+  if (!botToken) throw new ConfigError('required setting is missing', 'SLACK_BOT_TOKEN');
+  if (!botToken.startsWith('xoxb-')) throw new ConfigError('expected a bot token that starts with xoxb-', 'SLACK_BOT_TOKEN');
+  const appToken = env(e, 'SLACK_APP_TOKEN');
+  if (!appToken) throw new ConfigError('required setting is missing', 'SLACK_APP_TOKEN');
+  if (!appToken.startsWith('xapp-')) throw new ConfigError('expected an app-level token that starts with xapp-', 'SLACK_APP_TOKEN');
+  const teamId = env(e, 'SLACK_TEAM_ID');
+  if (!teamId) throw new ConfigError('required setting is missing', 'SLACK_TEAM_ID');
+  if (!isSlackTeamId(teamId)) throw new ConfigError('expected a Slack team id', 'SLACK_TEAM_ID');
+  const adminUserIds = parseIdList(env(e, 'MNEME_ADMIN_USER_IDS'), 'MNEME_ADMIN_USER_IDS', platform, 'user');
+  if (adminUserIds.length === 0) throw new ConfigError('at least one Slack user id is required', 'MNEME_ADMIN_USER_IDS');
+  if (env(e, 'MNEME_ADMIN_ROLE_IDS')) {
+    throw new ConfigError('Slack has no roles; list admins in MNEME_ADMIN_USER_IDS', 'MNEME_ADMIN_ROLE_IDS');
+  }
+  return { slack: { botToken, appToken, adminUserIds }, workspaceId: teamId };
 }
 
 /**
@@ -560,7 +622,7 @@ function parseSnowflakeList(raw: string | undefined, setting: string): string[] 
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
   for (const part of parts) {
-    if (!isPlatformId(part)) {
+    if (!isDiscordId(part)) {
       throw new ConfigError(`list contains a non-snowflake value`, setting);
     }
   }
@@ -779,11 +841,8 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
   if (!platformRaw) throw new ConfigError('required setting is missing', 'MNEME_PLATFORM');
   const platform = parseEnum(platformRaw, PLATFORM_IDS, 'discord', 'MNEME_PLATFORM');
 
-  // ---- Discord (required when MNEME_PLATFORM=discord) ----
-  const token = env(e, 'DISCORD_TOKEN');
-  if (!token) throw new ConfigError('required setting is missing', 'DISCORD_TOKEN');
-  const applicationId = parseSnowflake(env(e, 'DISCORD_APPLICATION_ID'), 'DISCORD_APPLICATION_ID');
-  const guildId = parseSnowflake(env(e, 'DISCORD_GUILD_ID'), 'DISCORD_GUILD_ID');
+  // ---- Platform credentials (Discord or Slack) ----
+  const { discord, slack, workspaceId } = parsePlatformCredentials(e, platform);
 
   // ---- LLM provider (defaults: openai / gpt-5.6-terra) ----
   const provider = parseEnum(
@@ -823,9 +882,13 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
   // ---- Mode + review channel ----
   const mode = parseEnum(env(e, 'MNEME_MODE'), ['observe', 'review', 'autonomous'] as const, 'observe', 'MNEME_MODE');
   const reviewChannelIdEnv = env(e, 'MNEME_REVIEW_CHANNEL_ID');
-  const reviewChannelId = reviewChannelIdEnv ? parseSnowflake(reviewChannelIdEnv, 'MNEME_REVIEW_CHANNEL_ID') : undefined;
-  const adminRoleIds = parseSnowflakeList(env(e, 'MNEME_ADMIN_ROLE_IDS'), 'MNEME_ADMIN_ROLE_IDS');
-  if (adminRoleIds.length === 0) {
+  const reviewChannelId = reviewChannelIdEnv
+    ? parseId(reviewChannelIdEnv, 'MNEME_REVIEW_CHANNEL_ID', platform, 'channel')
+    : undefined;
+  const adminRoleIds = platform === 'discord'
+    ? parseSnowflakeList(env(e, 'MNEME_ADMIN_ROLE_IDS'), 'MNEME_ADMIN_ROLE_IDS')
+    : [];
+  if (platform === 'discord' && adminRoleIds.length === 0) {
     // A warning, never an error: authorization already fails closed with no
     // roles configured, so admin operations stay denied until the operator
     // sets them.
@@ -834,7 +897,9 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
       'MNEME_ADMIN_ROLE_IDS is empty; admin operations stay denied',
     );
   }
-  const deletionApproverUserIds = parseSnowflakeList(env(e, 'MNEME_DELETION_APPROVER_USER_IDS'), 'MNEME_DELETION_APPROVER_USER_IDS');
+  const deletionApproverUserIds = parseIdList(
+    env(e, 'MNEME_DELETION_APPROVER_USER_IDS'), 'MNEME_DELETION_APPROVER_USER_IDS', platform, 'user',
+  );
   const httpAdminToken = env(e, 'HTTP_ADMIN_TOKEN');
 
   // ---- Intervention (env overrides YAML overrides defaults) ----
@@ -1045,6 +1110,9 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
   if (mcp.path === '' || !mcp.path.startsWith('/')) {
     throw new ConfigError('MCP_PATH must start with "/"', 'MCP_PATH');
   }
+  if (mcp.oauthEnabled && platform === 'slack') {
+    throw new ConfigError('MCP OAuth sign-in is not available on Slack', 'MCP_OAUTH_ENABLED');
+  }
   // Fail closed: discovery that advertises an authorization endpoint no client
   // can be recognized at would send every user into a flow that cannot complete.
   if (mcp.oauthEnabled && mcp.oauthClientId === '') {
@@ -1125,8 +1193,9 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
     channelPolicyPath,
     channelPolicySource,
     platform,
-    workspaceId: guildId,
-    discord: { token, applicationId },
+    workspaceId,
+    discord,
+    slack,
     llm: { provider, model, triageModel, baseUrl, apiKey, dailyBudgetUsd },
     organization,
     agent,
