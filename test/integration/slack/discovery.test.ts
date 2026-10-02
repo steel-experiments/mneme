@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createTestDb, type TestDb } from '../../helpers/db.js';
 import { conversation, fakeSlackApi, seedSlackWorkspace, TEAM } from '../../helpers/slack.js';
 import { parseChannelPolicy } from '../../../src/policy/channel-policy.js';
-import { runStartupSync } from '../../../src/ingestion/sync.js';
+import { runPlatformDiscovery, runStartupSync } from '../../../src/ingestion/sync.js';
 import { getChannel, upsertChannel } from '../../../src/db/repositories/channels.js';
 import { listSlackChannels } from '../../../src/platform/slack/discovery.js';
 
@@ -95,6 +95,20 @@ describe('Slack discovery', () => {
     expect(later.discovery.excluded.find((c) => c.id === SHARED)?.policySource).toBe('platform_boundary');
     expect(getChannel(db, SHARED)).toMatchObject({ ingest_enabled: 0, visibility_class: 'excluded', platform_boundary: 'excluded' });
     expect(getChannel(db, SHARED_THREAD)).toMatchObject({ ingest_enabled: 0, visibility_class: 'excluded' });
+  });
+
+  it('excludes a channel that became pending-shared in the periodic rediscovery, with no event', async () => {
+    const db = setup();
+    const api = fakeSlackApi();
+    api.conversations.set(MEMBER, conversation(MEMBER));
+    await discover(db, api);
+    storeThread(db, THREAD, MEMBER);
+    api.conversations.set(MEMBER, conversation(MEMBER, { is_pending_ext_shared: true }));
+    await runPlatformDiscovery({ db, guildId: TEAM, policy: POLICY, now: NOW + 1, enqueueHistoricalBackfill: false,
+      platform: { listChannels: () => listSlackChannels(api, db, TEAM),
+        threadDiscovery: { mode: 'complete_snapshot', rediscoveryIntervalMs: 900_000 } } });
+    expect(getChannel(db, MEMBER)).toMatchObject({ ingest_enabled: 0, visibility_class: 'excluded', platform_boundary: 'excluded' });
+    expect(getChannel(db, THREAD)).toMatchObject({ ingest_enabled: 0, visibility_class: 'excluded' });
   });
 
   it('excludes a channel that becomes shared between two runs', async () => {

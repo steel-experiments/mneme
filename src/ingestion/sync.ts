@@ -12,6 +12,7 @@ import { getSyncCursor } from '../db/repositories/sync-cursors.js';
 import type { ChannelPolicy } from '../policy/channel-policy.js';
 import type { ChannelPolicySource } from '../config.js';
 import { isMnemeTestSurface } from './test-channels.js';
+import type { ChatPlatform } from '../platform/types.js';
 
 /**
  * Startup sync scheduling (Sections 9.2, 46.2).
@@ -276,4 +277,33 @@ export async function runStartupSync(deps: StartupSyncDeps): Promise<StartupSync
     archivedPaginationCoverageIncomplete,
     archivedCoverageComplete,
   };
+}
+
+export interface PlatformDiscoveryDeps {
+  db: DatabaseSync;
+  guildId: string;
+  policy: ChannelPolicy;
+  channelPolicySource?: ChannelPolicySource;
+  now: number;
+  platform: Pick<ChatPlatform, 'listChannels' | 'threadDiscovery'>;
+  enqueueHistoricalBackfill: boolean;
+  logger?: Pick<Logger, 'info' | 'warn'>;
+}
+
+/**
+ * The periodic discovery job (Section 9.7). An archive-scan platform pages its
+ * thread archive; a complete-snapshot platform repeats the full channel
+ * discovery, which also applies boundary changes that came without an event.
+ */
+export async function runPlatformDiscovery(deps: PlatformDiscoveryDeps): Promise<StartupSyncResult> {
+  const mode = deps.platform.threadDiscovery;
+  const descriptors = await deps.platform.listChannels();
+  return runStartupSync({
+    db: deps.db, guildId: deps.guildId, policy: deps.policy, channelPolicySource: deps.channelPolicySource,
+    now: deps.now, channels: descriptors,
+    archiveSource: mode.mode === 'archive_scan' ? mode.archive : undefined,
+    completeThreadSnapshot: mode.mode === 'complete_snapshot',
+    canManageThreads: descriptors.some((d) => d.capabilities?.canManageThreads === true),
+    enqueueHistoricalBackfill: deps.enqueueHistoricalBackfill, logger: deps.logger,
+  });
 }

@@ -6,6 +6,9 @@ import type { DiscoveredChannelDescriptor } from '../../ingestion/discovery.js';
 import type { SlackApi, SlackObject } from './api.js';
 import { isSlackChannelId } from './ids.js';
 
+/** The Slack channel rediscovery interval. It applies Slack Connect changes that arrive without an event. */
+export const SLACK_REDISCOVERY_INTERVAL_MS = 15 * 60_000;
+
 /** A member can read and see a channel. Sending is off in the read path. */
 export const SLACK_MEMBER_CAPABILITIES: ChannelAccessCapabilities = {
   canView: true,

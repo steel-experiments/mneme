@@ -11,7 +11,7 @@ import type { ChatPlatform, PlatformConnection } from '../types.js';
 import { createSlackApi, type SlackApi } from './api.js';
 import { checkSlackIdentity, type SlackIdentity } from './auth.js';
 import { attachSocket, createSlackSocket, SlackHealthTracker, type SlackSocket } from './connection.js';
-import { listSlackChannels } from './discovery.js';
+import { listSlackChannels, SLACK_REDISCOVERY_INTERVAL_MS } from './discovery.js';
 import { handleSlackEnvelope, type SlackLiveContext } from './events.js';
 import { slackFormat } from './format.js';
 import { createSlackHistory } from './history.js';
@@ -132,7 +132,7 @@ export function createSlackPlatform(
     registerReviewControls() {},
 
     listChannels: async () => listSlackChannels(api, connected().db, workspaceId),
-    threadDiscovery: { mode: 'complete_snapshot' },
+    threadDiscovery: { mode: 'complete_snapshot', rediscoveryIntervalMs: SLACK_REDISCOVERY_INTERVAL_MS },
     history,
     recentSent: { fetch: async () => [] },
 
