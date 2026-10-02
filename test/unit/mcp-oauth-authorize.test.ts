@@ -1,15 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import {
-  DISCORD_CALLBACK_PATH,
-  DISCORD_SCOPES,
-  discordAuthorizationUrl,
-  discordCallbackUrl,
   errorRedirectUrl,
   planAuthorization,
   type AuthorizationContext,
   type AuthorizationRequest,
 } from '../../src/mcp/oauth/authorize.js';
 import { CLAUDE_HOSTED_REDIRECT_URI } from '../../src/mcp/oauth/client.js';
+import {
+  DISCORD_CALLBACK_PATH,
+  DISCORD_SCOPES,
+  createDiscordIdentityClient,
+  discordCallbackUrl,
+} from '../../src/platform/discord/oauth-identity.js';
 
 const BASE = 'https://mneme.example.up.railway.app';
 
@@ -17,8 +19,12 @@ const ctx: AuthorizationContext = {
   client: { clientId: 'b7f3c1a9d24e40f8', redirectUris: [CLAUDE_HOSTED_REDIRECT_URI] },
   resource: `${BASE}/mcp`,
   publicBaseUrl: BASE,
-  discordClientId: '987654321098765432',
 };
+
+const DISCORD_CLIENT_ID = '987654321098765432';
+const discord = createDiscordIdentityClient({
+  clientId: DISCORD_CLIENT_ID, clientSecret: 'unused', publicBaseUrl: BASE, guildId: '123456789012345678', adminRoleIds: [],
+});
 
 /** A request that should succeed; individual tests break one field at a time. */
 function request(overrides: Partial<AuthorizationRequest> = {}): AuthorizationRequest {
@@ -129,9 +135,9 @@ describe('authorization request planning', () => {
 
 describe('outbound URLs', () => {
   it('sends the person to Discord with only an opaque handle', () => {
-    const url = new URL(discordAuthorizationUrl(ctx, 'opaque-session-handle'));
+    const url = new URL(discord.authorizationUrl('opaque-session-handle'));
     expect(url.origin + url.pathname).toBe('https://discord.com/oauth2/authorize');
-    expect(url.searchParams.get('client_id')).toBe(ctx.discordClientId);
+    expect(url.searchParams.get('client_id')).toBe(DISCORD_CLIENT_ID);
     expect(url.searchParams.get('response_type')).toBe('code');
     expect(url.searchParams.get('scope')).toBe(DISCORD_SCOPES);
     expect(url.searchParams.get('redirect_uri')).toBe(`${BASE}${DISCORD_CALLBACK_PATH}`);
@@ -145,6 +151,7 @@ describe('outbound URLs', () => {
   it('needs the role scope to make an authorization decision possible', () => {
     expect(DISCORD_SCOPES).toContain('guilds.members.read');
     expect(discordCallbackUrl(BASE)).toBe(`${BASE}/oauth/discord/callback`);
+    expect(discord.callbackPath).toBe('/oauth/discord/callback');
   });
 
   it('returns an error to the client with its state and the issuer', () => {

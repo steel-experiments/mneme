@@ -90,7 +90,41 @@ describe('Slack configuration', () => {
     expectFail({ ...slackEnv(), MNEME_DELETION_APPROVER_USER_IDS: '123456789012345678' }, 'MNEME_DELETION_APPROVER_USER_IDS');
   });
 
-  it('rejects MCP OAuth sign-in on Slack', () => {
-    expectFail({ ...slackEnv(), MCP_OAUTH_ENABLED: 'true' }, 'MCP_OAUTH_ENABLED');
+  describe('MCP OAuth sign-in on Slack', () => {
+    const oauthEnv = (): Record<string, string | undefined> => ({
+      ...slackEnv(),
+      MCP_ENABLED: 'true',
+      MCP_OAUTH_ENABLED: 'true',
+      MCP_OAUTH_CLIENT_ID: 'b7f3c1a9d24e40f8',
+      SLACK_OAUTH_CLIENT_ID: '1111.2222',
+      SLACK_OAUTH_CLIENT_SECRET: 'slack-oauth-secret-value',
+    });
+
+    it('reads the Slack OAuth keys into the provider fields', () => {
+      const cfg = loadConfig({ env: oauthEnv() });
+      expect(cfg.mcp.oauthEnabled).toBe(true);
+      expect(cfg.mcp.oauthProviderClientId).toBe('1111.2222');
+      expect(cfg.mcp.oauthProviderClientSecret).toBe('slack-oauth-secret-value');
+    });
+
+    it('requires the Slack client id and secret', () => {
+      expectFail({ ...oauthEnv(), SLACK_OAUTH_CLIENT_ID: undefined }, 'SLACK_OAUTH_CLIENT_ID');
+      expectFail({ ...oauthEnv(), SLACK_OAUTH_CLIENT_SECRET: undefined }, 'SLACK_OAUTH_CLIENT_SECRET');
+    });
+
+    it('ignores the Discord OAuth keys', () => {
+      const env = {
+        ...oauthEnv(),
+        SLACK_OAUTH_CLIENT_ID: undefined,
+        SLACK_OAUTH_CLIENT_SECRET: undefined,
+        DISCORD_OAUTH_CLIENT_ID: '987654321098765432',
+        DISCORD_OAUTH_CLIENT_SECRET: 'discord-oauth-secret-value',
+      };
+      expectFail(env, 'SLACK_OAUTH_CLIENT_ID');
+    });
+
+    it('needs no admin roles, because Slack admins are user ids', () => {
+      expect(loadConfig({ env: oauthEnv() }).adminRoleIds).toEqual([]);
+    });
   });
 });

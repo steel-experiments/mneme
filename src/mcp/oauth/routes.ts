@@ -7,8 +7,6 @@ import { createLoginSession } from '../../db/repositories/oauth-flows.js';
 import type { Logger } from '../../logger.js';
 import type { RouteHandler } from '../../http/server.js';
 import {
-  DISCORD_CALLBACK_PATH,
-  discordAuthorizationUrl,
   errorRedirectUrl,
   planAuthorization,
   type AuthorizationContext,
@@ -16,7 +14,7 @@ import {
 } from './authorize.js';
 import { completeSignIn, successRedirectUrl } from './callback.js';
 import { exchangeToken } from './token.js';
-import type { DiscordIdentityClient } from '../../platform/types.js';
+import type { IdentityProvider } from './identity.js';
 import type { RateLimiter } from '../rate-limit.js';
 import {
   purgeExpiredAuthorizationCodes,
@@ -40,10 +38,12 @@ export interface OAuthRouteDeps {
   logger: Logger;
   now: () => number;
   context: AuthorizationContext;
-  /** The identity provider seam; tests inject a fake so no network is touched. */
-  identity: DiscordIdentityClient;
-  /** Roles that may sign in — the same gate as `/mneme mcp-token create`. */
-  adminRoleIds: readonly string[];
+  /**
+   * The active platform's identity provider. It makes the admin decision (the
+   * same gate as `/mneme mcp-token create`). Tests inject a fake so no network
+   * is touched.
+   */
+  identity: IdentityProvider;
   /** Shared global budget for unauthenticated MCP and OAuth traffic. */
   rateLimiter: RateLimiter;
 }
@@ -56,7 +56,9 @@ export interface OAuthRouteDeps {
 export function createOAuthRoutes(deps: OAuthRouteDeps): Record<string, RouteHandler> {
   return {
     'GET /authorize': authorizeHandler(deps),
-    [`GET ${DISCORD_CALLBACK_PATH}`]: discordCallbackHandler(deps),
+    // Only the active provider's callback path exists; the other platform's
+    // path gets the normal unknown-route response.
+    [`GET ${deps.identity.callbackPath}`]: callbackHandler(deps),
     'POST /token': tokenHandler(deps),
   };
 }
@@ -156,11 +158,11 @@ function sendTokenJson(res: ServerResponse, status: number, body: unknown): void
 }
 
 /**
- * `GET /oauth/discord/callback`. Discord returns the person here; Mneme
- * decides from their guild roles and, on approval, redirects a single-use
- * authorization code to the client that started the flow.
+ * `GET <provider callback path>`. The identity provider returns the person
+ * here; the provider's admin decision is read and, on approval, a single-use
+ * authorization code is redirected to the client that started the flow.
  */
-function discordCallbackHandler(deps: OAuthRouteDeps): RouteHandler {
+function callbackHandler(deps: OAuthRouteDeps): RouteHandler {
   return async (req, res) => {
     if (!admitOAuthRequest(deps, res)) return;
     purgeExpiredOAuthFlows(deps);
@@ -169,7 +171,6 @@ function discordCallbackHandler(deps: OAuthRouteDeps): RouteHandler {
       {
         db: deps.db,
         identity: deps.identity,
-        adminRoleIds: deps.adminRoleIds,
         issuer: deps.context.publicBaseUrl,
         nowMs: deps.now(),
       },
@@ -183,7 +184,7 @@ function discordCallbackHandler(deps: OAuthRouteDeps): RouteHandler {
     if (outcome.kind === 'terminal_error') {
       deps.logger.info(
         { event: 'mcp.oauth.callback_unresolved' },
-        'discord returned for a sign-in that no longer exists',
+        'the identity provider returned for a sign-in that no longer exists',
       );
       sendHtml(res, outcome.status, 'Sign-in expired', outcome.description);
       return;
@@ -191,7 +192,7 @@ function discordCallbackHandler(deps: OAuthRouteDeps): RouteHandler {
 
     if (outcome.kind === 'redirect_error') {
       // The refusal reason is for the operator; the client is told only
-      // access_denied, so nobody can probe guild membership through this.
+      // access_denied, so nobody can probe workspace membership through this.
       deps.logger.info(
         { event: 'mcp.oauth.sign_in_refused', refusal: outcome.refusal },
         'sign-in refused',
@@ -200,7 +201,7 @@ function discordCallbackHandler(deps: OAuthRouteDeps): RouteHandler {
       return;
     }
 
-    // The subject id is a Discord user id, which the database already holds
+    // The subject id is a platform user id, which the database already holds
     // everywhere; the code itself is a live credential and is never logged.
     deps.logger.info(
       { event: 'mcp.oauth.sign_in_granted', subjectUserId: outcome.subjectUserId },
@@ -212,8 +213,9 @@ function discordCallbackHandler(deps: OAuthRouteDeps): RouteHandler {
 
 /**
  * `GET /authorize`. Validates the request, records it, and sends the person to
- * Discord to prove who they are. Nothing here writes a session cookie: the flow
- * is resumed by the opaque handle Discord echoes back, not by browser state.
+ * the identity provider to prove who they are. Nothing here writes a session
+ * cookie: the flow is resumed by the opaque handle the provider echoes back,
+ * not by browser state.
  */
 function authorizeHandler(deps: OAuthRouteDeps): RouteHandler {
   return (req, res) => {
@@ -256,9 +258,9 @@ function authorizeHandler(deps: OAuthRouteDeps): RouteHandler {
     // `state` is the client's own secret-ish value; neither belongs in a log.
     deps.logger.info(
       { event: 'mcp.oauth.authorize_started', scope: plan.scope },
-      'authorization request accepted, handing off to discord',
+      'authorization request accepted, handing off to the identity provider',
     );
-    redirect(res, discordAuthorizationUrl(deps.context, session.id));
+    redirect(res, deps.identity.authorizationUrl(session.id));
   };
 }
 

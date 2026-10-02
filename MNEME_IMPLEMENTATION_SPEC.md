@@ -37,7 +37,7 @@ Mneme is a quiet organizational-memory agent for one Discord server or one Slack
 
 (Amendment (plan 007): on Slack, Mneme reads, remembers, answers mentions,
 posts review cards, and delivers messages in every mode, as on Discord. Sign in
-with Slack for MCP (plan 008) is not implemented yet.)
+with Slack for MCP (plan 008) and attachment archives (plan 009) work too.)
 
 The v1 system is intentionally small:
 
@@ -188,7 +188,7 @@ The following are out of scope:
 
 The Slack row: (Amendment (plan 007): on Slack, Mneme reads, remembers, answers mentions,
 posts review cards, and delivers messages in every mode, as on Discord. Sign in
-with Slack for MCP (plan 008) is not implemented yet.)
+with Slack for MCP (plan 008) and attachment archives (plan 009) work too.)
 
 ### 4.1 Pi usage decision
 
@@ -486,7 +486,7 @@ fail-closed check applies to commands and to review-card buttons.
 
 (Amendment (plan 007): on Slack, Mneme reads, remembers, answers mentions,
 posts review cards, and delivers messages in every mode, as on Discord. Sign in
-with Slack for MCP (plan 008) is not implemented yet.)
+with Slack for MCP (plan 008) and attachment archives (plan 009) work too.)
 
 #### 6.7.1 App type
 
@@ -5235,8 +5235,8 @@ same scoped repositories as the agent-run tools; there is no second query path t
 Disabled by default (`MCP_OAUTH_ENABLED=false`), in which case the well-known paths are
 `404` like any unknown route and the `401` challenge is a bare `Bearer`. Enabled,
 Mneme is both the OAuth 2.1 **resource server** and its own **authorization server**,
-in one process, on one origin. Discord is the **identity provider**; the remote client is
-the **OAuth client**.
+in one process, on one origin. The active chat platform (Discord or Slack) is the
+**identity provider**; the remote client is the **OAuth client**.
 
 - `401` from the MCP endpoint carries
   `WWW-Authenticate: Bearer error="invalid_token", resource_metadata="…", scope="mneme:read"`.
@@ -5246,11 +5246,13 @@ the **OAuth client**.
   metadata. `resource` is the MCP endpoint URL exactly as an operator enters it.
 - `GET /.well-known/oauth-authorization-server` serves RFC 8414 metadata: `S256` PKCE,
   `token_endpoint_auth_methods_supported: ["none"]`, and the RFC 9207 `iss` parameter.
-- `GET /authorize` validates the request and redirects to Discord. An unrecognized
+- `GET /authorize` validates the request and redirects to the identity provider. An unrecognized
   `client_id` or `redirect_uri` is reported to the person and **never** redirected
   (OAuth 2.1 Section 4.1.2.1); every later failure returns to the registered redirect.
-- `GET /oauth/discord/callback` exchanges Discord's code, reads guild roles, and issues a
-  single-use authorization code valid for 60 seconds.
+- `GET /oauth/discord/callback` (Discord) or `GET /oauth/slack/callback` (Slack)
+  exchanges the provider's code, identifies the person, and issues a single-use
+  authorization code valid for 60 seconds. Only the active platform's callback route
+  exists; the other path is an unknown route.
 - `POST /token` accepts `application/x-www-form-urlencoded` only (RFC 6749 Section 4.1.3),
   requires the configured `client_id` on authorization-code and refresh grants, requires
   exact `redirect_uri` parity on authorization-code exchange, verifies PKCE, and issues a
@@ -5264,23 +5266,33 @@ would display. Mneme recognizes one client id an operator sets in
 `MCP_OAUTH_REDIRECT_URIS`, which defaults to the callback Anthropic publishes for the
 hosted Claude surfaces.
 
-Who may sign in: the `MNEME_ADMIN_ROLE_IDS` roles that gate
-`/mneme mcp-token create` (Section 6.6). Someone who could not mint a token through
-Discord must not be able to mint one through a browser instead. What they receive: `org`
+Who may sign in: the admins who may run `/mneme mcp-token create` (Section 6.6) —
+the `MNEME_ADMIN_ROLE_IDS` roles on Discord, the `MNEME_ADMIN_USER_IDS` users on
+Slack. Someone who could not mint a token through a command must not be able to mint
+one through a browser instead. The identity provider makes this decision and the
+callback only reads it. What they receive: `org`
 scope and no restricted channel — restricted grants are named explicitly by an admin
 (Section 44) and are never inferred from a role, so a sign-in cannot widen its own
 visibility.
 
-Every refusal reports `access_denied` identically. A member without the role, a
-non-member, a declined consent, and a failed exchange are indistinguishable to the client;
-distinguishing them would make the connector URL a guild-membership oracle. The reason is
-recorded in the server log instead.
+Every refusal reports `access_denied` identically, with one description that names no
+platform. A member without admin status, a non-member, a person from another Slack
+workspace (`wrong_workspace`), a declined consent, and a failed exchange are
+indistinguishable to the client; distinguishing them would make the connector URL a
+workspace-membership oracle. The reason is recorded in the server log instead.
 
-On Slack, sign-in uses Sign in with Slack (OpenID Connect). The callback accepts a
-user only when the `https://slack.com/team_id` claim equals the configured
-workspace. Admin status comes from `MNEME_ADMIN_USER_IDS`. The grant stays `org`
-scope. (Amendment (plan 003): specified, not implemented. Plan 008 implements this
-rule. Until then, Mneme runs only on Discord.)
+On Slack, sign-in uses Sign in with Slack (OpenID Connect) with the `openid profile`
+scopes and no `email`. Mneme exchanges the code at `openid.connect.token`, then reads
+`openid.connect.userInfo` with the access token. A Slack answer with `ok: false` is a
+failure even with HTTP 200. The `https://slack.com/team_id` claim must equal the
+configured workspace (`SLACK_TEAM_ID`); a person from another workspace never gets a
+code, even if their user id is on the admin list. The `team` parameter on the
+authorize URL only preselects the workspace and is not a control. Admin status comes
+from `MNEME_ADMIN_USER_IDS`. The grant stays `org` scope. Mneme reads `userInfo` and
+does not verify the `id_token`: it receives the token directly from Slack over TLS,
+which authenticates the response (OpenID Connect Core 1.0, Section 3.1.3.7), and this
+needs no key fetch, key cache, or JWT library. The Slack access token is used once and
+then dropped; it is never stored or logged.
 
 Authorization codes and refresh tokens are stored only as SHA-256 hashes, and a consumed
 row outlives its use so a second presentation is recognized as interception rather than as
@@ -5901,13 +5913,13 @@ DISCORD_OAUTH_CLIENT_SECRET=
 ```
 
 On Slack, `SLACK_OAUTH_CLIENT_ID=` and `SLACK_OAUTH_CLIENT_SECRET=` replace the two
-`DISCORD_OAUTH_*` keys. (Amendment (plan 003): specified, not implemented. Plan 008 implements this
-rule. Until then, Mneme runs only on Discord.)
+`DISCORD_OAUTH_*` keys. Each platform reads only its own keys and ignores the keys of
+the other platform.
 
-With `MCP_OAUTH_ENABLED=true`, startup fails unless `MCP_OAUTH_CLIENT_ID`,
-`DISCORD_OAUTH_CLIENT_ID`, `DISCORD_OAUTH_CLIENT_SECRET`, and at least one
-`MNEME_ADMIN_ROLE_IDS` entry are set: each absence would advertise a sign-in flow
-that cannot complete. `MCP_OAUTH_REDIRECT_URIS` defaults to
+With `MCP_OAUTH_ENABLED=true`, startup fails unless `MCP_OAUTH_CLIENT_ID` and the
+active platform's OAuth client id and secret are set, and, on Discord, at least one
+`MNEME_ADMIN_ROLE_IDS` entry (Slack already requires `MNEME_ADMIN_USER_IDS`): each
+absence would advertise a sign-in flow that cannot complete. `MCP_OAUTH_REDIRECT_URIS` defaults to
 `https://claude.ai/api/mcp/auth_callback`; every entry must be absolute, `https` or
 loopback `http`, and carry no fragment or embedded credentials.
 

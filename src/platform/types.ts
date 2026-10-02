@@ -1,6 +1,7 @@
 // ABOUTME: Platform-neutral types shared by the core and every chat-platform adapter.
 // ABOUTME: Adapters normalize platform payloads into these shapes before the core sees them.
 import type { FetchBytes } from '../ingestion/attachments.js';
+import type { IdentityProvider } from '../mcp/oauth/identity.js';
 import type { BootstrapContext } from '../bootstrap.js';
 import type { ChannelPolicySource, PlatformId } from '../config.js';
 import type { DatabaseSync } from '../db/database.js';
@@ -127,35 +128,6 @@ export interface SendResult {
 /** Deliver one outbox message to the platform. Throws on any delivery failure. */
 export interface OutboxSender {
   send(input: SendOutboxMessageInput): Promise<SendResult>;
-}
-
-// ---- MCP OAuth identity port (Section 32.5.2.1) -------------------------
-
-/** A person's membership in the guild, as far as authorization cares. */
-export interface DiscordMembership {
-  /** The Discord user id — the subject of the token that follows. */
-  userId: string;
-  /**
-   * Role ids held in the guild, or null when they could not be resolved. Null is
-   * not an empty list: unresolved roles must fail closed, and `authorizeAdmin`
-   * distinguishes the two.
-   */
-  roleIds: readonly string[] | null;
-}
-
-/** Why identifying the person failed. */
-export type DiscordIdentityFailure =
-  | 'code_exchange_failed'
-  | 'not_a_guild_member'
-  | 'membership_unavailable';
-
-export type DiscordIdentityOutcome =
-  | { ok: true; membership: DiscordMembership }
-  | { ok: false; reason: DiscordIdentityFailure };
-
-/** The seam: given Discord's code, say who the person is. */
-export interface DiscordIdentityClient {
-  identify(code: string): Promise<DiscordIdentityOutcome>;
 }
 
 // ---- Review cards (Section 25) --------------------------------------------
@@ -303,7 +275,8 @@ export interface ChatPlatform {
   reviewResolver(reviewChannelId: string): ReviewResolver;
   createChannelPolicyReviewDeliveryHandler(deps: ChannelPolicyReviewDeliveryDeps): JobHandler<'deliver_channel_policy_review'>;
 
-  readonly oauthIdentity: DiscordIdentityClient;
+  /** The MCP OAuth identity provider (Section 32.5.2.1). */
+  readonly oauthIdentity: IdentityProvider;
   readonly format: PlatformFormat;
 
   /** Download an attachment for the archive (Section 9.10). Slack adds the bot token for its file host only. */

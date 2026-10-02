@@ -101,9 +101,27 @@ There are two supported connection patterns.
 ### Remote connector with OAuth
 
 When the Mneme operator enables OAuth, add the exact MCP endpoint as a Claude custom
-connector and complete the Discord sign-in. The sign-in proves guild membership and an
-authorized Mneme admin role; the resulting access has organization scope and no
-restricted channels.
+connector and complete the sign-in with the chat platform that Mneme serves. On
+Discord, the sign-in proves guild membership and an authorized Mneme admin role. On
+Slack, it proves that you are in the configured workspace and that your Slack user id
+is a Mneme admin. The resulting access has organization scope and no restricted
+channels.
+
+#### Set up Sign in with Slack
+
+On a Slack deployment, the operator does these steps once:
+
+1. In the Slack app settings, open **OAuth & Permissions** and add this redirect URL:
+   `https://<public-base>/oauth/slack/callback`. Use the same public base URL as
+   `MCP_PUBLIC_URL`.
+2. Copy the **Client ID** and **Client Secret** from **Basic Information** into
+   `SLACK_OAUTH_CLIENT_ID` and `SLACK_OAUTH_CLIENT_SECRET`.
+3. Set `MCP_OAUTH_ENABLED=true` and `MCP_OAUTH_CLIENT_ID`.
+4. Make sure your own Slack user id (for example `U0123ABCDEF`) is in
+   `MNEME_ADMIN_USER_IDS`. A person whose id is not in that list cannot sign in.
+
+A person who signs in to a different Slack workspace is refused, even if their user id
+is on the list.
 
 For Claude Team or Enterprise, an owner adds the connector for the organization and each
 member connects their own account. Remote connector traffic originates from Anthropic's

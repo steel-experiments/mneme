@@ -183,10 +183,11 @@ export function createDiscordPlatform(config: AppConfig, logger: Logger, clock: 
     }),
 
     oauthIdentity: createDiscordIdentityClient({
-      clientId: config.mcp.oauthDiscordClientId,
-      clientSecret: config.mcp.oauthDiscordClientSecret,
+      clientId: config.mcp.oauthProviderClientId,
+      clientSecret: config.mcp.oauthProviderClientSecret,
       publicBaseUrl: config.mcp.publicBaseUrl,
       guildId: workspaceId,
+      adminRoleIds: config.adminRoleIds,
     }),
     format: discordFormat,
     fetchBytes: defaultFetchBytes,
