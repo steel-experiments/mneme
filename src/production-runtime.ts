@@ -129,6 +129,14 @@ import {
 } from './historical/campaign.js';
 import { messageLink } from './platform/links.js';
 
+
+/** The DM sent to the admin who asked for a backup (Section 31). */
+export function backupCompletedNotice(platformId: ChatPlatform['id'], file: string, bytes: number): string {
+  const where = platformId === 'slack' ? 'a Slack channel' : 'the Discord server';
+  return `Mneme backup completed: ${file} (${bytes} bytes), integrity_check: ok.\n\n`
+    + `Mneme doesn't answer questions in DMs. Ask me in ${where} by mentioning @Mneme in a channel I can access.`;
+}
+
 export { DIRECT_ANSWER_MODEL_SLOT_WAIT_MS } from './agent/model-admission.js';
 
 /** Short allowance for prompt setup and durable outcome bookkeeping around a model call. */
@@ -1682,7 +1690,7 @@ export async function createProductionJobRuntime(
     notifyCompleted: async ({ requesterUserId, file, bytes }) => {
       await platform.sendDirect(
         requesterUserId,
-        `Mneme backup completed: ${file} (${bytes} bytes), integrity_check: ok.\n\nMneme doesn't answer questions in DMs. Ask me in the Discord server by mentioning @Mneme in a channel I can access.`,
+        backupCompletedNotice(platform.id, file, bytes),
       );
     },
   }));
