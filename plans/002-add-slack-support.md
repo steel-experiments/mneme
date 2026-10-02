@@ -124,6 +124,8 @@ this file.
    stored thread rows whose parent is present, and discovery runs with the
    `close` missing-thread mode, not `quarantine`
    (`src/discord/discovery.ts:406-458`).
+   Exclusion is permanent: unshare does not reopen a channel, because its
+   history contains another organization's messages.
 10. **Admins on Slack.** Slack has no roles. `MNEME_ADMIN_USER_IDS` lists Slack
     user ids. The adapter resolves an actor to `{ userId, isAdmin }`. The core
     authorizes from that result and fails closed when the result is missing.
