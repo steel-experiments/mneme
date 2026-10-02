@@ -2,6 +2,7 @@
 // ABOUTME: The envelope is acknowledged first; team, channel, signature, and admin are checked before any change.
 import type { DatabaseSync } from '../../db/database.js';
 import { recordAdminEvent } from '../../db/repositories/admin-events.js';
+import { getChannel } from '../../db/repositories/channels.js';
 import {
   applyChannelPolicyReviewDecision,
   CHANNEL_POLICY_REVIEW_LABELS,
@@ -72,6 +73,10 @@ export async function handleSlackAction(deps: SlackActionDeps, envelope: SlackEn
   if (teamId !== deps.workspaceId) return refuse('foreign_team', 'This review control does not belong to this workspace.');
   if (!deps.reviewChannelId || channelId !== deps.reviewChannelId) {
     return refuse('foreign_channel', 'This control is not in Mneme’s secure review channel.');
+  }
+  // A review channel that was shared with another organization accepts no click.
+  if (getChannel(deps.db, channelId)?.platform_boundary === 'excluded') {
+    return refuse('shared_channel', 'This review channel is shared with another organization; its controls are off.');
   }
 
   // Slack has no roles: the actor's own user id stands in for its roles, and the

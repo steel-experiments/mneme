@@ -4,6 +4,7 @@ import { getChannel } from '../../db/repositories/channels.js';
 import { runMnemeCommand, type CommandRouteDeps } from '../../commands/dispatcher.js';
 import { MNEME_SUBCOMMAND_GROUPS, MNEME_SUBCOMMANDS } from '../../commands/spec.js';
 import type { Logger } from '../../logger.js';
+import type { SlackObject } from './api.js';
 import type { SlackEnvelope } from './connection.js';
 import { parseSlackCommand, slackOptionsReader } from './command-parser.js';
 import type { SlackRespond } from './respond.js';
@@ -17,11 +18,44 @@ export interface SlackCommandDeps {
   adminUserIds: readonly string[];
   respond: SlackRespond;
   logger: Pick<Logger, 'warn'>;
+  /** `conversations.info`, for a channel that Mneme has not stored. */
+  conversationInfo: (channel: string) => Promise<SlackObject | null>;
+  /** How long the channel lookup may take before the command is refused. */
+  conversationInfoTimeoutMs?: number;
 }
+
+/** The default bound on the channel lookup for an unknown channel. */
+const CONVERSATION_INFO_TIMEOUT_MS = 5_000;
+
+const SHARED_REFUSAL = 'Use /mneme in a channel that is not shared with another organization.';
 
 export type SlackCommandOutcome = 'ignored' | 'refused' | 'help' | 'handled' | 'failed';
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+
+/**
+ * True when the command may run in `channelId`. A stored channel is checked
+ * against its boundary. A channel that Mneme has not stored is looked up; it
+ * may run only when the lookup answers in time and shows a channel that is
+ * not shared and not waiting to be shared. Every other result refuses.
+ */
+async function channelAllowsCommands(deps: SlackCommandDeps, channelId: string): Promise<boolean> {
+  const stored = getChannel(deps.routes.ctx.db, channelId);
+  if (stored) return stored.platform_boundary !== 'excluded';
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<'timeout'>((resolve) => {
+    timer = setTimeout(() => resolve('timeout'), deps.conversationInfoTimeoutMs ?? CONVERSATION_INFO_TIMEOUT_MS);
+  });
+  try {
+    const info = await Promise.race([deps.conversationInfo(channelId), timeout]);
+    if (info === 'timeout' || info === null) return false;
+    return info.is_ext_shared !== true && info.is_pending_ext_shared !== true;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 function isDirectConversation(channelId: string, channelName: string): boolean {
   return channelId.startsWith('D') || channelName === 'directmessage' || channelName.startsWith('mpdm-');
@@ -49,9 +83,10 @@ export async function handleSlackCommand(deps: SlackCommandDeps, envelope: Slack
   }
   const actorUserId = str(body.user_id);
   try {
-    // A channel shared with another organization never handles Mneme admin commands.
-    if (getChannel(deps.routes.ctx.db, channelId)?.platform_boundary === 'excluded') {
-      await reply('Use /mneme in a channel that is not shared with another organization.');
+    // A channel shared with another organization never handles Mneme admin
+    // commands. An unknown channel that cannot be checked is refused too.
+    if (!(await channelAllowsCommands(deps, channelId))) {
+      await reply(SHARED_REFUSAL);
       return 'refused';
     }
     // Slack has no roles: the actor's own user id stands in for its roles.
