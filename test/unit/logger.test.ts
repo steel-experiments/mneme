@@ -68,6 +68,13 @@ describe('logger', () => {
     }
   });
 
+  it('redacts the OAuth provider secret in a full config dump', () => {
+    const { chunks, stream } = capture();
+    const log = createLogger({ stream, level: 'info' });
+    log.info({ event: 'config.loaded', config: { mcp: { oauthProviderClientSecret: 'leaked-provider-secret' } } }, 'event');
+    expect(chunks.join('')).not.toContain('leaked-provider-secret');
+  });
+
   it('redacts MCP OAuth provider secrets and access tokens', () => {
     const { chunks, stream } = capture();
     const log = createLogger({ stream, level: 'info' });
