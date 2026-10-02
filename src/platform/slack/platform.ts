@@ -1,5 +1,7 @@
 // ABOUTME: Composes the Slack adapter into one ChatPlatform (spec Sections 5.3 and 6.7).
 // ABOUTME: Read and write paths: ingestion, outbox delivery, review cards, the /mneme command, and DMs.
+import { createSlackFetchBytes } from './fetch-bytes.js';
+import { isSlackAttachmentId } from './ids.js';
 import { createHash } from 'node:crypto';
 import type { AppConfig } from '../../config.js';
 import type { DatabaseSync } from '../../db/database.js';
@@ -194,5 +196,7 @@ export function createSlackPlatform(
 
     oauthIdentity: { identify: async () => ({ ok: false, reason: 'membership_unavailable' }) },
     format: slackFormat,
+    fetchBytes: createSlackFetchBytes(slack.botToken),
+    isValidAttachmentId: (id) => isSlackAttachmentId(id),
   };
 }

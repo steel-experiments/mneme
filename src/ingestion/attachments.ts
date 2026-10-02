@@ -3,7 +3,6 @@ import { mkdirSync, writeFileSync, realpathSync } from 'node:fs';
 import { dirname, extname, join, normalize, resolve, sep } from 'node:path';
 import type { AttachmentMode } from '../config.js';
 import type { NormalizedAttachment } from '../platform/types.js';
-import { isPlatformId } from '../platform/ids.js';
 
 /**
  * Safe attachment metadata and archive handling (Section 9.10, 43.5, 44).
@@ -15,8 +14,9 @@ import { isPlatformId } from '../platform/ids.js';
  *      holding a transaction). The caller records the outcome afterwards.
  *
  * Filesystem safety rests on three guarantees:
- *   - The on-disk path is derived from the validated attachment snowflake id,
- *     never from the user-supplied filename, so path traversal is impossible.
+ *   - The on-disk path is derived from the attachment id that the platform
+ *     validator accepts, never from the user-supplied filename, so path
+ *     traversal is impossible. A character check backs up the validator.
  *   - The filename's extension is sanitized to a short alphanumeric token.
  *   - A containment check rejects any path that escapes the attachments dir.
  */
@@ -30,15 +30,30 @@ export interface AttachmentArchiveConfig {
   dataDir: string;
 }
 
+/** The archive config plus the platform rule for attachment ids, for the download path. */
+export interface AttachmentDownloadConfig extends AttachmentArchiveConfig {
+  /** The platform attachment id rule (Discord snowflake, Slack `<message>-<file>`). */
+  isValidAttachmentId: (id: string) => boolean;
+}
+
 /** Fetch the raw bytes for a URL. Injectable so tests never hit the network. */
 export type FetchBytes = (url: string, maxBytes?: number) => Promise<Uint8Array>;
 
-/** Default fetcher: stream the response body into a single buffer. */
+/** Default fetcher (Discord): no credential; stream the response body into a single buffer. */
 export const defaultFetchBytes: FetchBytes = async (url, maxBytes) => {
   const res = await fetch(url);
   if (!res.ok || res.body === null) {
     throw new Error(`attachment fetch failed: ${res.status} ${url}`);
   }
+  return readLimitedBody(res, maxBytes);
+};
+
+/**
+ * Read a successful response body into one buffer. Enforces `maxBytes` from
+ * the declared `content-length` and again while the body streams.
+ */
+export async function readLimitedBody(res: Response, maxBytes?: number): Promise<Uint8Array> {
+  if (res.body === null) throw new Error('attachment response has no body');
   const declared = Number(res.headers.get('content-length'));
   if (maxBytes !== undefined && Number.isFinite(declared) && declared > maxBytes) {
     throw new Error('attachment response exceeds configured byte limit');
@@ -60,7 +75,7 @@ export const defaultFetchBytes: FetchBytes = async (url, maxBytes) => {
     offset += c.length;
   }
   return out;
-};
+}
 
 /**
  * Extensions that must never be archived or handed to tools, regardless of the
@@ -157,18 +172,22 @@ export interface ResolvedArchivePath {
   path: string;
 }
 
+/** Characters that every archive file name may contain, whatever the platform rule says. */
+const SAFE_ARCHIVE_ID = /^[A-Za-z0-9.-]+$/;
+
 /**
  * Build a traversal-safe archive path from the validated attachment id and a
- * sanitized extension. Throws if the id is not a snowflake or the resolved path
- * escapes the attachments directory.
+ * sanitized extension. Throws if the platform rule or the character check
+ * rejects the id, or if the resolved path escapes the attachments directory.
  */
 export function resolveArchivePath(
-  cfg: AttachmentArchiveConfig,
+  cfg: AttachmentDownloadConfig,
   attachmentId: string,
   filename: string,
 ): ResolvedArchivePath {
-  if (!isPlatformId(attachmentId)) {
-    throw new Error(`attachment id is not a snowflake: ${attachmentId}`);
+  const safe = SAFE_ARCHIVE_ID.test(attachmentId) && !attachmentId.startsWith('.') && !attachmentId.includes('..');
+  if (!safe || !cfg.isValidAttachmentId(attachmentId)) {
+    throw new Error(`attachment id is not valid for this platform: ${attachmentId}`);
   }
   const dir = resolve(join(cfg.dataDir, 'attachments'));
   const base = `${attachmentId}${safeExtension(filename)}`;
@@ -197,7 +216,7 @@ export interface ArchiveOutcome {
  */
 export async function archiveAttachment(
   attachment: NormalizedAttachment,
-  cfg: AttachmentArchiveConfig,
+  cfg: AttachmentDownloadConfig,
   fetcher: FetchBytes = defaultFetchBytes,
 ): Promise<ArchiveOutcome> {
   const eligibility = checkArchiveEligibility(attachment, cfg);

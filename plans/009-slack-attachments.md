@@ -350,3 +350,33 @@ Stop and report back without improvising if:
   and is a separate plan.
 - If Slack moves files to a new host, update the host list and the spike
   section together.
+
+## Spike results
+
+Not run when the plan was implemented (2026-10-02). The spike app from plan 006
+was deleted, and the plan forbids a production workspace. The fetcher uses the
+documented hosts: `url_private` and `url_private_download` are on
+`files.slack.com`, the token goes only to that host, and redirects stay on
+`https` Slack hosts (`*.slack.com`, `*.slack-edge.com`) without the token.
+Confirm the four items during the live review-mode test (plan 007, step 10):
+
+1. The host of `url_private` and of `url_private_download`.
+2. The status, `content-type`, and redirect host for a GET with the token and
+   `redirect: 'manual'`.
+3. The response with no `Authorization` header.
+4. The response with a token that does not have `files:read`.
+
+If Slack serves a file from a host that the fetcher refuses, the download fails
+closed with `redirect to a host that is not allowed`. Update the host list and
+this section together.
+
+## Implementation notes
+
+- Plan 005 did not add `ChatPlatform.fetchBytes` or an attachment id kind. This
+  plan adds `fetchBytes` and `isValidAttachmentId(id)` to `ChatPlatform`.
+- The validator is part of `AttachmentDownloadConfig`, which extends the
+  eligibility config. Only the download path needs it, so the ingest paths keep
+  `AttachmentArchiveConfig`.
+- The archive job checks the channel's ingestion eligibility before it
+  downloads, on both platforms. A Discord job for a channel that was excluded
+  after the job was queued now keeps metadata only.

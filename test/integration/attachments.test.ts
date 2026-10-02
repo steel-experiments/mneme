@@ -15,7 +15,7 @@ import {
   safeExtension,
   resolveArchivePath,
   archiveAttachment,
-  type AttachmentArchiveConfig,
+  type AttachmentDownloadConfig,
   type FetchBytes,
 } from '../../src/ingestion/attachments.js';
 import {
@@ -29,12 +29,18 @@ import { JobWorker } from '../../src/jobs/worker.js';
 
 const NOW = 1_700_000_001_000;
 
-function cfg(dataDir: string, over: Partial<AttachmentArchiveConfig> = {}): AttachmentArchiveConfig {
+/** A Discord-like attachment id rule: a snowflake. */
+const DISCORD_ATTACHMENT_ID = (id: string): boolean => /^\d{17,20}$/.test(id);
+/** A Slack-like attachment id rule: `<channel>-<ts>-<file>`. */
+const SLACK_ATTACHMENT_ID = (id: string): boolean => /^[CG][A-Z0-9]{8,}-\d{10}\.\d{6}-F[A-Z0-9]{8,}$/.test(id);
+
+function cfg(dataDir: string, over: Partial<AttachmentDownloadConfig> = {}): AttachmentDownloadConfig {
   return {
     mode: 'archive',
     maxBytes: 1_048_576,
     mimeAllowlist: ['text/plain', 'text/markdown', 'application/json', 'text/csv', 'application/pdf'],
     dataDir,
+    isValidAttachmentId: DISCORD_ATTACHMENT_ID,
     ...over,
   };
 }
@@ -152,9 +158,20 @@ describe('resolveArchivePath — traversal safety', () => {
     expect(path.startsWith(join('/app/data', 'attachments'))).toBe(true);
   });
 
-  it('throws on a non-snowflake attachment id', () => {
-    expect(() => resolveArchivePath(c, 'not-an-id', 'plan.txt')).toThrow(/snowflake/);
-    expect(() => resolveArchivePath(c, '../escape', 'plan.txt')).toThrow(/snowflake/);
+  it('throws on an attachment id that the platform rejects', () => {
+    expect(() => resolveArchivePath(c, 'not-an-id', 'plan.txt')).toThrow(/not valid for this platform/);
+    expect(() => resolveArchivePath(c, '../escape', 'plan.txt')).toThrow(/not valid for this platform/);
+  });
+
+  it('builds a path from a Slack attachment id', () => {
+    const slack = cfg('/app/data', { isValidAttachmentId: SLACK_ATTACHMENT_ID });
+    const { dir, path } = resolveArchivePath(slack, 'C0123ABCD-1712345678.000100-F0123ABCD', 'plan.txt');
+    expect(path).toBe(join(dir, 'C0123ABCD-1712345678.000100-F0123ABCD.txt'));
+  });
+
+  it.each(['..', '.hidden', 'a/b', 'a\\b', 'a..b'])('rejects %s even when the platform rule accepts it', (id) => {
+    const permissive = cfg('/app/data', { isValidAttachmentId: () => true });
+    expect(() => resolveArchivePath(permissive, id, 'plan.txt')).toThrow(/not valid for this platform/);
   });
 });
 
@@ -293,6 +310,39 @@ describe('attachment repository round-trip', () => {
       expect(stored.archive_status).toBe('stored');
       expect(stored.sha256).toBe(createHash('sha256').update(TEXT).digest('hex'));
       expect(existsSync(stored.local_path!)).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    ['excluded', "UPDATE channels SET visibility_class = 'excluded'"],
+    ['no longer ingested', 'UPDATE channels SET ingest_enabled = 0'],
+    ['renamed into a test surface', "UPDATE channels SET name = 'mneme-test'"],
+  ])('does not download when the channel was %s after the job was queued', async (_label, sql) => {
+    const dir = makeTempDir();
+    try {
+      const a = attachment();
+      const msg = normalizeMessage(rawMessage({ attachments: [{
+        id: a.id, filename: a.filename, content_type: a.mimeType, size: a.sizeBytes,
+        width: null, height: null, url: a.sourceUrl, proxy_url: a.proxyUrl,
+      }] }));
+      ingestMessageCreate(db, msg, opts({ attachmentMode: 'archive', attachmentArchive: cfg(dir) }));
+      expect(getAttachment(db, a.id)?.archive_status).toBe('queued');
+      db.exec(sql);
+
+      let fetches = 0;
+      const counting: FetchBytes = async () => { fetches += 1; return TEXT; };
+      const worker = new JobWorker({ db, owner: 'archive-test', leaseMs: 60_000, pollIntervalMs: 5,
+        shutdownTimeoutMs: 1_000, clock: () => NOW });
+      worker.register('archive_attachment', 1, createArchiveAttachmentHandler({ db, config: cfg(dir),
+        now: () => NOW, fetcher: counting }));
+      await worker.runOnce();
+
+      expect(fetches).toBe(0);
+      const row = getAttachment(db, a.id)!;
+      expect(row.archive_status).toBe('metadata');
+      expect(row.local_path).toBeNull();
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

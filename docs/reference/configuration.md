@@ -157,6 +157,10 @@ current target and exact question reply anchor pass a separate outbound safety c
 Downloads enforce both the declared content length and the streamed byte count.
 `metadata` stores attachment metadata without file bytes.
 
+On Slack, `archive` and `selective` need the `files:read` bot scope. Mneme
+sends the bot token only to `files.slack.com`. Files from external services,
+such as a linked document, keep metadata only.
+
 `FULL_HISTORY` has no default. Mneme exits before connecting when it is
 unset or blank, and names the explicit choice: `true` imports all reachable
 history for the selected channels; `false` starts with new messages onward.

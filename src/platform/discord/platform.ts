@@ -1,5 +1,7 @@
 // ABOUTME: Composes the Discord adapter pieces into one ChatPlatform (spec Section 5.3).
 // ABOUTME: Only this module creates the discord.js client and hands it to the other Discord parts.
+import { defaultFetchBytes } from '../../ingestion/attachments.js';
+import { isDiscordId } from '../ids.js';
 import { createHash } from 'node:crypto';
 import { Events, type Client } from 'discord.js';
 import type { AppConfig } from '../../config.js';
@@ -187,5 +189,7 @@ export function createDiscordPlatform(config: AppConfig, logger: Logger, clock: 
       guildId: workspaceId,
     }),
     format: discordFormat,
+    fetchBytes: defaultFetchBytes,
+    isValidAttachmentId: (id) => isDiscordId(id),
   };
 }
