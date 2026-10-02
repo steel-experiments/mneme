@@ -271,6 +271,13 @@ describe('PeriodicScheduler — resuming from the last recorded run', () => {
 });
 
 describe('buildSchedules — config-driven specs', () => {
+  it('runs discovery at the platform rediscovery interval when the platform sets one', () => {
+    const cfg = loadConfig({ env: env({ THREAD_DISCOVERY_INTERVAL_MINUTES: '20' }) });
+    const { fn } = makeEnqueue();
+    const specs = buildSchedules(cfg, { enqueue: fn, channelIds: () => [], channelDiscoveryIntervalMs: 15 * MINUTE });
+    expect(specs.find((s) => s.name === 'discover-threads')?.intervalMs).toBe(15 * MINUTE);
+  });
+
   it('builds specs with config-backed intervals and stable unique keys', () => {
     const cfg = loadConfig({
       env: env({

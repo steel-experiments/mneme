@@ -70,7 +70,7 @@ import { createForgetUserHandler } from './jobs/handlers/forget-user.js';
 import { createExecuteDeletionHandler } from './jobs/handlers/execute-deletion.js';
 import { createArchiveAttachmentHandler } from './jobs/handlers/archive-attachment.js';
 import { createPurgeAttachmentFileHandler } from './jobs/handlers/purge-attachment-file.js';
-import { runStartupSync } from './ingestion/sync.js';
+import { runPlatformDiscovery } from './ingestion/sync.js';
 import { isMnemeTestSurface } from './ingestion/test-channels.js';
 import { PeriodicScheduler, buildSchedules, nodeTimerDriver } from './jobs/scheduler.js';
 import { isPaused } from './runtime-state.js';
@@ -1720,15 +1720,8 @@ export async function createProductionJobRuntime(
   worker.register('execute_deletion', 1, createExecuteDeletionHandler({ db: ctx.db, guildId: ctx.config.workspaceId,
     deletionApproverUserIds: ctx.config.deletionApproverUserIds, now: ctx.now }));
   worker.register('discover_threads', ctx.config.ingestion.backfillConcurrency, async () => {
-    if (platform.threadDiscovery.mode === 'complete_snapshot') {
-      ctx.logger.debug({ event: 'thread_discovery.skipped' }, 'thread discovery job skipped: the platform lists every thread at startup');
-      return;
-    }
-    const descriptors = await platform.listChannels();
-    await runStartupSync({ db: ctx.db, guildId: ctx.config.workspaceId, policy: snapshot().channelPolicy, now: ctx.now(),
-      channelPolicySource: ctx.config.channelPolicySource,
-      channels: descriptors, archiveSource: platform.threadDiscovery.archive,
-      canManageThreads: descriptors.some((d) => d.capabilities?.canManageThreads === true),
+    await runPlatformDiscovery({ db: ctx.db, guildId: ctx.config.workspaceId, policy: snapshot().channelPolicy,
+      channelPolicySource: ctx.config.channelPolicySource, now: ctx.now(), platform,
       enqueueHistoricalBackfill: ctx.config.ingestion.fullHistory, logger: ctx.logger });
   });
 
@@ -1771,6 +1764,8 @@ export async function createProductionJobRuntime(
     enqueue: (input) => enqueue(ctx.db, input),
     channelIds: () => scheduledIngestionChannelIds(ctx.db),
     lastRunMs: (key, match) => lastScheduledRunMs(ctx.db, key, match),
+    channelDiscoveryIntervalMs: platform.threadDiscovery.mode === 'complete_snapshot'
+      ? platform.threadDiscovery.rediscoveryIntervalMs : undefined,
   }));
   if (ctx.config.historicalMemory.enabled) {
     enqueue(ctx.db, {

@@ -2,6 +2,7 @@
 // ABOUTME: Slack starts only in observe mode with direct answers off; a foreign team token stops startup.
 import { describe, it, expect } from 'vitest';
 import { createSlackPlatform, SlackWritePathUnavailableError } from '../../../src/platform/slack/platform.js';
+import { SLACK_REDISCOVERY_INTERVAL_MS } from '../../../src/platform/slack/discovery.js';
 import { createLogger } from '../../../src/logger.js';
 import { createTestDb } from '../../helpers/db.js';
 import { fakeSlackApi, slackTestConfig } from '../../helpers/slack.js';
@@ -44,7 +45,8 @@ describe('Slack platform', () => {
       expect(messageLink('T0000000001', 'C0000000001', 'C0000000001-1790933741.610379'))
         .toBe('https://acme.slack.com/archives/C0000000001/p1790933741610379');
       await expect(platform.sender.send({ channelId: 'C0000000001', content: 'x' })).rejects.toBeInstanceOf(SlackWritePathUnavailableError);
-      expect(platform.threadDiscovery.mode).toBe('complete_snapshot');
+      expect(platform.threadDiscovery).toEqual({ mode: 'complete_snapshot', rediscoveryIntervalMs: SLACK_REDISCOVERY_INTERVAL_MS });
+      expect(SLACK_REDISCOVERY_INTERVAL_MS).toBe(15 * 60_000);
       await connection.destroy();
     } finally {
       useMessageLinkBuilder(discordMessageLink);

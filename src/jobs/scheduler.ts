@@ -180,6 +180,11 @@ export interface ScheduleDeps {
    * schedule starts one interval out.
    */
   lastRunMs?: (key: string, match: 'exact' | 'prefix') => number | null;
+  /**
+   * The platform's full rediscovery interval. When set, the discovery schedule
+   * runs at this interval instead of the thread-discovery interval (Slack).
+   */
+  channelDiscoveryIntervalMs?: number;
 }
 
 /**
@@ -211,7 +216,7 @@ export function buildSchedules(config: AppConfig, deps: ScheduleDeps): ScheduleS
   // Thread discovery (Section 9.7): discover active/archived threads periodically.
   specs.push({
     name: 'discover-threads',
-    intervalMs: config.ingestion.threadDiscoveryIntervalMinutes * MINUTE_MS,
+    intervalMs: deps.channelDiscoveryIntervalMs ?? config.ingestion.threadDiscoveryIntervalMinutes * MINUTE_MS,
     lastRunMs: deps.lastRunMs?.(DISCOVER_THREADS_KEY, 'exact') ?? null,
     run: (now) => {
       deps.enqueue({ type: 'discover_threads', payload: {}, uniqueKey: DISCOVER_THREADS_KEY, now });

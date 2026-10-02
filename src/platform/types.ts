@@ -208,8 +208,12 @@ export interface PlatformConnection {
 export type ThreadDiscoveryMode =
   /** `listChannels` gives active threads only; the core pages the archive (Discord). */
   | { mode: 'archive_scan'; archive: ThreadArchiveSource }
-  /** `listChannels` gives every known thread; discovery closes any thread it omits. */
-  | { mode: 'complete_snapshot' };
+  /**
+   * `listChannels` gives every known thread; discovery closes any thread it omits.
+   * The core repeats the full discovery at `rediscoveryIntervalMs`, so a boundary
+   * change that arrives without an event is still applied (Slack).
+   */
+  | { mode: 'complete_snapshot'; rediscoveryIntervalMs: number };
 
 export interface ProposalReviewDeliveryDeps {
   db: DatabaseSync;
