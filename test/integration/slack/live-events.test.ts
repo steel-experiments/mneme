@@ -159,6 +159,18 @@ describe('Slack live events', () => {
     expect(getChannel(db, `${PUBLIC}-T1790933759.217369`)).toMatchObject({ platform_boundary: 'excluded', ingest_enabled: 0 });
   });
 
+  it('keeps a channel excluded after channel_unshared', async () => {
+    const { db, api, live, feed } = await setup();
+    await feed('11', '12');
+    api.conversations.set(PUBLIC, conversation(PUBLIC, { is_ext_shared: true }));
+    await handleSlackEnvelope(live, { type: 'events_api', body: { team_id: TEAM, event: { type: 'channel_shared', channel: PUBLIC } } });
+    api.conversations.set(PUBLIC, conversation(PUBLIC));
+    await handleSlackEnvelope(live, { type: 'events_api', body: { team_id: TEAM, event: { type: 'channel_unshared', channel: PUBLIC } } });
+    expect(getChannel(db, PUBLIC)).toMatchObject({ platform_boundary: 'excluded', ingest_enabled: 0, visibility_class: 'excluded' });
+    expect(getChannel(db, `${PUBLIC}-T1790933759.217369`)).toMatchObject({ platform_boundary: 'excluded', ingest_enabled: 0 });
+    expect((await handleSlackEnvelope(live, fixture('16'))).reason).toBe('policy');
+  });
+
   it('drops content flagged as coming from a shared channel', async () => {
     const { db, api, live } = await setup();
     api.conversations.set(PUBLIC, conversation(PUBLIC, { is_ext_shared: true }));

@@ -100,11 +100,33 @@ describe('platform boundary policy source', () => {
     expect(reconcileStoredChannelPolicyReview(control, policy(), SHARED, NOW).enqueued).toBe(true);
   });
 
-  it('keeps the stored boundary when an upsert omits it, and clears it on null', () => {
+  it('keeps the stored boundary when an upsert omits it or sends null', () => {
     const db = setup('excluded');
     upsertChannel(db, channelInput({ name: 'renamed' }));
     expect(getChannel(db, SHARED)?.platform_boundary).toBe('excluded');
     upsertChannel(db, channelInput({ platformBoundary: null }));
-    expect(getChannel(db, SHARED)?.platform_boundary).toBeNull();
+    expect(getChannel(db, SHARED)?.platform_boundary).toBe('excluded');
+  });
+
+  it('sets a boundary on a channel that had none', () => {
+    const db = setup(null);
+    upsertChannel(db, channelInput({ platformBoundary: 'excluded' }));
+    expect(getChannel(db, SHARED)?.platform_boundary).toBe('excluded');
+  });
+
+  it('rejects a direct update that clears the boundary', () => {
+    const db = setup('excluded');
+    expect(() => db.prepare('UPDATE channels SET platform_boundary = NULL WHERE id = ?').run(SHARED))
+      .toThrow(/platform boundary is permanent/);
+    expect(getChannel(db, SHARED)?.platform_boundary).toBe('excluded');
+  });
+
+  it('keeps the stored boundary when the platform now reports the channel as not shared', () => {
+    const db = setup('excluded');
+    const result = resolveObservedChannelPolicy(db, policy(`  "${SHARED}": { ingest: true, visibility: org, allow_interventions: true }`), {
+      id: SHARED, guildId: TEAM, parentId: null, isThread: false, kind: 'text', platformBoundary: null,
+    });
+    expect(result.source).toBe('platform_boundary');
+    expect(result.rule.visibility).toBe('excluded');
   });
 });

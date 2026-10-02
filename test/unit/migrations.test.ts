@@ -33,7 +33,7 @@ describe('migrations runner', () => {
   it('applies all migrations on first run', () => {
     const t = createTestDb();
     const applied = listAppliedMigrations(t.db);
-    expect(applied.map((m) => m.version)).toEqual(Array.from({ length: 43 }, (_, i) => i + 1));
+    expect(applied.map((m) => m.version)).toEqual(Array.from({ length: 44 }, (_, i) => i + 1));
     t.cleanup();
   });
 
@@ -41,7 +41,7 @@ describe('migrations runner', () => {
     const t = createTestDb();
     const result = applyMigrations(t.db, copyMigrationsToTemp());
     expect(result.applied).toHaveLength(0);
-    expect(listAppliedMigrations(t.db).map((m) => m.version)).toEqual(Array.from({ length: 43 }, (_, i) => i + 1));
+    expect(listAppliedMigrations(t.db).map((m) => m.version)).toEqual(Array.from({ length: 44 }, (_, i) => i + 1));
     t.cleanup();
   });
 
@@ -86,6 +86,7 @@ describe('migrations runner', () => {
       '041_platform_neutral_names.sql',
       '042_channel_kind.sql',
       '043_channel_platform_boundary.sql',
+      '044_permanent_platform_boundary.sql',
     ]) rmSync(`${oldDir}/${name}`);
     const dbPath = `${oldDir}/upgrade.sqlite`;
     const db = openDatabase(dbPath);
@@ -97,7 +98,7 @@ describe('migrations runner', () => {
     db.prepare("INSERT INTO proposals (id,run_id,target_channel_id,status,computed_score,reason,evidence_message_ids_json,created_at_ms,updated_at_ms) VALUES ('proposal-upgrade','run-upgrade','c-upgrade','observed',0,'legacy','[]',1,1)").run();
 
     applyMigrations(db, copyMigrationsToTemp());
-    expect(listAppliedMigrations(db).map((m) => m.version)).toEqual(Array.from({ length: 43 }, (_, i) => i + 1));
+    expect(listAppliedMigrations(db).map((m) => m.version)).toEqual(Array.from({ length: 44 }, (_, i) => i + 1));
     expect(db.prepare("SELECT name FROM sqlite_master WHERE name='message_tombstones'").get()).toBeDefined();
     expect(db.prepare("SELECT name FROM sqlite_master WHERE name='attachment_file_purges'").get()).toBeDefined();
     const syncColumns = db.prepare('PRAGMA table_info(sync_cursors)').all() as Array<{ name: string }>;
@@ -288,6 +289,7 @@ describe('migrations runner', () => {
     rmSync(`${oldDir}/041_platform_neutral_names.sql`);
     rmSync(`${oldDir}/042_channel_kind.sql`);
     rmSync(`${oldDir}/043_channel_platform_boundary.sql`);
+    rmSync(`${oldDir}/044_permanent_platform_boundary.sql`);
     const db = openDatabase(`${oldDir}/deadline-upgrade.sqlite`);
     try {
       applyMigrations(db, oldDir);
@@ -324,7 +326,7 @@ describe('migrations runner', () => {
         (revision_id,proposal_id,consumed_at_ms,eligible_from_ms,eligible_until_ms)
         VALUES ('cleared',NULL,31,30,40)`).run();
 
-      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([39, 40, 41, 42, 43]);
+      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([39, 40, 41, 42, 43, 44]);
       expect(getDeadlineDecision(db, 'set-subject')).toEqual({
         subjectId: 'set-subject', sourceMessageId: 'new', sourceCreatedAtMs: 20,
         sourceContentDigest: 'source-digest', quoteStart: 0, quoteEnd: 25,
@@ -382,6 +384,7 @@ describe('migrations runner', () => {
     rmSync(`${v18Dir}/041_platform_neutral_names.sql`);
     rmSync(`${v18Dir}/042_channel_kind.sql`);
     rmSync(`${v18Dir}/043_channel_platform_boundary.sql`);
+    rmSync(`${v18Dir}/044_permanent_platform_boundary.sql`);
     const db = openDatabase(`${v18Dir}/lineage-upgrade.sqlite`);
     applyMigrations(db, v18Dir);
     db.prepare("INSERT INTO guilds (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-lineage','G',1,1)").run();
@@ -452,6 +455,7 @@ describe('migrations runner', () => {
     rmSync(`${v19Dir}/041_platform_neutral_names.sql`);
     rmSync(`${v19Dir}/042_channel_kind.sql`);
     rmSync(`${v19Dir}/043_channel_platform_boundary.sql`);
+    rmSync(`${v19Dir}/044_permanent_platform_boundary.sql`);
     const db = openDatabase(`${v19Dir}/cost-upgrade.sqlite`);
     applyMigrations(db, v19Dir);
     db.prepare("INSERT INTO guilds (id,name,discovered_at_ms,updated_at_ms) VALUES ('g-cost','G',1,1)").run();
@@ -498,6 +502,7 @@ describe('migrations runner', () => {
     rmSync(`${oldDir}/041_platform_neutral_names.sql`);
     rmSync(`${oldDir}/042_channel_kind.sql`);
     rmSync(`${oldDir}/043_channel_platform_boundary.sql`);
+    rmSync(`${oldDir}/044_permanent_platform_boundary.sql`);
     const db = openDatabase(`${oldDir}/deletion-upgrade.sqlite`);
     try {
       applyMigrations(db, oldDir);
@@ -507,7 +512,7 @@ describe('migrations runner', () => {
       enqueue(db, { type: 'forget_user', payload: { userId }, now: 1 });
       claimNextJob(db, { type: 'forget_user', now: 1, owner: 'old-worker', leaseMs: 100 });
       enqueue(db, { type: 'forget_user', payload: { userId }, now: 1 });
-      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([40, 41, 42, 43]);
+      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([40, 41, 42, 43, 44]);
       expect(db.prepare("SELECT count(*) n FROM jobs WHERE type='forget_user' AND status='cancelled'").get()?.n).toBe(2);
       expect(db.prepare("SELECT content FROM messages WHERE id='m'").get()?.content).toBe('retained');
       expect(db.prepare("SELECT count(*) n FROM admin_events WHERE action='deletion_legacy_job_cancelled'").get()?.n).toBe(2);
@@ -525,6 +530,7 @@ describe('migrations runner', () => {
     rmSync(`${oldDir}/041_platform_neutral_names.sql`);
     rmSync(`${oldDir}/042_channel_kind.sql`);
     rmSync(`${oldDir}/043_channel_platform_boundary.sql`);
+    rmSync(`${oldDir}/044_permanent_platform_boundary.sql`);
     const db = openDatabase(`${oldDir}/workspace-rename.sqlite`);
     try {
       applyMigrations(db, oldDir);
@@ -557,7 +563,7 @@ describe('migrations runner', () => {
         db.prepare(sql).run(...params);
       }
 
-      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([41, 42, 43]);
+      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([41, 42, 43, 44]);
 
       const renamed = ['channels', 'workspace_members', 'messages', 'episodes', 'memories', 'agent_runs',
         'admin_events', 'message_tombstones', 'historical_memory_campaigns', 'direct_answer_requests',
@@ -601,6 +607,7 @@ describe('migrations runner', () => {
     const newDir = copyMigrationsToTemp();
     rmSync(`${oldDir}/042_channel_kind.sql`);
     rmSync(`${oldDir}/043_channel_platform_boundary.sql`);
+    rmSync(`${oldDir}/044_permanent_platform_boundary.sql`);
     const db = openDatabase(`${oldDir}/channel-kind.sqlite`);
     try {
       applyMigrations(db, oldDir);
@@ -614,7 +621,7 @@ describe('migrations runner', () => {
           VALUES (?,'g-kind',?,'restricted',1,1)`).run(`c-${type}`, Number(type));
       }
 
-      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([42, 43]);
+      expect(applyMigrations(db, newDir).applied.map((m) => m.version)).toEqual([42, 43, 44]);
 
       const columns = (db.prepare('PRAGMA table_info(channels)').all() as Array<{ name: string }>).map((c) => c.name);
       expect(columns).toContain('kind');
@@ -632,10 +639,10 @@ describe('migrations runner', () => {
 
   it('rolls back a failed migration while keeping prior ones', () => {
     const dir = copyMigrationsToTemp();
-    writeMigration(dir, '044_bad.sql', 'CREATE TABLE definitely valid syntax NOT;');
+    writeMigration(dir, '045_bad.sql', 'CREATE TABLE definitely valid syntax NOT;');
     const db = openDatabase(`${dir}/db.sqlite`);
     expect(() => applyMigrations(db, dir)).toThrow();
-    expect(listAppliedMigrations(db).map((m) => m.version)).toEqual(Array.from({ length: 43 }, (_, i) => i + 1));
+    expect(listAppliedMigrations(db).map((m) => m.version)).toEqual(Array.from({ length: 44 }, (_, i) => i + 1));
     db.close();
   });
 

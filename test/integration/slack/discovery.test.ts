@@ -84,6 +84,19 @@ describe('Slack discovery', () => {
     expect(getChannel(db, SHARED_THREAD)).toMatchObject({ ingest_enabled: 0, visibility_class: 'excluded' });
   });
 
+  it('keeps a channel excluded after it stops being shared', async () => {
+    const db = setup();
+    const api = fakeSlackApi();
+    api.conversations.set(SHARED, conversation(SHARED, { is_ext_shared: true }));
+    await discover(db, api);
+    storeThread(db, SHARED_THREAD, SHARED);
+    api.conversations.set(SHARED, conversation(SHARED));
+    const later = await discover(db, api, NOW + 1);
+    expect(later.discovery.excluded.find((c) => c.id === SHARED)?.policySource).toBe('platform_boundary');
+    expect(getChannel(db, SHARED)).toMatchObject({ ingest_enabled: 0, visibility_class: 'excluded', platform_boundary: 'excluded' });
+    expect(getChannel(db, SHARED_THREAD)).toMatchObject({ ingest_enabled: 0, visibility_class: 'excluded' });
+  });
+
   it('excludes a channel that becomes shared between two runs', async () => {
     const db = setup();
     const api = fakeSlackApi();

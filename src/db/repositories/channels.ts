@@ -36,7 +36,7 @@ export interface ChannelUpsertInput {
   /**
    * Platform boundary (plan 002 decision 9). 'excluded' marks a channel that no
    * policy may open, for example a Slack Connect channel. Omit it to keep the
-   * stored value; null clears it.
+   * stored value. An 'excluded' boundary is permanent: null never clears it.
    */
   platformBoundary?: 'excluded' | null;
 }
@@ -90,7 +90,8 @@ const UPSERT_SQL = `
     permission_fingerprint = excluded.permission_fingerprint,
     last_message_id = excluded.last_message_id,
     raw_json = excluded.raw_json,
-    platform_boundary = CASE WHEN @boundary_set = 1 THEN excluded.platform_boundary ELSE channels.platform_boundary END,
+    platform_boundary = CASE WHEN channels.platform_boundary = 'excluded' THEN 'excluded'
+      WHEN @boundary_set = 1 THEN excluded.platform_boundary ELSE channels.platform_boundary END,
     deleted_at_ms = NULL,
     updated_at_ms = excluded.updated_at_ms
   WHERE excluded.parent_id IS NOT channels.parent_id
@@ -107,7 +108,7 @@ const UPSERT_SQL = `
      OR excluded.permission_fingerprint IS NOT channels.permission_fingerprint
      OR excluded.last_message_id IS NOT channels.last_message_id
      OR excluded.raw_json IS NOT channels.raw_json
-     OR (@boundary_set = 1 AND excluded.platform_boundary IS NOT channels.platform_boundary)
+     OR (@boundary_set = 1 AND excluded.platform_boundary = 'excluded' AND channels.platform_boundary IS NULL)
      OR channels.deleted_at_ms IS NOT NULL
 `;
 
