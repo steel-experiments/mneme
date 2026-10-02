@@ -510,7 +510,7 @@ describe('scoped memory search', () => {
     ]);
   });
 
-  it('honors explicit thread visibility overrides and keeps the parent as restricted anchor', () => {
+  it('honors explicit thread visibility overrides and anchors a restricted thread below an org parent on itself', () => {
     const orgParent = 'override-org-parent';
     const restrictedThread = 'override-restricted-thread';
     const restrictedParent = 'override-restricted-parent';
@@ -527,7 +527,8 @@ describe('scoped memory search', () => {
       includeReviewOnly: false,
       channelIds: [orgParent],
     };
-    const restrictedId = createMemory(env.db, parentGrant, {
+    const threadGrant: RetrievalGrant = { ...parentGrant, channelIds: [restrictedThread] };
+    const restrictedId = createMemory(env.db, threadGrant, {
       guildId: GUILD,
       type: 'decision',
       statement: 'Keep the restricted thread override.',
@@ -538,9 +539,10 @@ describe('scoped memory search', () => {
     });
     expect(searchMemories(env.db, ORG_GRANT, { query: 'restricted override', now: NOW })).toEqual([]);
     expect(getMemoryDetails(env.db, ORG_GRANT, restrictedId)).toBeUndefined();
-    expect(getMemoryDetails(env.db, parentGrant, restrictedId)).toMatchObject({
+    expect(getMemoryDetails(env.db, parentGrant, restrictedId)).toBeUndefined();
+    expect(getMemoryDetails(env.db, threadGrant, restrictedId)).toMatchObject({
       scopeType: 'channel',
-      scopeKey: orgParent,
+      scopeKey: restrictedThread,
     });
 
     const orgId = createMemory(env.db, ORG_GRANT, {
@@ -555,7 +557,7 @@ describe('scoped memory search', () => {
     expect(idsOf(searchMemories(env.db, ORG_GRANT, { query: 'org override', now: NOW })).has(orgId)).toBe(true);
     expect(getMemoryDetails(env.db, ORG_GRANT, orgId)?.scopeType).toBe('org');
 
-    const mixedId = createMemory(env.db, parentGrant, {
+    const mixedId = createMemory(env.db, threadGrant, {
       guildId: GUILD,
       type: 'decision',
       statement: 'Mixed thread overrides stay restricted.',
@@ -570,9 +572,10 @@ describe('scoped memory search', () => {
       now: NOW,
     });
     expect(getMemoryDetails(env.db, ORG_GRANT, mixedId)).toBeUndefined();
-    expect(getMemoryDetails(env.db, parentGrant, mixedId)).toMatchObject({
+    expect(getMemoryDetails(env.db, parentGrant, mixedId)).toBeUndefined();
+    expect(getMemoryDetails(env.db, threadGrant, mixedId)).toMatchObject({
       scopeType: 'channel',
-      scopeKey: orgParent,
+      scopeKey: restrictedThread,
     });
   });
 

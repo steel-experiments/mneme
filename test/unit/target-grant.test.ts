@@ -116,10 +116,11 @@ describe('target-channel retrieval grants', () => {
     env.db
       .prepare("UPDATE channels SET visibility_class = 'org' WHERE id = ?")
       .run(restrictedRootId);
+    // Below an org root, the restricted thread anchors on itself (Section 7.2).
     expect(grantForDirectAnswerChannel(env.db, restrictedThreadId, reviewChannelId, accepted)).toEqual({
       includeOrgMessages: false, includeOrgMemories: true,
       includeReviewOnly: false,
-      channelIds: [restrictedRootId],
+      channelIds: [restrictedThreadId],
     });
     env.db
       .prepare("UPDATE channels SET visibility_class = 'org' WHERE id = ?")

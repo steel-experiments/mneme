@@ -73,6 +73,7 @@ import { createArchiveAttachmentHandler } from './jobs/handlers/archive-attachme
 import { createPurgeAttachmentFileHandler } from './jobs/handlers/purge-attachment-file.js';
 import { runPlatformDiscovery } from './ingestion/sync.js';
 import { isMnemeTestSurface } from './ingestion/test-channels.js';
+import { scopeAnchorId, scopeAnchorSql } from './policy/scope-anchor.js';
 import { PeriodicScheduler, buildSchedules, nodeTimerDriver } from './jobs/scheduler.js';
 import { isPaused } from './runtime-state.js';
 import { defaultModelLookup, resolveAgentModels } from './agent/model.js';
@@ -237,7 +238,8 @@ export function grantForTargetChannel(channel: {
   parent_id: string | null;
   visibility_class: string;
   deleted_at_ms: number | null;
-} | undefined): RetrievalGrant {
+  is_thread?: number;
+} | undefined, parentVisibility?: VisibilityClass): RetrievalGrant {
   if (!channel || channel.deleted_at_ms !== null) {
     return { includeOrgMessages: false, includeOrgMemories: false, includeReviewOnly: false, channelIds: [] };
   }
@@ -245,7 +247,11 @@ export function grantForTargetChannel(channel: {
     return { includeOrgMessages: true, includeOrgMemories: true, includeReviewOnly: false, channelIds: [] };
   }
   if (channel.visibility_class === 'restricted') {
-    return { includeOrgMessages: false, includeOrgMemories: true, includeReviewOnly: false, channelIds: [channel.parent_id ?? channel.id] };
+    // A thread shares its parent's restricted scope only when the parent is
+    // itself restricted (Section 7.2). Without the parent's class, the thread
+    // keeps its own, narrower anchor.
+    const anchor = scopeAnchorId({ id: channel.id, isThread: channel.is_thread === 1, parentId: channel.parent_id }, parentVisibility);
+    return { includeOrgMessages: false, includeOrgMemories: true, includeReviewOnly: false, channelIds: [anchor] };
   }
   // `review_only` is readable only through the separately verified, exact
   // configured secure-review channel path below.
@@ -258,14 +264,15 @@ export function grantForSecureReview(
   acceptedScopes: readonly VisibilityClass[] = [],
 ): RetrievalGrant {
   const rows = db.prepare(
-    "SELECT id, parent_id FROM channels WHERE visibility_class = 'restricted' AND ingest_enabled = 1 AND deleted_at_ms IS NULL",
-  ).all() as Array<{ id: string; parent_id: string | null }>;
+    `SELECT ${scopeAnchorSql('c')} AS anchor FROM channels c
+      WHERE c.visibility_class = 'restricted' AND c.ingest_enabled = 1 AND c.deleted_at_ms IS NULL`,
+  ).all() as Array<{ anchor: string }>;
   return {
     includeOrgMessages: acceptedScopes.includes('org'),
     includeOrgMemories: acceptedScopes.includes('org'),
     includeReviewOnly: acceptedScopes.includes('review_only'),
     channelIds: acceptedScopes.includes('restricted')
-      ? [...new Set(rows.map((r) => r.parent_id ?? r.id))]
+      ? [...new Set(rows.map((r) => r.anchor))]
       : [],
   };
 }
@@ -322,7 +329,7 @@ export function resolveScheduledWorkingScope(
     throw new PermanentJobError(`scheduled working target ${targetChannelId} is unavailable`);
   }
   return {
-    grant: grantForTargetChannel(channel),
+    grant: grantForTargetChannel(channel, channel.parent_id ? getChannel(db, channel.parent_id)?.visibility_class : undefined),
     reviewChannelId,
     targetChannelId,
     notificationsAllowed: true,

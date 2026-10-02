@@ -1,4 +1,5 @@
 import type { VisibilityClass } from '../db/repositories/channels.js';
+import { scopeAnchorId } from '../policy/scope-anchor.js';
 
 /**
  * Effective memory-scope computation (Section 7.2).
@@ -57,7 +58,7 @@ export function narrowestMemoryScope(
 
 export interface ScopeEvidenceChannel {
   channelId: string;
-  /** True when this evidence lives in a thread (scoped to its parent). */
+  /** True when this evidence lives in a thread (see {@link scopeAnchorId}). */
   isThread: boolean;
 }
 
@@ -83,17 +84,16 @@ export function computeEffectiveScope(
 
   for (const ev of evidence) {
     // A thread row already stores its fully resolved class, including an
-    // explicit override. Normalize only its restricted-scope anchor onto the
-    // parent (Section 7.2); replacing visibility with the parent's class would
-    // silently erase explicit thread policy.
-    let anchorId = ev.channelId;
+    // explicit override. Only its restricted-scope anchor may move onto the
+    // parent, and only when the parent is itself restricted (Section 7.2).
+    // Replacing visibility with the parent's class would silently erase
+    // explicit thread policy.
     const visibility = lookup.visibilityClass(ev.channelId);
-    if (ev.isThread) {
-      const parent = lookup.parentChannelId(ev.channelId);
-      if (parent !== null) {
-        anchorId = parent;
-      }
-    }
+    const parentId = ev.isThread ? lookup.parentChannelId(ev.channelId) : null;
+    const anchorId = scopeAnchorId(
+      { id: ev.channelId, isThread: ev.isThread, parentId },
+      parentId === null ? undefined : lookup.visibilityClass(parentId),
+    );
 
     switch (visibility) {
       case 'org':

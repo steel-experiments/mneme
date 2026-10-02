@@ -54,7 +54,7 @@ function contentOf(id: string): string {
 }
 
 function memoryIds(grant: RetrievalGrant, query: string): string[] {
-  return searchMemories(env.db, grant, { query, limit: 20 }).map((m) => m.memoryId);
+  return searchMemories(env.db, grant, { query, limit: 20, now: NOW }).map((m) => m.memoryId);
 }
 
 function messageIds(grant: RetrievalGrant, query: string): string[] {
@@ -62,7 +62,7 @@ function messageIds(grant: RetrievalGrant, query: string): string[] {
 }
 
 function mcpChannelGrant(channelId: string): RetrievalGrant {
-  const v = validateMcpTokenGrant(env.db, { name: 'probe', channelIds: [channelId] }, NOW);
+  const v = validateMcpTokenGrant(env.db, { name: 'probe', channelIds: [channelId], createdByUserId: ALICE }, NOW);
   if (!v.ok) throw new Error(`mcp grant invalid: ${JSON.stringify(v)}`);
   return mcpGrantToRetrievalGrant(v.grant);
 }
@@ -91,8 +91,16 @@ beforeEach(() => {
 afterEach(() => env.cleanup());
 
 describe('restricted thread A under org parent P: memory retrieval', () => {
-  it('stores the memory under the parent anchor (observed topology)', () => {
-    expect(getMemory(env.db, secretMemory)).toMatchObject({ scope_type: 'channel', scope_key: PARENT });
+  it('stores the memory under the thread\'s own anchor, not the org parent', () => {
+    expect(getMemory(env.db, secretMemory)).toMatchObject({ scope_type: 'channel', scope_key: THREAD_A });
+  });
+
+  it('fails closed for a memory stored under the org parent before the anchor rule', () => {
+    env.db.prepare("UPDATE memories SET scope_key = ? WHERE id = ?").run(PARENT, secretMemory);
+    expect(memoryIds(grantIn(THREAD_B), 'falcon')).not.toContain(secretMemory);
+    expect(memoryIds(mcpChannelGrant(THREAD_B), 'falcon')).not.toContain(secretMemory);
+    expect(memoryIds(grantIn(PARENT), 'falcon')).not.toContain(secretMemory);
+    expect(memoryIds(grantIn(THREAD_A), 'falcon')).not.toContain(secretMemory);
   });
 
   it('is served in A itself', () => {

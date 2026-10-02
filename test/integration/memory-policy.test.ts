@@ -418,7 +418,13 @@ describe('applyMemoryProposals — restricted citation anchors', () => {
       expect(fail.rejected[0]?.reason).toBe('evidence_out_of_scope');
       expect(getMemory(env.db, targetId)?.statement).toBe('Project launch timeline was reviewed.');
 
-      const pass = applyMemoryProposals(mixedDeps(fixture), [createProposal({
+      // A run that saw only THREAD (and the org parent) may cite THREAD. The
+      // sibling is a separate restricted scope (Section 7.2), so it is not exposed here.
+      const threadOnly = {
+        ...fixture,
+        exposedChannelIds: new Set([...fixture.exposedChannelIds].filter((id) => id !== SIBLING)),
+      };
+      const pass = applyMemoryProposals(mixedDeps(threadOnly), [createProposal({
         action,
         existingMemoryId: targetId,
         statement: 'Project launch credential is raven.',
@@ -426,7 +432,7 @@ describe('applyMemoryProposals — restricted citation anchors', () => {
       })]);
       expect(pass.applied).toHaveLength(1);
       const memoryId = pass.applied[0]!.memoryId!;
-      expect(getMemory(env.db, memoryId)).toMatchObject({ scope_type: 'channel', scope_key: PARENT });
+      expect(getMemory(env.db, memoryId)).toMatchObject({ scope_type: 'channel', scope_key: THREAD });
       expect(searchMemories(env.db, {
         includeOrgMessages: true,
         includeOrgMemories: true,
@@ -476,8 +482,29 @@ describe('applyMemoryProposals — restricted citation anchors', () => {
     expect(getMemory(env.db, targetId)?.statement).toBe('Project launch timeline was reviewed.');
   });
 
+  it('rejects a sibling restricted thread citation below an org parent', () => {
+    seedPolicyChannel(PARENT, 'org');
+    seedPolicyChannel(THREAD, 'restricted', { parentId: PARENT, isThread: true });
+    seedPolicyChannel(SIBLING, 'restricted', { parentId: PARENT, isThread: true });
+    seedMessage(THREAD_MESSAGE, THREAD, 'Project launch credential is raven.');
+    seedMessage('mixed-sibling-message', SIBLING, 'Project launch credential is raven.');
+    const grant = grantForSecureReview(env.db, ['org', 'restricted']);
+    const out = applyMemoryProposals({
+      db: env.db,
+      grant,
+      guildId: GUILD,
+      runId: 'run-1',
+      now: NOW + 1,
+      // The run saw both threads; citing only the sibling cannot cover THREAD.
+      exposedChannelIds: new Set([THREAD, SIBLING]),
+      exposedMessageIds: new Set([THREAD_MESSAGE, 'mixed-sibling-message']),
+      exposedMemoryIds,
+    }, [createProposal({ action: 'create', evidenceMessageIds: ['mixed-sibling-message'], statement: 'Project launch credential is raven.' })]);
+    expect(out.applied).toHaveLength(0);
+    expect(out.rejected[0]?.reason).toBe('evidence_out_of_scope');
+  });
+
   it.each([
-    { parentVisibility: 'org' as const, citation: 'mixed-sibling-message' },
     { parentVisibility: 'restricted' as const, citation: 'restricted-parent-message' },
   ])('accepts restricted family evidence with a shared anchor: $parentVisibility parent', ({ parentVisibility, citation }) => {
     seedPolicyChannel(PARENT, parentVisibility);

@@ -154,7 +154,7 @@ describe('issuance round-trip', () => {
     expect(outcome.row.channelIds).toEqual([RESTRICTED_A, RESTRICTED_B]);
   });
 
-  it('normalizes an explicitly restricted thread grant to its parent scope anchor', () => {
+  it('keeps an explicitly restricted thread grant below an org parent on the thread itself', () => {
     const threadId = '200000000000000099';
     upsertChannel(env.db, {
       ...channel(threadId, 'restricted'),
@@ -165,11 +165,11 @@ describe('issuance round-trip', () => {
     const outcome = create({ channelIds: [threadId] });
     expect(outcome.kind).toBe('created');
     if (outcome.kind !== 'created') return;
-    expect(outcome.row.channelIds).toEqual([ORG_CHANNEL]);
+    expect(outcome.row.channelIds).toEqual([threadId]);
     const resolved = resolveMcpToken({ db: env.db, nowMs: NOW }, outcome.token);
     expect(resolved.kind).toBe('valid');
     if (resolved.kind !== 'valid') return;
-    expect(resolved.grant.channelIds).toEqual([ORG_CHANNEL]);
+    expect(resolved.grant.channelIds).toEqual([threadId]);
   });
 });
 

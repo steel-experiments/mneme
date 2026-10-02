@@ -16,6 +16,7 @@ import {
 } from './scope.js';
 import type { MemoryStatus, MemoryType } from './repository.js';
 import { messageLink } from '../platform/links.js';
+import { scopeAnchorSql } from '../policy/scope-anchor.js';
 
 /**
  * Scope-bound memory retrieval (Sections 7.2, 7.3, 12.5, 22.3, 22.4, 30).
@@ -101,6 +102,7 @@ interface EvidenceChannelRow {
   channel_id: string;
   visibility_class: string;
   parent_id: string | null;
+  parent_visibility_class: string | null;
   is_thread: number;
 }
 
@@ -120,8 +122,9 @@ const CURRENT_EVIDENCE_VISIBILITY_SQL = `
     ELSE c.visibility_class
   END`;
 
-const RESTRICTED_EVIDENCE_ANCHOR_SQL = `
-  CASE WHEN c.is_thread = 1 THEN parent.id ELSE c.id END`;
+// The parent anchors a thread only when the parent itself is restricted
+// (Section 7.2). The live-parent requirement is enforced above.
+const RESTRICTED_EVIDENCE_ANCHOR_SQL = scopeAnchorSql('c');
 
 const EFFECTIVE_MEMORY_SCOPES_CTE = `
   recomputed AS (
@@ -228,6 +231,7 @@ export function recomputeMemoryScopes(
                  ELSE COALESCE(c.id, msg.channel_id, 'missing:' || me.message_id) END AS channel_id,
             ${CURRENT_EVIDENCE_VISIBILITY_SQL} AS visibility_class,
             CASE WHEN c.is_thread = 1 AND parent.id IS NOT NULL THEN parent.id ELSE NULL END AS parent_id,
+            CASE WHEN c.is_thread = 1 AND parent.id IS NOT NULL THEN parent.visibility_class ELSE NULL END AS parent_visibility_class,
             CASE WHEN c.is_thread = 1 AND parent.id IS NOT NULL THEN 1 ELSE 0 END AS is_thread
        FROM memory_evidence me
        LEFT JOIN messages msg ON msg.id = me.message_id
@@ -239,6 +243,7 @@ export function recomputeMemoryScopes(
     channel_id: string;
     visibility_class: string;
     parent_id: string | null;
+    parent_visibility_class: string | null;
     is_thread: number;
   }>;
 
@@ -248,9 +253,13 @@ export function recomputeMemoryScopes(
 
   for (const [id, chans] of grouped) {
     const chanMap = new Map<string, EvidenceChannelRow>();
-    for (const c of chans) if (!chanMap.has(c.channel_id)) chanMap.set(c.channel_id, c);
+    const parentVisibility = new Map<string, string>();
+    for (const c of chans) {
+      if (!chanMap.has(c.channel_id)) chanMap.set(c.channel_id, c);
+      if (c.parent_id !== null && c.parent_visibility_class !== null) parentVisibility.set(c.parent_id, c.parent_visibility_class);
+    }
     const lookup: VisibilityLookup = {
-      visibilityClass: (cid) => chanMap.get(cid)?.visibility_class as never,
+      visibilityClass: (cid) => (chanMap.get(cid)?.visibility_class ?? parentVisibility.get(cid)) as never,
       parentChannelId: (cid) => chanMap.get(cid)?.parent_id ?? null,
     };
     const evidence: ScopeEvidenceChannel[] = chans.map((c) => ({
