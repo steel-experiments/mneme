@@ -1,5 +1,5 @@
 // ABOUTME: Maps Slack Socket Mode envelopes to the neutral live ingestion operations (spec Section 9.3).
-// ABOUTME: Foreign-team and unknown-channel events are dropped; a shared channel keeps only deletes; channel changes re-read the channel.
+// ABOUTME: Share evidence excludes the channel first; unknown channels are dropped; a shared channel keeps only deletes.
 import type { DatabaseSync } from '../../db/database.js';
 import { getChannel, tombstoneChannel, upsertChannel } from '../../db/repositories/channels.js';
 import { getMessage } from '../../db/repositories/messages.js';
@@ -22,7 +22,7 @@ import { channelInputFromDescriptor, ensureThreadRow, excludeSharedChannel, mark
 import type { SlackEnvelope } from './connection.js';
 import { descriptorFromConversation } from './discovery.js';
 import { isSlackChannelId, slackMessageId } from './ids.js';
-import { isStoredSlackMessage, normalizeSlackMessage, normalizeSlackMessageUpdate, slackDeletedMessage } from './normalize.js';
+import { isStoredSlackMessage, normalizeSlackMessage, normalizeSlackMessageUpdate, slackDeletedMessage, slackForeignTeam } from './normalize.js';
 
 export interface SlackLiveContext {
   workspaceId: string;
@@ -187,13 +187,13 @@ export async function handleSlackEnvelope(ctx: SlackLiveContext, envelope: Slack
   if (body.team_id !== ctx.workspaceId) return { handled: false, reason: 'team_mismatch' };
   const event = body.event as SlackObject | undefined;
   if (!event || typeof event.type !== 'string') return { handled: false, reason: 'missing_fields' };
-  if (typeof event.team === 'string' && event.team !== ctx.workspaceId) return { handled: false, reason: 'team_mismatch' };
   const channel = channelIdOf(event);
   const { db } = ctx.deps;
 
-  if (body.is_ext_shared_channel === true) {
-    // The channel is shared with another organization: drop the content,
-    // exclude the channel at once, then re-read it.
+  // Evidence of a share comes first: the shared-channel flag, or a sender,
+  // message, or root from another team. Drop the content, exclude the known
+  // channel at once, then re-read it. An unknown channel gets no row.
+  if (body.is_ext_shared_channel === true || slackForeignTeam(event, ctx.workspaceId) !== null) {
     if (channel && excludeSharedChannel(db, channel, optsOf(ctx.deps).now)) {
       ctx.deps.onChannelChange?.('update', channel);
       await refreshAfterShare(ctx, channel);

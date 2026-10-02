@@ -119,6 +119,39 @@ describe('Slack live events', () => {
     expect(await handleSlackEnvelope(live, foreign)).toEqual({ handled: false, reason: 'team_mismatch' });
   });
 
+  it.each([
+    ['team', (e: Record<string, unknown>) => ({ ...e, team: 'T0000000099' })],
+    ['user_team', (e: Record<string, unknown>) => ({ ...e, user_team: 'T0000000099' })],
+    ['source_team', (e: Record<string, unknown>) => ({ ...e, source_team: 'T0000000099' })],
+  ])('excludes a known channel when an event has a foreign %s, and drops the content', async (_field, mutate) => {
+    const { db, live, feed } = await setup();
+    await feed('11', '12');
+    const env = fixture('16');
+    env.body = { ...env.body, event: mutate(env.body.event as Record<string, unknown>) };
+    expect(await handleSlackEnvelope(live, env)).toEqual({ handled: false, reason: 'shared_channel' });
+    expect(getChannel(db, PUBLIC)).toMatchObject({ platform_boundary: 'excluded', visibility_class: 'excluded' });
+    expect(getChannel(db, `${PUBLIC}-T1790933759.217369`)).toMatchObject({ platform_boundary: 'excluded' });
+    expect(getMessage(db, `${PUBLIC}-1790933785.989349`)).toBeUndefined();
+  });
+
+  it('excludes a known channel when an edit carries a message from another team', async () => {
+    const { db, live, feed } = await setup();
+    await feed('11', '12');
+    const env = fixture('13');
+    const event = env.body.event as Record<string, unknown>;
+    env.body = { ...env.body, event: { ...event, message: { ...(event.message as object), user_team: 'T0000000099' } } };
+    expect((await handleSlackEnvelope(live, env)).reason).toBe('shared_channel');
+    expect(getChannel(db, PUBLIC)?.platform_boundary).toBe('excluded');
+  });
+
+  it('drops a foreign-team event for an unknown channel without creating a row', async () => {
+    const { db, live } = await setup();
+    const env = fixture('08');
+    env.body = { ...env.body, event: { ...(env.body.event as object), channel: 'C0000000077', team: 'T0000000099' } };
+    expect((await handleSlackEnvelope(live, env)).handled).toBe(false);
+    expect(getChannel(db, 'C0000000077')).toBeUndefined();
+  });
+
   it('drops events from a channel that is not known', async () => {
     const { live } = await setup();
     const env = fixture('08');
