@@ -15,9 +15,17 @@ export function isSlackId(value: unknown): value is string {
 }
 
 /**
- * A raw platform id for any supported platform. One deployment holds data from
- * one platform only (plan 002 decision 1), so the union cannot mix platforms.
+ * A synthetic Slack id (plan 002 decisions 3 and 4): a message `<channel>-<ts>`
+ * or a thread row `<channel>-T<thread_ts>`.
+ */
+export function isSlackSyntheticId(value: unknown): value is string {
+  return typeof value === 'string' && /^[CG][A-Z0-9]{8,}-T?\d{10}\.\d{6}$/.test(value);
+}
+
+/**
+ * A platform id for any supported platform. One deployment holds data from one
+ * platform only (plan 002 decision 1), so the union cannot mix platforms.
  */
 export function isPlatformId(value: unknown): value is string {
-  return isDiscordId(value) || isSlackId(value);
+  return isDiscordId(value) || isSlackId(value) || isSlackSyntheticId(value);
 }

@@ -56,6 +56,8 @@ export interface DiscoveredChannelDescriptor {
   locked?: boolean;
   lastMessageId?: string | null;
   capabilities?: ChannelAccessCapabilities;
+  /** Platform boundary; 'excluded' closes the channel to every policy (plan 002 decision 9). */
+  platformBoundary?: 'excluded' | null;
 }
 
 export interface DiscoveryOptions {
@@ -86,7 +88,7 @@ export interface DiscoveredChannelSummary {
   /** Resolved visibility class after policy inheritance (Section 7.1). */
   visibilityClass: VisibilityClass;
   /** Which precedence level produced the rule (Section 8 resolution order). */
-  policySource: PolicySource | 'review';
+  policySource: PolicySource | 'review' | 'platform_boundary';
   ingest: boolean;
   allowInterventions: boolean;
   syncState: SyncState;
@@ -208,6 +210,7 @@ export function discoverChannels(
         isThread,
         kind: d.kind,
         categoryId,
+        platformBoundary: d.platformBoundary ?? null,
       };
       const resolved = resolveObservedChannelPolicy(db, options.policy, identity, {
         channelPolicySource: options.channelPolicySource,
@@ -306,6 +309,7 @@ export function discoverChannels(
           discoveredAtMs: options.now,
           updatedAtMs: options.now,
           rawJson: null,
+          platformBoundary: d.platformBoundary ?? null,
         });
         recordAccessAudit(db, {
           channelId: d.id,
@@ -349,6 +353,7 @@ export function discoverChannels(
         discoveredAtMs: options.now,
         updatedAtMs: options.now,
         rawJson: null,
+        platformBoundary: d.platformBoundary ?? null,
       });
 
       recordAccessAudit(db, {

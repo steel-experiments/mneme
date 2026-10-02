@@ -33,6 +33,12 @@ export interface ChannelUpsertInput {
   discoveredAtMs: number;
   updatedAtMs: number;
   rawJson: string | null;
+  /**
+   * Platform boundary (plan 002 decision 9). 'excluded' marks a channel that no
+   * policy may open, for example a Slack Connect channel. Omit it to keep the
+   * stored value; null clears it.
+   */
+  platformBoundary?: 'excluded' | null;
 }
 
 export interface ChannelRow {
@@ -54,6 +60,7 @@ export interface ChannelRow {
   discovered_at_ms: number;
   updated_at_ms: number;
   deleted_at_ms: number | null;
+  platform_boundary: 'excluded' | null;
 }
 
 const UPSERT_SQL = `
@@ -61,12 +68,12 @@ const UPSERT_SQL = `
     id, workspace_id, parent_id, kind, name, topic, position,
     is_thread, is_archived, is_locked, ingest_enabled, visibility_class,
     allow_interventions, permission_fingerprint, last_message_id,
-    discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json
+    discovered_at_ms, updated_at_ms, deleted_at_ms, raw_json, platform_boundary
   ) VALUES (
     @id, @workspace_id, @parent_id, @kind, @name, @topic, @position,
     @is_thread, @is_archived, @is_locked, @ingest_enabled, @visibility_class,
     @allow_interventions, @permission_fingerprint, @last_message_id,
-    @discovered_at_ms, @updated_at_ms, NULL, @raw_json
+    @discovered_at_ms, @updated_at_ms, NULL, @raw_json, @platform_boundary
   )
   ON CONFLICT(id) DO UPDATE SET
     parent_id = excluded.parent_id,
@@ -83,6 +90,7 @@ const UPSERT_SQL = `
     permission_fingerprint = excluded.permission_fingerprint,
     last_message_id = excluded.last_message_id,
     raw_json = excluded.raw_json,
+    platform_boundary = CASE WHEN @boundary_set = 1 THEN excluded.platform_boundary ELSE channels.platform_boundary END,
     deleted_at_ms = NULL,
     updated_at_ms = excluded.updated_at_ms
   WHERE excluded.parent_id IS NOT channels.parent_id
@@ -99,6 +107,7 @@ const UPSERT_SQL = `
      OR excluded.permission_fingerprint IS NOT channels.permission_fingerprint
      OR excluded.last_message_id IS NOT channels.last_message_id
      OR excluded.raw_json IS NOT channels.raw_json
+     OR (@boundary_set = 1 AND excluded.platform_boundary IS NOT channels.platform_boundary)
      OR channels.deleted_at_ms IS NOT NULL
 `;
 
@@ -124,6 +133,8 @@ export function upsertChannel(db: DatabaseSync, input: ChannelUpsertInput): numb
     discovered_at_ms: input.discoveredAtMs,
     updated_at_ms: input.updatedAtMs,
     raw_json: input.rawJson,
+    platform_boundary: input.platformBoundary ?? null,
+    boundary_set: input.platformBoundary === undefined ? 0 : 1,
   });
   return Number(result.changes);
 }

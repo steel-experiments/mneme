@@ -23,11 +23,13 @@ export interface EffectiveChannelPolicyInput {
   reviewChannelId?: string;
   staticPolicy: ResolvedPolicy;
   activeReview?: ChannelPolicyReviewRow;
+  /** A platform rule that wins over every policy source (plan 002 decision 9). */
+  platformBoundary?: 'excluded' | null;
 }
 
 export interface EffectiveChannelPolicy {
   rule: ChannelRule;
-  source: ResolvedPolicy['source'] | 'review';
+  source: ResolvedPolicy['source'] | 'review' | 'platform_boundary';
   needsReview: boolean;
 }
 
@@ -35,6 +37,11 @@ export interface EffectiveChannelPolicy {
 export function resolveEffectiveChannelPolicy(
   input: EffectiveChannelPolicyInput,
 ): EffectiveChannelPolicy {
+  // The platform boundary comes first: no channel rule, thread override,
+  // category rule, or review decision can open it.
+  if (input.platformBoundary === 'excluded') {
+    return { rule: REVIEWED_CHANNEL_RULES.excluded, source: 'platform_boundary', needsReview: false };
+  }
   if (
     input.isThread
     || !isReviewableTopLevelChannelKind(input.channelKind)
