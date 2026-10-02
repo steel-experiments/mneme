@@ -234,15 +234,15 @@ describe('buildBasicChannelPolicy', () => {
   it('rejects a value that is not a 17-20 digit snowflake after trim', () => {
     expectPolicyError(
       () => buildBasicChannelPolicy({ ORG_VISIBLE_CHANNEL_IDS: 'not-an-id' }),
-      'channel policy: "not-an-id" in ORG_VISIBLE_CHANNEL_IDS is not a Discord snowflake',
+      'channel policy: "not-an-id" in ORG_VISIBLE_CHANNEL_IDS is not a valid platform id',
     );
     expectPolicyError(
       () => buildBasicChannelPolicy({ RESTRICTED_CHANNEL_IDS: '123' }),
-      'channel policy: "123" in RESTRICTED_CHANNEL_IDS is not a Discord snowflake',
+      'channel policy: "123" in RESTRICTED_CHANNEL_IDS is not a valid platform id',
     );
     expectPolicyError(
       () => buildBasicChannelPolicy({ ORG_VISIBLE_CHANNEL_IDS: '123456789012345678901' }),
-      'channel policy: "123456789012345678901" in ORG_VISIBLE_CHANNEL_IDS is not a Discord snowflake',
+      'channel policy: "123456789012345678901" in ORG_VISIBLE_CHANNEL_IDS is not a valid platform id',
     );
   });
 });

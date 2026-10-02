@@ -52,6 +52,22 @@ describe('logger', () => {
     expect(out).not.toContain('sk-nested');
   });
 
+  it('redacts Slack tokens in env objects and config dumps', () => {
+    const { chunks, stream } = capture();
+    const log = createLogger({ stream, level: 'info' });
+    log.info({
+      event: 'config.loaded',
+      SLACK_BOT_TOKEN: 'xoxb-leaked-bot',
+      SLACK_APP_TOKEN: 'xapp-leaked-app',
+      env: { SLACK_BOT_TOKEN: 'xoxb-nested-bot', SLACK_APP_TOKEN: 'xapp-nested-app' },
+      slack: { botToken: 'xoxb-config-bot', appToken: 'xapp-config-app' },
+    }, 'event');
+    const out = chunks.join('');
+    for (const leaked of ['xoxb-leaked-bot', 'xapp-leaked-app', 'xoxb-nested-bot', 'xapp-nested-app', 'xoxb-config-bot', 'xapp-config-app']) {
+      expect(out).not.toContain(leaked);
+    }
+  });
+
   it('retains ids, counts, statuses, durations, and error categories', () => {
     const { chunks, stream } = capture();
     const log = createLogger({ stream, level: 'info' });

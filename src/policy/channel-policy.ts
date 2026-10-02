@@ -91,7 +91,7 @@ function parseRuleMap(raw: unknown, where: string): Map<string, ChannelRule> {
   }
   for (const [id, rule] of Object.entries(raw as Record<string, unknown>)) {
     if (!isPlatformId(id)) {
-      throw new ChannelPolicyError(`${where}: key "${id}" is not a Discord snowflake`);
+      throw new ChannelPolicyError(`${where}: key "${id}" is not a valid platform id`);
     }
     out.set(id, parseRule(rule, `${where}["${id}"]`));
   }
@@ -122,7 +122,7 @@ export function parseChannelPolicy(text: string): ChannelPolicy {
   if (d.review_channel !== undefined) {
     const rc = d.review_channel as Record<string, unknown>;
     if (!isPlatformId(rc.id)) {
-      throw new ChannelPolicyError('review_channel.id must be a Discord snowflake');
+      throw new ChannelPolicyError('review_channel.id must be a valid platform id');
     }
     if (typeof rc.secure !== 'boolean') {
       throw new ChannelPolicyError('review_channel.secure must be boolean');
