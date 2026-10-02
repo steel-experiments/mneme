@@ -53,6 +53,8 @@ export function fakeSlackApi(): FakeSlackApi {
     },
     async conversationInfo(channel) {
       api.calls.push({ method: 'conversationInfo', input: channel });
+      const failure = api.failures.get('conversationInfo')?.shift();
+      if (failure) throw failure;
       return api.conversations.get(channel) ?? null;
     },
     async history(input): Promise<SlackPage> {

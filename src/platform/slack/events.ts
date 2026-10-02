@@ -17,7 +17,7 @@ import { backfillJobKey } from '../../ingestion/sync.js';
 import { isMnemeTestSurface } from '../../ingestion/test-channels.js';
 import { enqueue } from '../../jobs/queue.js';
 import type { SlackApi, SlackObject } from './api.js';
-import { channelInputFromDescriptor, ensureThreadRow, markChannelUnavailable, refreshThreadRows } from './channels.js';
+import { channelInputFromDescriptor, ensureThreadRow, excludeSharedChannel, markChannelUnavailable, refreshThreadRows } from './channels.js';
 import type { SlackEnvelope } from './connection.js';
 import { descriptorFromConversation } from './discovery.js';
 import { isSlackChannelId, slackMessageId } from './ids.js';
@@ -43,7 +43,7 @@ export interface SlackEventOutcome {
 
 const CHANNEL_REFRESH_EVENTS = new Set([
   'channel_created', 'channel_rename', 'channel_archive', 'channel_unarchive', 'group_rename', 'group_archive',
-  'group_unarchive', 'channel_shared', 'channel_unshared',
+  'group_unarchive', 'channel_unshared',
 ]);
 
 function optsOf(deps: LiveIngestionDeps): IngestOptions {
@@ -82,6 +82,16 @@ export async function refreshSlackChannel(
   ctx.deps.onChannelChange?.(known ? change : 'create', channel);
   queueHistory(ctx, db, channel, now);
   return { handled: true };
+}
+
+/** Re-read a channel after it was excluded as shared. A failure is logged; the exclusion stays. */
+async function refreshAfterShare(ctx: SlackLiveContext, channel: string): Promise<void> {
+  try {
+    await refreshSlackChannel(ctx, channel, 'update');
+  } catch (err) {
+    ctx.deps.logger?.warn({ event: 'slack.shared_channel_refresh_failed', channelId: channel,
+      err: err instanceof Error ? err.message : String(err) }, 'shared channel re-read failed; the channel stays excluded');
+  }
 }
 
 function queueHistory(ctx: SlackLiveContext, db: DatabaseSync, channel: string, now: number): void {
@@ -170,9 +180,12 @@ export async function handleSlackEnvelope(ctx: SlackLiveContext, envelope: Slack
   const { db } = ctx.deps;
 
   if (body.is_ext_shared_channel === true) {
-    // The channel is shared with another organization: drop the content and
-    // re-read the channel so the boundary excludes it at once.
-    if (channel && getChannel(db, channel)) await refreshSlackChannel(ctx, channel, 'update');
+    // The channel is shared with another organization: drop the content,
+    // exclude the channel at once, then re-read it.
+    if (channel && excludeSharedChannel(db, channel, optsOf(ctx.deps).now)) {
+      ctx.deps.onChannelChange?.('update', channel);
+      await refreshAfterShare(ctx, channel);
+    }
     return { handled: false, reason: 'shared_channel' };
   }
 
@@ -201,6 +214,13 @@ export async function handleSlackEnvelope(ctx: SlackLiveContext, envelope: Slack
     case 'channel_left':
     case 'group_left':
       return leaveChannel(ctx, channel);
+    case 'channel_shared':
+      if (!channel) return { handled: false, reason: 'missing_fields' };
+      if (excludeSharedChannel(db, channel, optsOf(ctx.deps).now)) {
+        ctx.deps.onChannelChange?.('update', channel);
+        await refreshAfterShare(ctx, channel);
+      }
+      return { handled: true };
     case 'channel_deleted':
     case 'group_deleted':
       if (!channel) return { handled: false, reason: 'missing_fields' };
