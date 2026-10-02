@@ -571,14 +571,27 @@ Slack visibility rules:
   always resolves to `excluded`. Policy cannot override this. A channel that
   becomes shared is excluded at once, and its stored content stops being
   retrievable on the next read.
+- The exclusion is permanent. A channel that stops being shared stays
+  excluded, because its history contains another organization's messages. The
+  channel upsert never clears a stored boundary, policy resolution uses the
+  stored boundary over a newer observation, and a database trigger rejects any
+  update that clears it.
 - The policy resolver has a `platform_boundary` source that the adapter
   supplies. It wins over every other source, including explicit thread rules
   and review decisions. The Slack Connect rule uses this source. The boundary
   is stored on the channel row (`channels.platform_boundary`), so a policy
   reload cannot reopen the channel. A thread inherits the stored boundary of
   its parent. A boundary channel never gets a classification review card.
-- An event that Slack marks as coming from a shared channel
-  (`is_ext_shared_channel`) is dropped, and the adapter re-reads the channel.
+- A `channel_shared` event, or an event that Slack marks as coming from a
+  shared channel (`is_ext_shared_channel`), excludes the channel and its
+  threads in one transaction before any Slack API call. The adapter then
+  re-reads the channel. A failed re-read does not change the exclusion.
+- An excluded channel keeps no new messages and no edits. A delete still
+  applies: the stored message is tombstoned, so content that users remove does
+  not stay stored.
+- The adapter repeats the full channel discovery every 15 minutes. A channel
+  that becomes shared or pending-shared without an event is excluded on the
+  next run.
 - A channel that the bot leaves, or is removed from, becomes unavailable and
   fails closed.
 - A Slack thread inherits its channel's class, as a Discord thread does.
@@ -932,7 +945,7 @@ channel policy: review channel <id> must not appear in the selection lists
 
 channel policy: id <id> appears in both ORG_VISIBLE_CHANNEL_IDS and RESTRICTED_CHANNEL_IDS
 
-channel policy: "<value>" in <VAR> is not a Discord snowflake
+channel policy: "<value>" in <VAR> is not a valid platform id
 ```
 
 The match with `channel-policy.yml` from Section 35 does not apply in basic mode:
