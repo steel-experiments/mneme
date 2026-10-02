@@ -9,6 +9,34 @@ and this project adheres to
 This changelog starts at the launch baseline. Changes before that point are
 not recorded.
 
+## [3.1.0] - 2026-10-02
+
+### Security
+
+- **Restricted threads keep their own scope.** A restricted thread under a
+  channel that is not restricted now uses its own scope. Before, two such
+  threads under the same parent could see each other's messages and
+  memories, and a citation from one thread could carry facts from the other
+  into memory. A thread still shares its parent's scope when the parent is
+  restricted.
+- **Restricted channels in a Discord category.** Scheduled reviews and the
+  secure review channel now read the restricted channel itself. Before, they
+  used the category id and found nothing.
+
+### Changed
+
+- **Discord private threads are restricted by default.** A private thread
+  resolves to `restricted` unless a channel-policy rule for that thread says
+  otherwise. Slack has no private threads and does not change.
+
+### Upgrade notes
+
+- This release adds migration 045 (`channels.is_private_thread`). Make a
+  backup and verify it before you upgrade. A private thread that Mneme stored
+  as `org` before this release becomes `restricted` when discovery sees it
+  again. An archived private thread that Mneme cannot list again keeps its
+  old class; classify it with a channel-policy rule.
+
 ## [3.0.0] - 2026-10-02
 
 ### Added
