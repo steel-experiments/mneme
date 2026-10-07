@@ -11,6 +11,18 @@ not recorded.
 
 ## [Unreleased]
 
+### Added
+
+- **Read-only platform archive.** A deployment can read the database of its
+  former deployment on the other platform as a frozen archive
+  (`MNEME_ARCHIVE_PATH`, `MNEME_ARCHIVE_PLATFORM`). The archive serves only
+  org content, with no exception. Direct answers can cite archive messages,
+  and MCP clients with an `org` token get four archive tools. Admins hide
+  archive content with `/mneme archive forget-user` and `forget-message`, and
+  `archive-rewrite` writes a minimized copy. Migrations 046 and 047 add
+  `archive_redactions` and `deletion_requests.archive_workspace_id`. See
+  [Move from Discord to Slack](docs/how-to/move-from-discord-to-slack.md).
+
 ### Removed
 
 - **Railway template.** The Railway template is retired. To run Mneme on

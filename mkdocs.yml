@@ -16,6 +16,7 @@ nav:
       - Back up and restore: how-to/backup-and-restore.md
       - Roll out safely: how-to/roll-out-safely.md
       - Publish the member privacy notice: how-to/publish-privacy-notice.md
+      - Move from Discord to Slack: how-to/move-from-discord-to-slack.md
   - Use:
       - Team member guide: how-to/use-mneme.md
       - Connect MCP clients: how-to/connect-mcp-clients.md

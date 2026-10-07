@@ -179,6 +179,7 @@ Administrative actions use the admin-only `/mneme` commands. Start with
 - [Configure Mneme](docs/reference/configuration.md)
 - [Roll out review and autonomy safely](docs/how-to/roll-out-safely.md)
 - [Back up and restore](docs/how-to/backup-and-restore.md)
+- [Move from Discord to Slack and keep the Discord archive](docs/how-to/move-from-discord-to-slack.md)
 - [Troubleshoot](docs/how-to/troubleshooting.md)
 - [Understand the security model](docs/explanation/security-model.md)
 - [Full documentation site](https://steel-experiments.github.io/mneme/)
