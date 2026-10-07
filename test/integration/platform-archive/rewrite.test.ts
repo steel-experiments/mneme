@@ -2,7 +2,7 @@
 // ABOUTME: The source archive never changes, the output passes verification, and redaction rows stay in the live database.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { createTestDb, type TestDb } from '../../helpers/db.js';
@@ -147,6 +147,28 @@ describe('archive rewrite', () => {
     } finally {
       db.close();
     }
+  });
+
+  it('writes the output readable by its owner only', () => {
+    const out = join(fixture.dir, 'private.sqlite');
+    rewriteArchive({ archivePath: fixture.path, outPath: out, liveDb: live.db });
+    expect(statSync(out).mode & 0o777).toBe(0o600);
+  });
+
+  it('refuses an output path with parent-directory segments', () => {
+    const out = `${fixture.dir}/../escape.sqlite`;
+    expect(() => rewriteArchive({ archivePath: fixture.path, outPath: out, liveDb: live.db })).toThrow(/parent-directory/);
+  });
+
+  it('leaves no output, temporary, or journal files behind when the rewrite fails', () => {
+    const out = join(fixture.dir, 'failed.sqlite');
+    const noRedactionTable = new DatabaseSync(':memory:');
+    try {
+      expect(() => rewriteArchive({ archivePath: fixture.path, outPath: out, liveDb: noRedactionTable })).toThrow();
+    } finally {
+      noRedactionTable.close();
+    }
+    expect(readdirSync(fixture.dir).filter((name) => name.startsWith('failed.sqlite'))).toEqual([]);
   });
 
   it('refuses an existing output file and the archive path itself', () => {
