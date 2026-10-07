@@ -79,13 +79,28 @@ rewrite after every pending archive deletion has executed:
 node dist/cli/commands.js archive-rewrite --out /app/data/archive/discord-rewritten.sqlite
 ```
 
-The command reads `MNEME_ARCHIVE_PATH` and `DATABASE_PATH`, copies the archive,
-and removes from the copy the redacted messages and users, every memory that
-cites a removed message or is owned by a redacted user, and every dependent
-row. It rebuilds the search indexes, checks integrity, and prints the new
-`sha256`. It never changes the current archive and refuses an output path that
-already exists. Point `MNEME_ARCHIVE_PATH` at the new file and restart. The
-redaction rows stay in the live database and keep applying to every copy.
+The command reads `MNEME_ARCHIVE_PATH` and `DATABASE_PATH` and copies the
+archive. In the copy it:
+
+- keeps rows only in the tables that the archive reads, and clears raw
+  payloads and other columns that the archive does not read;
+- removes the redacted messages and users, every memory that cites a removed
+  message or is owned by a redacted user, and every dependent row;
+- removes all content that the archive never serves: messages outside servable
+  org channels, test channels, shared or unproven threads, tombstoned messages,
+  memories that are not servable, and channels without servable content.
+
+It rebuilds the search indexes, checks integrity, writes the file with mode
+`0600`, and prints the new `sha256`. It never changes the current archive and
+refuses an output path that already exists. Point `MNEME_ARCHIVE_PATH` at the
+new file and restart. The redaction rows stay in the live database and keep
+applying to every copy.
+
+Run the rewrite with no redactions to prepare the first archive from a final
+backup: the result holds only org content. `--keep-non-org` keeps the content
+that the archive does not serve. Use it only if you expect to relax the
+org-only rule later; keep the full original backup on the source deployment
+in either case.
 
 ### Both platforms
 
