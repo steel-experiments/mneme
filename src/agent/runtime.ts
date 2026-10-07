@@ -23,6 +23,10 @@ import { createGetMessageContextTool } from './tools/get-message-context.js';
 import { createSearchMemoriesTool } from './tools/search-memories.js';
 import { createListMemoriesTool } from './tools/list-memories.js';
 import { createGetMemoryEvidenceTool } from './tools/get-memory-evidence.js';
+import { createSearchArchiveMessagesTool } from './tools/search-archive-messages.js';
+import { createGetArchiveMessageContextTool } from './tools/get-archive-message-context.js';
+import { createSearchArchiveMemoriesTool } from './tools/search-archive-memories.js';
+import type { ArchiveReader } from '../platform-archive/read.js';
 import { createListDocsTool } from './tools/list-docs.js';
 import { createReadDocTool } from './tools/read-doc.js';
 import type { DocsIndex } from './docs-index.js';
@@ -85,6 +89,13 @@ export const AGENT_DOC_TOOL_NAMES = ['list_docs', 'read_doc'] as const;
 
 /** One-call catch-up retrieval, exposed only to direct-answer runs. */
 export const AGENT_DIRECT_ANSWER_TOOL_NAMES = ['get_recent_activity_snapshot'] as const;
+
+/** Read-only platform-archive retrieval, exposed to every run type only when an archive is configured (plan 011). */
+export const AGENT_ARCHIVE_TOOL_NAMES = [
+  'search_archive_messages',
+  'get_archive_message_context',
+  'search_archive_memories',
+] as const;
 
 /** Matches `agent_runs.run_type` (migrations/003_operations.sql). */
 export type AgentRunType = 'episode' | 'direct_answer' | 'scheduled_review';
@@ -243,20 +254,23 @@ function composeDirectAnswerSemanticValidators(
  * plus the one-call activity snapshot and documentation tools for a direct
  * answer (Section 22.7). Episode and scheduled runs receive neither extension.
  */
-export function agentReadToolNames(runType: AgentRunType): string[] {
+export function agentReadToolNames(runType: AgentRunType, options: { archive?: boolean } = {}): string[] {
+  const archive = options.archive ? [...AGENT_ARCHIVE_TOOL_NAMES] : [];
   return runType === 'direct_answer'
     ? [
       ...AGENT_READ_TOOL_NAMES,
       ...AGENT_DIRECT_ANSWER_TOOL_NAMES,
       ...AGENT_DOC_TOOL_NAMES,
+      ...archive,
     ]
-    : [...AGENT_READ_TOOL_NAMES];
+    : [...AGENT_READ_TOOL_NAMES, ...archive];
 }
 
 /**
  * Build the exact, closed tool set a run exposes: the six common read-only
  * retrieval tools; the activity snapshot and, when indexed, documentation tools
- * for a direct answer; plus the one terminal finalization tool. No
+ * for a direct answer; the three read-only archive tools when a platform archive
+ * is configured (plan 011); plus the one terminal finalization tool. No
  * shell, filesystem, browser, HTTP, or send tool is ever included (Section 4.1).
  * Exposed for tests that assert the exposed surface. The accepted proposal is
  * read from `state.accepted` after the run, so no commit callback is required.
@@ -275,6 +289,9 @@ export function buildRunTools(
   const directAnswerTools = runType === 'direct_answer'
     ? [createGetRecentActivitySnapshotTool(ctx)]
     : [];
+  const archiveTools = ctx.archive
+    ? [createSearchArchiveMessagesTool(ctx), createGetArchiveMessageContextTool(ctx), createSearchArchiveMemoriesTool(ctx)]
+    : [];
   return [
     createSearchMessagesTool(ctx),
     createListRecentMessagesTool(ctx),
@@ -284,6 +301,7 @@ export function buildRunTools(
     createListMemoriesTool(ctx),
     createGetMemoryEvidenceTool(ctx),
     ...docTools,
+    ...archiveTools,
     terminalToolFor(runType, state, ctx, commit, directAnswerSemanticValidator),
   ];
 }
@@ -553,6 +571,8 @@ function persistRunResult(db: DatabaseSync, runId: string, result: AgentRunResul
 
 export interface ExecuteAgentRunDeps {
   db: DatabaseSync;
+  /** The read-only platform archive; adds the archive tools to the run (plan 011). */
+  archive?: ArchiveReader;
   /** Host-computed scope ceiling injected into every retrieval tool. */
   grant: RetrievalGrant;
   systemPrompt: string;
@@ -631,7 +651,10 @@ export async function executeAgentRun(deps: ExecuteAgentRunDeps): Promise<AgentR
     streamError: null as string | null,
   };
 
-  const allowedNames = new Set<string>([...agentReadToolNames(deps.runType), terminalName]);
+  const allowedNames = new Set<string>([
+    ...agentReadToolNames(deps.runType, { archive: deps.archive !== undefined }),
+    terminalName,
+  ]);
 
   // Finalize-only phase (Section 21.2): entered after this many completed
   // turns, or earlier when the tool-call budget is spent or the model idles.
@@ -671,6 +694,7 @@ export async function executeAgentRun(deps: ExecuteAgentRunDeps): Promise<AgentR
     retrieval,
     requestCreatedAtMs: deps.requestCreatedAtMs,
     docs: deps.docs,
+    ...(deps.archive ? { archive: deps.archive } : {}),
   };
   const tools = buildRunTools(
     ctx,

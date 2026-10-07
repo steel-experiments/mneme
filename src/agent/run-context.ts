@@ -4,6 +4,7 @@ import { getMessage } from '../db/repositories/messages.js';
 import { prepareCached } from '../db/repositories/util.js';
 import { getMemory } from '../memory/repository.js';
 import type { RetrievalGrant } from '../db/repositories/message-search.js';
+import type { ArchiveReader } from '../platform-archive/read.js';
 import type { DocsIndex } from './docs-index.js';
 
 /**
@@ -90,6 +91,8 @@ export interface RetrievalProvenance {
   charBudget: number;
   /** Present only after `get_recent_activity_snapshot` executes successfully. */
   recentActivitySnapshot?: RecentActivitySnapshotCoverage;
+  /** `archive:` ids of platform-archive rows exposed to the model; present only when non-empty (plan 011). */
+  archiveIds?: string[];
 }
 
 export interface ExposedMessageFingerprint {
@@ -260,6 +263,7 @@ export class RunRetrievalState {
   private readonly memoryIds = new Set<string>();
   private readonly memoryFingerprints = new Map<string, string>();
   private recentActivitySnapshot: RecentActivitySnapshotCoverage | undefined;
+  private readonly archiveIds = new Set<string>();
   private chars = 0;
 
   constructor(
@@ -282,6 +286,12 @@ export class RunRetrievalState {
 
   get hasRecentActivitySnapshot(): boolean {
     return this.recentActivitySnapshot !== undefined;
+  }
+
+  /** Record one platform-archive row exposed to the model. Archive rows never
+   *  enter the live message, channel, or memory provenance (plan 011). */
+  recordArchive(archiveId: string): void {
+    this.archiveIds.add(archiveId);
   }
 
   /** Reserve `chars` against the budget. Returns false without mutating if it
@@ -389,6 +399,7 @@ export class RunRetrievalState {
       charsExposed: this.chars,
       charBudget: this.charBudget,
     };
+    if (this.archiveIds.size > 0) provenance.archiveIds = [...this.archiveIds];
     if (this.recentActivitySnapshot) {
       provenance.recentActivitySnapshot = {
         ...this.recentActivitySnapshot,
@@ -445,4 +456,6 @@ export interface AgentRunContext {
   requestCreatedAtMs?: number;
   /** Mneme's own documentation, for direct-answer runs (Section 22.7). */
   docs?: DocsIndex;
+  /** The read-only platform archive, when one is configured (plan 011). */
+  archive?: ArchiveReader;
 }

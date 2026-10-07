@@ -244,6 +244,27 @@ export const SearchMemoriesToolInput = strict({
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })),
 });
 
+/** Archive ids carry the `archive:` prefix (plan 011). */
+const ArchiveId = Type.String({ minLength: 9, maxLength: 200, pattern: '^archive:' });
+
+export const SearchArchiveMessagesToolInput = strict({
+  query: Type.String({ minLength: 1, maxLength: 256 }),
+  before: Type.Optional(Type.String({ minLength: 1, maxLength: 40 })),
+  after: Type.Optional(Type.String({ minLength: 1, maxLength: 40 })),
+  limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })),
+});
+
+export const GetArchiveMessageContextToolInput = strict({
+  messageId: ArchiveId,
+  beforeCount: Type.Optional(Type.Integer({ minimum: 0, maximum: 50 })),
+  afterCount: Type.Optional(Type.Integer({ minimum: 0, maximum: 50 })),
+});
+
+export const SearchArchiveMemoriesToolInput = strict({
+  query: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
+  limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })),
+});
+
 export const ListMemoriesToolInput = strict({
   types: Type.Optional(Type.Array(MemoryTypeEnum, { maxItems: 10 })),
   statuses: Type.Optional(Type.Array(MemoryStatusEnum, { maxItems: 5 })),

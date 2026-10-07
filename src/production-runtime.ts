@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { createArchiveReader } from './platform-archive/read.js';
 import { builtinModels } from '@earendil-works/pi-ai/providers/all';
 import type { RetrievalGrant } from './db/repositories/message-search.js';
 import {
@@ -1242,6 +1243,10 @@ export async function createProductionJobRuntime(
       totalBudgetUsd: campaign.total_budget_usd,
     }, 'bounded historical campaign configured');
   }
+  // The read-only platform archive, shared by every agent run (plan 011).
+  const archiveReader = ctx.platformArchive
+    ? createArchiveReader({ db: ctx.platformArchive.db, liveDb: ctx.db, summary: ctx.platformArchive.summary, logger: ctx.logger })
+    : undefined;
   const modelGate = new ModelBudgetGate({ dailyBudgetUsd: ctx.config.llm.dailyBudgetUsd ?? null,
     timeZone: ctx.config.organization.timezone }, ctx.now());
   // The cap is operational policy, not process-local state. Hydrate today's
@@ -1364,6 +1369,7 @@ export async function createProductionJobRuntime(
       }
       execution = {
         ...execution,
+        ...(archiveReader ? { archive: archiveReader } : {}),
         requireKnownPricing: historical
           ? ctx.config.historicalMemory.dailyBudgetUsd > 0
           : ctx.config.llm.dailyBudgetUsd !== null,
@@ -1399,6 +1405,7 @@ export async function createProductionJobRuntime(
   };
   const systemPrompt = (runContext: Record<string, unknown>) => snapshot().promptCompiler.render('system', {
     ...runContext,
+    archive: ctx.platformArchive ? { platform: ctx.platformArchive.summary.platform } : null,
     agent: ctx.config.agent,
     organization: ctx.config.organization,
     personality: ctx.config.personality,
