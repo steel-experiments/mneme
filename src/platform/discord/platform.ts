@@ -9,7 +9,7 @@ import { upsertGuild } from '../../db/repositories/workspaces.js';
 import type { Logger } from '../../logger.js';
 import type { ChatPlatform, PlatformConnection } from '../types.js';
 import { assertExpectedGuild, createDiscordClient, registerIngestionHandlers, type ClientHealthTracker } from './client.js';
-import { registerGuildCommands } from './commands.js';
+import { buildMnemeCommand, registerGuildCommands } from './commands.js';
 import { registerCommandDispatcher } from './command-dispatcher.js';
 import { createReviewButtonHandler, createDiscordReviewResolver } from './interactions.js';
 import { createDiscordReviewChannel, deliverProposalReview } from './review-message.js';
@@ -106,7 +106,9 @@ export function createDiscordPlatform(config: AppConfig, logger: Logger, clock: 
     async registerCommands() {
       const rest = client?.rest;
       if (!rest) return { ok: false, message: 'Discord client has no REST adapter; commands cannot be registered' };
-      const result = await registerGuildCommands({ rest, applicationId: discordConfig.applicationId, guildId: workspaceId });
+      // The archive group exists only when a platform archive is configured.
+      const commands = [buildMnemeCommand({ archive: config.archive !== undefined }).toJSON()];
+      const result = await registerGuildCommands({ rest, applicationId: discordConfig.applicationId, guildId: workspaceId, commands });
       return result.ok ? { ok: true } : { ok: false, message: `Discord command registration failed: ${result.error}` };
     },
 

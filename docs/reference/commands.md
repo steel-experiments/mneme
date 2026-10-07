@@ -178,6 +178,31 @@ backup: migration 040 cancels all active legacy `forget_user` jobs because they
 have no independent approval. It does not restore previously deleted content.
 An older image without migration 040 cannot start against the upgraded database.
 
+### Archive users and archive deletion
+
+These commands exist only when a read-only platform archive is configured
+(`MNEME_ARCHIVE_PATH`). Like the deletion commands, they work only in the secure
+review channel and need an admin.
+
+| Command | Result |
+|---|---|
+| `/mneme archive user name:<text>` | Lists archive authors whose name contains the text, with their archive user ID and the number of their org messages. Only org content is searched; an author who is already hidden does not appear. |
+| `/mneme archive forget-user id:<archive-user-id>` | Creates a deletion request that hides every archive message of that user. Deletes nothing yet. |
+| `/mneme archive forget-message id:<archive-message-id>` | Creates a deletion request that hides one archive message. Deletes nothing yet. |
+
+Archive requests use the same approval, 24-hour grace period, cancellation, and
+`deletion` commands as live requests. `forget-message id:archive:<id>` and
+`forget-user` with an `archive:` id also work. At execution, Mneme does not
+change the archive file: it records a redaction in the live database, and every
+archive read, agent tool, MCP tool, and citation check hides the target from then
+on. A redaction applies to every copy of the archive, rewritten or not. To remove
+the rows from the file itself, an operator runs `archive-rewrite` (see
+[Configuration](configuration.md)).
+
+A user redaction hides the user's own messages and the memories that they own or
+that cite their messages. It does not remove the user's name or mentions from
+other people's archive messages.
+
 ## MCP token management
 
 | Command | Behavior |

@@ -205,6 +205,28 @@ export const MNEME_SUBCOMMAND_GROUPS: readonly SubcommandGroupSpec[] = [
 ];
 
 /**
+ * The `/mneme archive` group (plan 011 step 9). It exists only when a
+ * read-only platform archive is configured; see {@link mnemeSubcommandGroups}.
+ */
+export const MNEME_ARCHIVE_GROUP: SubcommandGroupSpec = {
+  name: 'archive',
+  description: 'Find archive users and request archive deletions in the secure review channel.',
+  subcommands: [
+    { name: 'user', description: 'Find archive authors by name; shows ids and org message counts.',
+      options: [{ name: 'name', description: 'Part of the author name.', required: true, kind: 'string' }] },
+    { name: 'forget-user', description: 'Request hiding of an archive user; approval and a 24-hour window are required.',
+      options: [idOption('Archive user id from archive user.')] },
+    { name: 'forget-message', description: 'Request hiding of an archive message; approval and a 24-hour window are required.',
+      options: [idOption('Archive message id.')] },
+  ],
+};
+
+/** The subcommand groups for this deployment: the archive group only when an archive is configured. */
+export function mnemeSubcommandGroups(options: { archive: boolean }): readonly SubcommandGroupSpec[] {
+  return options.archive ? [...MNEME_SUBCOMMAND_GROUPS, MNEME_ARCHIVE_GROUP] : MNEME_SUBCOMMAND_GROUPS;
+}
+
+/**
  * Flatten the command surface into endpoint labels (`status`, ..., `mcp-token create`).
  * Used to assert the registered surface matches Section 27 and for diagnostics.
  */
