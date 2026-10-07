@@ -137,6 +137,14 @@ const COLUMNS = `source_message_id, job_id, run_id, outbox_id, workspace_id, tar
   created_at_ms, started_at_ms, completed_at_ms, updated_at_ms`;
 
 /** Opaque, stable delivery identity. It contains no message text or model output. */
+/**
+ * True when outbox row `outboxId` delivers a direct answer. Only a direct
+ * answer is sanitized and assembled by the host with platform-archive links.
+ */
+export function isDirectAnswerOutbox(db: DatabaseSync, outboxId: string): boolean {
+  return db.prepare('SELECT 1 FROM direct_answer_requests WHERE outbox_id = ? LIMIT 1').get(outboxId) !== undefined;
+}
+
 export function directAnswerResponseIntentKey(sourceMessageId: string): string {
   const digest = createHash('sha256').update(sourceMessageId).digest('hex');
   return `direct-answer:v1:${digest}`;

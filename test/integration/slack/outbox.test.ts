@@ -21,6 +21,7 @@ import { PermanentJobError, TransientJobError } from '../../../src/jobs/errors.j
 import { createSlackRecentSentLookup } from '../../../src/platform/slack/recent-sent.js';
 import { claimOutboxForSending, enqueueOutbox, getOutbox } from '../../../src/outbox/repository.js';
 import { reconcileOutboxSending } from '../../../src/outbox/recovery.js';
+import { useArchiveLinkTarget } from '../../../src/platform/links.js';
 
 const PUBLIC = 'C0000000001';
 const PRIVATE = 'C0000000002';
@@ -85,6 +86,20 @@ describe('Slack outbox sender', () => {
     expect(post.metadata).toEqual({ event_type: OUTBOX_METADATA_EVENT_TYPE, event_payload: { marker: 'm-1' } });
     for (const key of ['link_names', 'reply_broadcast', 'username', 'icon_url', 'icon_emoji']) {
       expect(post).not.toHaveProperty(key);
+    }
+  });
+
+  it('renders a host-built archive link live only for a direct answer', async () => {
+    const archiveUrl = 'https://discord.com/channels/300000000000000001/300000000000000010/300000000000000110';
+    useArchiveLinkTarget({ platform: 'discord', workspaceId: '300000000000000001' });
+    try {
+      const { api, sender } = await setup();
+      await sender.send({ channelId: PUBLIC, content: `Decided [archive · #general](${archiveUrl})`, archiveLinks: true });
+      await sender.send({ channelId: PUBLIC, content: `Decided [archive · #general](${archiveUrl})` });
+      expect(api.posted[0]!.text).toContain(`<${archiveUrl}|archive · #general>`);
+      expect(api.posted[1]!.text).not.toContain(`<${archiveUrl}|`);
+    } finally {
+      useArchiveLinkTarget(null);
     }
   });
 

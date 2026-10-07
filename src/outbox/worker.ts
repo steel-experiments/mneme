@@ -1,4 +1,5 @@
 import { type DatabaseSync, transaction } from '../db/database.js';
+import { isDirectAnswerOutbox } from '../db/repositories/direct-answers.js';
 import { setProposalStatus } from '../db/repositories/proposals.js';
 import {
   claimOutboxForSending,
@@ -110,6 +111,7 @@ export function createSendOutboxHandler(
         content: row.content,
         replyToMessageId: row.replyToMessageId,
         dedupeMarker: row.dedupeMarker,
+        archiveLinks: isDirectAnswerOutbox(db, row.id),
       });
       platformMessageId = result.platformMessageId;
     } catch (err) {

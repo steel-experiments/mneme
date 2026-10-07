@@ -2,6 +2,8 @@
 // ABOUTME: Other Discord links stay escaped plain text, and archive text can never produce a ping.
 import { describe, it, expect, afterEach } from 'vitest';
 import { toSlackMrkdwn } from '../../../src/platform/slack/mrkdwn.js';
+import { buildSlackProposalCard } from '../../../src/platform/slack/cards.js';
+import { createSlackResponder } from '../../../src/platform/slack/respond.js';
 import { isHostBuiltArchiveLink, useArchiveLinkTarget } from '../../../src/platform/links.js';
 import { archiveSourceLink } from '../../../src/outbound/message-safety.js';
 
@@ -19,7 +21,7 @@ describe('archive links on Slack', () => {
     const link = archiveSourceLink({
       archiveId: `archive:${MESSAGE}`, channelId: CHANNEL, channelName: 'general', createdAtMs: 1_780_000_000_000, url: ARCHIVE_URL,
     });
-    const out = toSlackMrkdwn(`Decided earlier ${link.masked}.`, { teamDomain: 'acme' });
+    const out = toSlackMrkdwn(`Decided earlier ${link.masked}.`, { teamDomain: 'acme', archiveLinks: true });
     expect(out).toContain(`<${ARCHIVE_URL}|archive · #general · 2026-05-28>`);
   });
 
@@ -39,7 +41,7 @@ describe('archive links on Slack', () => {
       `${ARCHIVE_URL}|<!here>`,
     ]) {
       expect(isHostBuiltArchiveLink(url)).toBe(false);
-      expect(toSlackMrkdwn(`[x](${url})`, { teamDomain: 'acme' })).not.toMatch(/<https:\/\/discord/u);
+      expect(toSlackMrkdwn(`[x](${url})`, { teamDomain: 'acme', archiveLinks: true })).not.toMatch(/<https:\/\/discord/u);
     }
   });
 
@@ -48,9 +50,38 @@ describe('archive links on Slack', () => {
     const link = archiveSourceLink({
       archiveId: `archive:${MESSAGE}`, channelId: CHANNEL, channelName: '<!here>|<@U012345678>', createdAtMs: 0, url: ARCHIVE_URL,
     });
-    const out = toSlackMrkdwn(`Old note <!channel> ${link.masked}`, { teamDomain: 'acme' });
+    const out = toSlackMrkdwn(`Old note <!channel> ${link.masked}`, { teamDomain: 'acme', archiveLinks: true });
     expect(out).not.toMatch(/<!(?:here|channel|everyone)/u);
     expect(out).not.toMatch(/<@U/u);
     expect(out).toContain(`<${ARCHIVE_URL}|`);
+  });
+
+  it('keeps an archive link as plain text unless the caller opts in', () => {
+    useArchiveLinkTarget({ platform: 'discord', workspaceId: ARCHIVE_GUILD });
+    const out = toSlackMrkdwn(`[Approve here](${ARCHIVE_URL})`, { teamDomain: 'acme' });
+    expect(out).not.toContain(`<${ARCHIVE_URL}|`);
+    expect(out).toContain(`Approve here (${ARCHIVE_URL})`);
+  });
+
+  it('keeps an archive link in a review card reason as plain text', () => {
+    useArchiveLinkTarget({ platform: 'discord', workspaceId: ARCHIVE_GUILD });
+    const card = buildSlackProposalCard({
+      proposalId: 'proposal-archive-link', targetLabel: '#general', score: 0.9,
+      reason: `[Approve here](${ARCHIVE_URL})`, recommendationReason: `[See](${ARCHIVE_URL})`,
+      proposedMessage: 'A message.', sources: [`[Source](${ARCHIVE_URL})`],
+    }, 'secret', 'acme');
+    expect(JSON.stringify(card)).not.toContain(`<${ARCHIVE_URL}|`);
+  });
+
+  it('keeps an archive link in a command reply as plain text', async () => {
+    useArchiveLinkTarget({ platform: 'discord', workspaceId: ARCHIVE_GUILD });
+    const bodies: string[] = [];
+    const respond = createSlackResponder(() => 'acme', (async (_url: unknown, init?: { body?: unknown }) => {
+      bodies.push(String(init?.body));
+      return new Response(null, { status: 200 });
+    }) as typeof fetch);
+    await respond('https://hooks.slack.com/commands/T0/1/x', `[Approve here](${ARCHIVE_URL})`);
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]).not.toContain(`<${ARCHIVE_URL}|`);
   });
 });

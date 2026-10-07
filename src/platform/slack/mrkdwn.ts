@@ -6,6 +6,12 @@ import { isHostBuiltArchiveLink } from '../links.js';
 export interface SlackMrkdwnOptions {
   /** The workspace domain from `auth.test` (`acme` in `acme.slack.com`). */
   teamDomain: string;
+  /**
+   * Keep host-built platform-archive links live. Only the delivery of a
+   * sanitized direct answer sets this; every other text keeps such links as
+   * escaped plain text.
+   */
+  archiveLinks?: boolean;
 }
 
 // Private-use code points mark placeholders. Input copies of them are removed
@@ -77,7 +83,7 @@ export function toSlackMrkdwn(content: string, options: SlackMrkdwnOptions): str
   text = text.replace(INLINE_CODE, (code) => keep(escapeSlackText(code)));
 
   text = text.replace(MARKDOWN_LINK, (_raw, label: string, url: string) => (
-    isHostBuiltSlackLink(url, options.teamDomain) || isHostBuiltArchiveLink(url)
+    isHostBuiltSlackLink(url, options.teamDomain) || (options.archiveLinks === true && isHostBuiltArchiveLink(url))
       ? keep(`<${url}|${linkLabel(label)}>`)
       : keep(`${escapeSlackText(label)} (${escapeSlackText(url)})`)
   ));
