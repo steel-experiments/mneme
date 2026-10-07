@@ -203,6 +203,8 @@ export class ShutdownCoordinator {
 
 export interface ShutdownRuntime {
   db: DatabaseSync;
+  /** The read-only platform archive, closed with the live database (plan 011). */
+  archiveDb?: DatabaseSync;
   runtime: RuntimeState;
   /** Workers whose claiming should stop and whose in-flight work should drain. */
   workers?: readonly JobWorker[];
@@ -248,7 +250,11 @@ export function createShutdownDeps(rt: ShutdownRuntime): ShutdownDeps {
       rt.db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
     },
     closeDatabase: () => {
-      rt.db.close();
+      try {
+        rt.archiveDb?.close();
+      } finally {
+        rt.db.close();
+      }
     },
   };
 }

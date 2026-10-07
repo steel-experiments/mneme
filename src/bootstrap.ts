@@ -1,8 +1,9 @@
 import { fileURLToPath } from 'node:url';
-import { type AppConfig, type AutonomyMode } from './config.js';
+import { type AppConfig, type ArchiveConfig, type AutonomyMode } from './config.js';
 import { createLogger } from './logger.js';
 import { createCounters, type Counters } from './observability.js';
 import { openDatabase, type DatabaseSync } from './db/database.js';
+import { ArchiveError, openArchiveDatabase, verifyArchive, type ArchiveSummary } from './platform-archive/database.js';
 import { applyMigrations } from './db/migrations.js';
 import { startHttpServer, type HttpServerHandle, type ProbeResult } from './http/server.js';
 import { createLivenessProbe } from './http/health.js';
@@ -114,6 +115,8 @@ export interface BootstrapContext {
   now: () => number;
   /** Text conventions of the active chat platform (equal to `platform.format`). */
   format: PlatformFormat;
+  /** The verified read-only archive of another platform, when configured (plan 011). */
+  platformArchive?: PlatformArchive;
 }
 
 /** Injectable startup seams. Each has a real default; tests override them. */
@@ -176,6 +179,31 @@ export interface BootstrapResult {
   stop(): Promise<ShutdownResult>;
 }
 
+/** A verified read-only archive and its summary (plan 011). */
+export interface PlatformArchive {
+  db: DatabaseSync;
+  summary: ArchiveSummary;
+}
+
+/**
+ * Open and verify the configured archive. The newest schema this release
+ * knows is the live database's applied version, which was just migrated.
+ */
+function openPlatformArchive(liveDb: DatabaseSync, archive: ArchiveConfig, resources: StartupResources): PlatformArchive {
+  const newestSchemaVersion = Number(
+    (liveDb.prepare('SELECT MAX(version) AS v FROM schema_migrations').get() as { v: number | null } | undefined)?.v ?? 0,
+  );
+  try {
+    const archiveDb = openArchiveDatabase(archive.path);
+    resources.archiveDb = archiveDb;
+    const summary = verifyArchive(archiveDb, archive.path, { platform: archive.platform, newestSchemaVersion });
+    return { db: archiveDb, summary };
+  } catch (err) {
+    if (err instanceof ArchiveError) throw new BootstrapError(err.message);
+    throw err;
+  }
+}
+
 /** Raised when a startup precondition is not met. */
 export class BootstrapError extends Error {
   constructor(message: string) {
@@ -205,6 +233,7 @@ const MILESTONE_BY_PHASE = {
  */
 interface StartupResources {
   ownedDb?: DatabaseSync;
+  archiveDb?: DatabaseSync;
   http?: HttpServerHandle;
   discord?: PlatformWiring;
   jobs?: JobRuntimeWiring;
@@ -233,6 +262,7 @@ export async function bootstrapApplication(deps: BootstrapDeps): Promise<Bootstr
     await cleanup('jobs', resources.jobs ? () => resources.jobs!.stop() : undefined);
     await cleanup('discord', resources.discord ? () => resources.discord!.destroy() : undefined);
     await cleanup('http', resources.http ? () => resources.http!.close() : undefined);
+    await cleanup('archive', resources.archiveDb ? () => resources.archiveDb!.close() : undefined);
     await cleanup('database', resources.ownedDb ? () => resources.ownedDb!.close() : undefined);
     throw error;
   }
@@ -259,6 +289,22 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
   record(1, 'sqlite_migrated');
   logger.info({ event: 'bootstrap.sqlite_migrated', ownsDb }, 'sqlite opened and migrated');
 
+  // Open and verify the read-only platform archive before anything can serve
+  // it. A wrong, broken, or unknown archive stops startup (plan 011).
+  const platformArchive = config.archive ? openPlatformArchive(db, config.archive, resources) : undefined;
+  if (platformArchive) {
+    const { summary } = platformArchive;
+    logger.info({
+      event: 'bootstrap.archive_verified',
+      platform: summary.platform,
+      schemaVersion: summary.schemaVersion,
+      sizeBytes: summary.sizeBytes,
+      sha256: summary.sha256.slice(0, 12),
+      orgMessages: summary.orgMessages,
+      orgMemories: summary.orgMemories,
+    }, 'platform archive verified');
+  }
+
   const configuredMode = config.mode;
   const ctx: BootstrapContext = {
     config,
@@ -270,6 +316,7 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
     counters: createCounters(),
     now,
     format: (await import('./platform/select.js')).platformFormat(config.platform),
+    platformArchive,
   };
   let platformInstance: ChatPlatform | undefined;
   const getPlatform = async (): Promise<ChatPlatform> => {
@@ -505,6 +552,7 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
   const coordinator = new ShutdownCoordinator(
     createShutdownDeps({
       db,
+      archiveDb: platformArchive?.db,
       runtime,
       workers: jobs?.worker ? [jobs.worker] : [],
       discord: discord ?? undefined,

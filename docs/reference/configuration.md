@@ -59,7 +59,15 @@ workspace, and do not distribute it. See
 | `MNEME_ARCHIVE_PATH` | Absolute path of a verified Mneme backup from your deployment on the other platform. Mneme opens it read-only and never changes it. It must not be `DATABASE_PATH` and must not be in `BACKUP_DIR`, because backup retention could delete it. |
 | `MNEME_ARCHIVE_PLATFORM` | The platform of that deployment: `discord` or `slack`. It must differ from `MNEME_PLATFORM`. |
 
-Set both variables or neither.
+Set both variables or neither. Startup opens the file read-only and checks it
+before Mneme connects to the platform. Startup stops when:
+
+- the integrity check fails;
+- the file is in WAL journal mode (copy a completed backup, not a live
+  database);
+- the schema is older than 45 or newer than this release knows;
+- the file does not hold exactly one workspace, or the workspace id does not
+  belong to `MNEME_ARCHIVE_PLATFORM`.
 
 ### Both platforms
 
