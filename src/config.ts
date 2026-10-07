@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { createLogger } from './logger.js';
 import { CLAUDE_HOSTED_REDIRECT_URI, checkRedirectUri } from './mcp/oauth/client.js';
@@ -308,6 +308,17 @@ export interface PersonalityConfig {
 }
 
 /**
+ * A frozen, read-only Mneme database from another platform's deployment
+ * (`MNEME_ARCHIVE_PATH`, `MNEME_ARCHIVE_PLATFORM`; plan 011).
+ */
+export interface ArchiveConfig {
+  /** Absolute path of the archive file on the volume. */
+  path: string;
+  /** The platform whose deployment wrote the archive. */
+  platform: PlatformId;
+}
+
+/**
  * The complete runtime configuration object. One typed value represents the
  * whole Section 35 contract plus the personality defaults from Section 14.
  */
@@ -336,6 +347,8 @@ export interface AppConfig {
   discord?: DiscordConfig;
   /** Present only when `MNEME_PLATFORM=slack`. */
   slack?: SlackConfig;
+  /** The read-only archive of another platform (plan 011); absent when not configured. */
+  archive?: ArchiveConfig;
   llm: LlmConfig;
   organization: { name: string; timezone: string };
   agent: { name: string; role: string };
@@ -706,6 +719,38 @@ function deriveBackupDir(dataDir: string): string {
   return dataDir.endsWith('/') ? `${dataDir}backups` : `${dataDir}/backups`;
 }
 
+/**
+ * Parse the optional read-only archive. Both settings or neither. The archive
+ * comes from another platform, and it must not be the live database or sit in
+ * the backup directory, where backup retention could delete it.
+ */
+function parseArchive(
+  e: NodeJS.ProcessEnv,
+  platform: PlatformId,
+  databasePath: string,
+  backupDir: string,
+): ArchiveConfig | undefined {
+  const path = env(e, 'MNEME_ARCHIVE_PATH');
+  const platformRaw = env(e, 'MNEME_ARCHIVE_PLATFORM');
+  if (path === undefined && platformRaw === undefined) return undefined;
+  if (platformRaw === undefined) throw new ConfigError('required when MNEME_ARCHIVE_PATH is set', 'MNEME_ARCHIVE_PLATFORM');
+  if (path === undefined) throw new ConfigError('required when MNEME_ARCHIVE_PLATFORM is set', 'MNEME_ARCHIVE_PATH');
+  const archivePlatform = parseEnum(platformRaw, PLATFORM_IDS, platform, 'MNEME_ARCHIVE_PLATFORM');
+  if (archivePlatform === platform) {
+    throw new ConfigError('the archive must come from another platform than MNEME_PLATFORM', 'MNEME_ARCHIVE_PLATFORM');
+  }
+  rejectUnsafePath(path, 'MNEME_ARCHIVE_PATH');
+  if (!isAbsolute(path)) throw new ConfigError('expected an absolute path', 'MNEME_ARCHIVE_PATH');
+  if (resolve(path) === resolve(databasePath)) {
+    throw new ConfigError('must not be the live database (DATABASE_PATH)', 'MNEME_ARCHIVE_PATH');
+  }
+  const fromBackups = relative(resolve(backupDir), resolve(path));
+  if (fromBackups !== '' && !fromBackups.startsWith('..') && !isAbsolute(fromBackups)) {
+    throw new ConfigError('must not be in BACKUP_DIR, where backup retention can delete it', 'MNEME_ARCHIVE_PATH');
+  }
+  return { path, platform: archivePlatform };
+}
+
 function rejectUnsafePath(path: string, setting: string): void {
   // Reject traversal segments; absolute or relative paths are otherwise allowed.
   const segments = path.split(/[\\/]/);
@@ -841,6 +886,9 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
 
   // ---- Platform credentials (Discord or Slack) ----
   const { discord, slack, workspaceId } = parsePlatformCredentials(e, platform);
+
+  // ---- Read-only platform archive (optional; plan 011) ----
+  const archive = parseArchive(e, platform, databasePath, backupDir);
 
   // ---- LLM provider (defaults: openai / gpt-5.6-terra) ----
   const provider = parseEnum(
@@ -1196,6 +1244,7 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
     workspaceId,
     discord,
     slack,
+    archive,
     llm: { provider, model, triageModel, baseUrl, apiKey, dailyBudgetUsd },
     organization,
     agent,

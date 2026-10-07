@@ -52,6 +52,15 @@ Create the Slack app from `config/slack-app-manifest.yml` in your own
 workspace, and do not distribute it. See
 [Install Mneme](../tutorials/getting-started.md#slack).
 
+### Read-only archive (optional)
+
+| Variable | Meaning |
+| --- | --- |
+| `MNEME_ARCHIVE_PATH` | Absolute path of a verified Mneme backup from your deployment on the other platform. Mneme opens it read-only and never changes it. It must not be `DATABASE_PATH` and must not be in `BACKUP_DIR`, because backup retention could delete it. |
+| `MNEME_ARCHIVE_PLATFORM` | The platform of that deployment: `discord` or `slack`. It must differ from `MNEME_PLATFORM`. |
+
+Set both variables or neither.
+
 ### Both platforms
 
 | Variable | Meaning |
