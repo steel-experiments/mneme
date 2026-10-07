@@ -302,6 +302,7 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
       sha256: summary.sha256.slice(0, 12),
       orgMessages: summary.orgMessages,
       orgMemories: summary.orgMemories,
+      hiddenLegacyThreads: summary.hiddenLegacyThreads,
     }, 'platform archive verified');
   }
 

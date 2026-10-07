@@ -36,6 +36,7 @@ const SUMMARY: ArchiveSummary = {
   sha256: '0123456789abcdef'.repeat(4),
   orgMessages: 52_140,
   orgMemories: 312,
+  hiddenLegacyThreads: 0,
 };
 
 let env: TestDb | undefined;

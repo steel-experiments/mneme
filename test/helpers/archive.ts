@@ -93,6 +93,9 @@ function seedMemory(db: DatabaseSync, id: string, scopeType: string, scopeKey: s
 
 /** Seed the archive content: one channel and message for each visibility role, plus memories. */
 export function seedArchiveContent(db: DatabaseSync): void {
+  // A realistic archive: the private-thread flag (migration 045) existed
+  // before any of the seeded rows, so their flags are known to be correct.
+  db.prepare('UPDATE schema_migrations SET applied_at_ms = ? WHERE version = 45').run(ARCHIVE_NOW - 1_000);
   db.prepare(
     'INSERT INTO workspaces (id, name, owner_id, joined_at_ms, discovered_at_ms, updated_at_ms, raw_json) VALUES (?,?,?,?,?,?,NULL)',
   ).run(ARCHIVE_GUILD, 'Archived Guild', null, ARCHIVE_NOW, ARCHIVE_NOW, ARCHIVE_NOW);

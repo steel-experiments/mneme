@@ -6,7 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import type { PlatformId } from '../config.js';
 import { isDiscordId } from '../platform/ids.js';
 import { isSlackTeamId } from '../platform/slack/ids.js';
-import { NO_REDACTIONS, servableMemory, servableMessage } from './servable.js';
+import { NO_REDACTIONS, privateFlagObserved, servableMemory, servableMessage } from './servable.js';
 
 /** The oldest archive schema this release reads: 45 adds `channels.is_private_thread`. */
 export const ARCHIVE_MIN_SCHEMA_VERSION = 45;
@@ -22,6 +22,11 @@ export interface ArchiveSummary {
   orgMessages: number;
   /** Active org-scoped memories that Mneme can serve from the archive. */
   orgMemories: number;
+  /**
+   * Org threads hidden because discovery last saw them before migration 045,
+   * so the archive cannot prove that they are not Discord private threads.
+   */
+  hiddenLegacyThreads: number;
 }
 
 export interface VerifyArchiveOptions {
@@ -123,6 +128,10 @@ export function verifyArchive(db: DatabaseSync, path: string, options: VerifyArc
     WHERE ${servableMessage('m', 'c', 'p')}`).get(NO_REDACTIONS) as { n: number }).n);
   const orgMemories = Number((db.prepare(`
     SELECT COUNT(*) AS n FROM memories mem WHERE ${servableMemory('mem')}`).get(NO_REDACTIONS) as { n: number }).n);
+  const hiddenLegacyThreads = Number((db.prepare(`
+    SELECT COUNT(*) AS n FROM channels c
+    WHERE c.is_thread = 1 AND c.visibility_class = 'org' AND c.ingest_enabled = 1 AND c.deleted_at_ms IS NULL
+      AND COALESCE(${privateFlagObserved('c')}, 0) = 0`).get() as { n: number }).n);
 
   return {
     platform: options.platform,
@@ -132,5 +141,6 @@ export function verifyArchive(db: DatabaseSync, path: string, options: VerifyArc
     sha256: sha256File(path),
     orgMessages,
     orgMemories,
+    hiddenLegacyThreads,
   };
 }
