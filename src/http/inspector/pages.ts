@@ -21,6 +21,8 @@ import {
 import { parseToolCalls, parseProvenance, buildLedger, renderLedgerSvg, TONES } from './ledger.js';
 import { buildTraceRows, parseModelTurns } from './trace.js';
 import type { DatabaseSync } from '../../db/database.js';
+import { formatBytes } from '../../commands/status.js';
+import type { ArchiveSummary } from '../../platform-archive/database.js';
 import { type RetrievalGrant } from '../../db/repositories/message-search.js';
 import type { MemoryArchiveCursor, MemoryArchiveSort, MemoryEvidenceCursor } from '../../memory/search.js';
 import { messageLink } from '../../platform/links.js';
@@ -35,6 +37,8 @@ export interface PageEnv {
   basePath: string;
   /** Process readiness and effective mode for the overview; absent renders unknown. */
   runtime?: InspectorRuntimeView;
+  /** The verified read-only platform archive, when configured (plan 011). */
+  archive?: ArchiveSummary;
 }
 
 /** What the overview shows about process state (Section 32.6 pages table). */
@@ -86,6 +90,12 @@ export function renderRoute(route: InspectorRoute, env: PageEnv): RenderedPage {
 }
 
 // ---- Overview -----------------------------------------------------------------
+
+/** One note about the read-only platform archive: counts and identity, no content. */
+function archiveNote(a: ArchiveSummary | undefined): string {
+  if (!a) return '';
+  return `\n<p class="note">archive: ${h(a.platform)} · ${h(formatBytes(a.sizeBytes))} · schema ${fmtNum(a.schemaVersion)} · ${fmtNum(a.orgMessages)} org messages · ${fmtNum(a.orgMemories)} org memories · sha256 ${h(a.sha256.slice(0, 12))}</p>`;
+}
 
 function pageOverview(env: PageEnv): RenderedPage {
   const o = overviewSnapshot(env.db, env.grant, env.now, env.dayStartMs);
@@ -161,7 +171,7 @@ function pageOverview(env: PageEnv): RenderedPage {
     basePath: env.basePath,
     body: `
 <h2>Overview</h2>
-<p class="note">${readinessLine} · ${modeLine} · guild ${h(o.guildId ?? '—')} · channels: ${scopeLine} · grant: secure review (org, restricted, review-only).</p>
+<p class="note">${readinessLine} · ${modeLine} · guild ${h(o.guildId ?? '—')} · channels: ${scopeLine} · grant: secure review (org, restricted, review-only).</p>${archiveNote(env.archive)}
 <div class="cards">
 ${cards}
 </div>

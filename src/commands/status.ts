@@ -6,6 +6,7 @@ import { recordAdminEvent } from '../db/repositories/admin-events.js';
 import type { AutonomyMode } from '../config.js';
 import { normalizeBuildInfo, type BuildInfo } from '../build-info.js';
 import { isMnemeTestSurface } from '../ingestion/test-channels.js';
+import type { ArchiveSummary } from '../platform-archive/database.js';
 import {
   collectDirectAnswerStatus24h,
   type DirectAnswerStatus24h,
@@ -82,6 +83,8 @@ export interface StatusRuntimeInputs {
   /** Current size of the WAL file in bytes, or null when not measured. */
   walSizeBytes: number | null;
   historicalCampaign?: { id: string; dayStartMs: number };
+  /** The verified read-only platform archive, when configured (plan 011). */
+  archive?: ArchiveSummary;
 }
 
 export interface DatabaseStatus {
@@ -218,6 +221,8 @@ export interface StatusReport {
   /** Channel counts grouped by visibility class (org/restricted/review_only/excluded). */
   policy: Record<string, number>;
   channelPolicyReviews?: { pending: number; failedDelivery: number };
+  /** The read-only platform archive; absent when none is configured (plan 011). */
+  archive?: ArchiveSummary;
 }
 
 /**
@@ -245,6 +250,7 @@ export function collectStatusReport(db: DatabaseSync, runtime: StatusRuntimeInpu
     backup: { ...runtime.backup, job: collectLatestBackupJob(db) },
     policy: collectPolicyCoverage(db),
     channelPolicyReviews: collectChannelPolicyReviewStatus(db),
+    ...(runtime.archive ? { archive: runtime.archive } : {}),
   };
 }
 
@@ -338,6 +344,7 @@ export function formatStatusReply(outcome: StatusOutcome): string {
     `Backup: ${formatBackupStatus(r.backup, r.now)}`,
     `Channels: ${formatPolicy(r.policy)}`,
   ];
+  if (r.archive) lines.push(formatArchiveLine(r.archive));
   if (r.historicalMemory.campaign) {
     const c = r.historicalMemory.campaign;
     lines.splice(12, 0,
@@ -349,6 +356,11 @@ export function formatStatusReply(outcome: StatusOutcome): string {
   const failedJobDetail = formatFailedJobDetail(q);
   if (failedJobDetail) lines.splice(10, 0, failedJobDetail);
   return boundStatusReply(lines.join('\n'));
+}
+
+/** One line about the read-only platform archive: counts and identity, no content. */
+function formatArchiveLine(a: ArchiveSummary): string {
+  return `Archive: ${a.platform} · ${formatBytes(a.sizeBytes)} · schema ${a.schemaVersion} · ${a.orgMessages} org messages · ${a.orgMemories} org memories · sha256 ${a.sha256.slice(0, 12)}`;
 }
 
 /** Keep failure diagnosis compact: four top types plus one aggregate remainder. */
@@ -458,7 +470,8 @@ function age(now: number, atMs: number): string {
   return `${Math.round(mins / 60)}h`;
 }
 
-function formatBytes(n: number): string {
+/** Render a byte count with one binary unit (B, KB, MB, GB). */
+export function formatBytes(n: number): string {
   if (n < 1024) return `${n}B`;
   const units = ['KB', 'MB', 'GB'];
   let v = n / 1024;

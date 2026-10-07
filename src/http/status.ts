@@ -1,4 +1,5 @@
 import { statSync } from 'node:fs';
+import type { ArchiveSummary } from '../platform-archive/database.js';
 import type { AppConfig } from '../config.js';
 import { type DatabaseSync } from '../db/database.js';
 import { prepareCached } from '../db/repositories/util.js';
@@ -61,6 +62,8 @@ export interface StatusProviderDeps {
   now?: () => number;
   /** Backups directory (default `config`-derived `DATA_DIR/backups`). */
   backupsDir?: string;
+  /** The verified read-only platform archive, when configured (plan 011). */
+  archive?: ArchiveSummary;
   /**
    * Optional Discord-health accessor. Live ping, ready state, and last-event
    * come from the Discord wiring, injected here. When absent the Gateway fields
@@ -110,6 +113,7 @@ export function buildStatusSnapshot(deps: StatusProviderDeps): Record<string, un
       ? { id: deps.config.historicalMemory.campaignId,
           dayStartMs: orgDayStartMs(now, deps.config.organization.timezone) }
       : undefined,
+    ...(deps.archive ? { archive: deps.archive } : {}),
   };
 
   const report = collectStatusReport(deps.db, runtimeInputs);

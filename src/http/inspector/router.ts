@@ -24,6 +24,7 @@
  * route accepts a scope parameter. Views log one content-free Pino event.
  */
 
+import type { ArchiveSummary } from '../../platform-archive/database.js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Logger } from '../../logger.js';
 import type { DatabaseSync } from '../../db/database.js';
@@ -48,6 +49,8 @@ export interface InspectorRouterDeps {
   readiness?: () => { ready: boolean; reason: string | null };
   /** Configured autonomy mode (`MNEME_MODE`); the durable override wins when set. */
   configuredMode?: string;
+  /** The verified read-only platform archive, when configured (plan 011). */
+  archive?: ArchiveSummary;
   /** Override limiters for tests; defaults derive from `config`. */
   tokenLimiter?: RateLimiter;
   unauthLimiter?: RateLimiter;
@@ -176,6 +179,7 @@ export function createInspectorHandler(deps: InspectorRouterDeps) {
         dayStartMs: orgDayStartMs(nowMs, timezone),
         basePath: deps.config.path,
         ...(runtime ? { runtime } : {}),
+        ...(deps.archive ? { archive: deps.archive } : {}),
       };
       const page = renderRoute(route, env);
       sendHtml(res, page.status, page.html, {});
