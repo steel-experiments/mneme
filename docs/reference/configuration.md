@@ -69,6 +69,24 @@ before Mneme connects to the platform. Startup stops when:
 - the file does not hold exactly one workspace, or the workspace id does not
   belong to `MNEME_ARCHIVE_PLATFORM`.
 
+#### Rewrite the archive after deletions
+
+An archive deletion (see [Commands](commands.md)) hides its target at once but
+does not change the archive file. To remove the rows from the file too, run the
+rewrite after every pending archive deletion has executed:
+
+```bash
+node dist/cli/commands.js archive-rewrite --out /app/data/archive/discord-rewritten.sqlite
+```
+
+The command reads `MNEME_ARCHIVE_PATH` and `DATABASE_PATH`, copies the archive,
+and removes from the copy the redacted messages and users, every memory that
+cites a removed message or is owned by a redacted user, and every dependent
+row. It rebuilds the search indexes, checks integrity, and prints the new
+`sha256`. It never changes the current archive and refuses an output path that
+already exists. Point `MNEME_ARCHIVE_PATH` at the new file and restart. The
+redaction rows stay in the live database and keep applying to every copy.
+
 ### Both platforms
 
 | Variable | Meaning |
