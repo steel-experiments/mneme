@@ -247,16 +247,21 @@ Add `migrations/046_archive_redactions.sql`:
 ```sql
 CREATE TABLE archive_redactions (
   id TEXT PRIMARY KEY,
-  archive_sha256 TEXT NOT NULL,
+  archive_workspace_id TEXT NOT NULL,
   target_kind TEXT NOT NULL CHECK (target_kind IN ('user', 'message')),
   target_id TEXT NOT NULL,
+  archive_sha256 TEXT NOT NULL,
   deletion_request_id TEXT REFERENCES deletion_requests(id),
   created_at_ms INTEGER NOT NULL,
-  UNIQUE (archive_sha256, target_kind, target_id)
+  UNIQUE (archive_workspace_id, target_kind, target_id)
 );
 ```
 
-Add `src/platform-archive/redactions.ts`: `loadRedactions(liveDb, sha256)`
+`archive_sha256` records which file was current when the redaction was made;
+it is for audit only and never filters. Redactions match on the archive
+workspace id, so they apply to every copy of the archive, rewritten or not.
+
+Add `src/platform-archive/redactions.ts`: `loadRedactions(liveDb, archiveWorkspaceId)`
 returns `{ messageIds: string[], userIds: string[] }`. Archive queries pass
 them as JSON parameters and filter with
 `m.id NOT IN (SELECT value FROM json_each(?))` and
@@ -364,10 +369,17 @@ archive → pass. Then an independent review of Part C.
   `archive:<id>` for `message` and `user` targets. The id after the prefix must
   pass the archive platform's id check, and an archive must be configured.
 - `execute-deletion` writes one `archive_redactions` row for an archive target,
-  with the current archive `sha256` and the request id. It does not touch live
+  with the archive workspace id, the current archive `sha256` (audit only),
+  and the request id. It does not touch live
   tables for an archive target, and a live target never writes a redaction.
 - The status and the deletion reply name the target as an archive target.
 - Add `/mneme` help text and `docs/reference/commands.md` wording.
+- Add an admin-only archive user lookup (`/mneme archive-user <name>`): it
+  searches archive author names and returns the archive user id, display name,
+  and the number of org messages. An admin needs it to file an `archive:<user>`
+  deletion request for a person who asks in Slack. It reads only org content,
+  through `ARCHIVE_GRANT`, and it is subject to the same admin check as every
+  other subcommand.
 
 Tests: an archive message and an archive user disappear from every archive
 read function and MCP tool right after execution; the cancellable grace period
@@ -387,9 +399,12 @@ Add CLI `node dist/cli/commands.js archive-rewrite --out <path>`:
 3. Rename to `<out>` and print the new `sha256`.
 
 The operator then points `MNEME_ARCHIVE_PATH` at the new file and restarts.
-On startup, redaction rows whose `archive_sha256` differs from the current
-archive are kept but ignored; document that the operator rewrites only after
-every pending archive deletion has executed.
+Redaction rows always apply, whatever the archive file is. They are keyed by
+the archive workspace id and the message or user id, not by the file
+`sha256`, so an older copy that was not rewritten can never bring deleted
+content back. `archive_sha256` stays on the row for audit only. Document that
+the operator rewrites only after every pending archive deletion has executed,
+and that a rewrite does not remove redaction rows.
 
 **Verify**: CLI test: rewrite, reopen, confirm the redacted rows are absent and
 `verifyArchive` passes. Then an independent review of Part D.
@@ -482,6 +497,7 @@ Stop and report back without improvising if:
   overlay must also reach live memories that cite archive evidence.
 - Reviewers should check every new query on the archive handle for
   `ARCHIVE_GRANT`, the redaction filters, and `platform_boundary IS NULL`.
-- Open questions for the operator: should episode and scheduled reviews cite
-  the archive later (v2)? Should admins get an archive user lookup to find a
-  Discord user id for a deletion request from Slack?
+- Decided with the operator (2026-10-07): episode and scheduled reviews do not
+  cite the archive in v1; revisit after real use. Admins get an archive user
+  lookup (Step 9) so that a deletion request from Slack can name the old
+  Discord user id.
