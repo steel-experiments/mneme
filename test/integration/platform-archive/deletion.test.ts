@@ -163,7 +163,8 @@ describe('archive deletion requests', () => {
     expect(reply).toContain('archive user');
     expect(reply).toContain('does not remove');
     const row = latest();
-    expect(row).toMatchObject({ target_kind: 'user', target_id: `archive:${ARCHIVE_AUTHOR}`, message_count: 8 });
+    // Only the servable org messages count: restricted, review-only, and excluded ones are never confirmed.
+    expect(row).toMatchObject({ target_kind: 'user', target_id: `archive:${ARCHIVE_AUTHOR}`, message_count: 2 });
     approve(row);
     expect(await execute()).toBe('completed');
     expect(live.db.prepare('SELECT target_kind, target_id FROM archive_redactions').all()).toEqual([{ target_kind: 'user', target_id: ARCHIVE_AUTHOR }]);
@@ -197,6 +198,17 @@ describe('archive deletion requests', () => {
     expect(redactionCount()).toBe(0);
     expect(live.db.prepare('SELECT status FROM deletion_requests WHERE id = ?').get(row.id)?.status).toBe('scheduled');
     expect(getJob(live.db, latest().job_id!)?.status).not.toBe('succeeded');
+  });
+
+  it('does not confirm or count archive messages that the archive never serves', () => {
+    for (const id of [ARCHIVE_MESSAGES.restricted, ARCHIVE_MESSAGES.reviewOnly, ARCHIVE_MESSAGES.excluded, ARCHIVE_MESSAGES.restrictedThread]) {
+      expect(handleForgetMessageCommand({ ...base, messageId: `archive:${id}` }, deps)).toContain('No archive messages match');
+    }
+    expect(live.db.prepare('SELECT count(*) AS n FROM deletion_requests').get()?.n).toBe(0);
+    // ARCHIVE_AUTHOR wrote one message in every channel role; only the org
+    // channel message and the org thread message are servable.
+    handleForgetUserCommand({ ...base, userId: `archive:${ARCHIVE_AUTHOR}` }, deps);
+    expect(latest().message_count).toBe(2);
   });
 
   it('stores the archive workspace and refuses to execute against a different archive', async () => {
