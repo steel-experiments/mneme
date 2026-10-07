@@ -157,6 +157,16 @@ describe('archive citations in direct answers', () => {
     expect(res.content).not.toContain('[[cite:');
   });
 
+  it('rejects more than three cited sources in total, live and archive together', async () => {
+    const live = ['msg-cap-1', 'msg-cap-2', 'msg-cap-3'].map((id) => seedMessage(id, `billing note ${id}`));
+    const res = await answer({
+      message: `Notes [[cite:${live[0]}]] [[cite:${live[1]}]] [[cite:${live[2]}]] and earlier [[cite:${ARCHIVE_ORG}]].`,
+      citedMessageIds: [...live, ARCHIVE_ORG],
+    }, { live, archive: [ARCHIVE_ORG] });
+    expect(res.kind).not.toBe('answered');
+    expect(res.reasons.join('\n')).toContain('cites 4 sources; at most 3 are allowed');
+  });
+
   it('rejects an archive id that this run did not receive from an archive tool', async () => {
     const res = await answer({
       message: `As decided earlier [[cite:${ARCHIVE_ORG}]].`,

@@ -25,6 +25,7 @@ import {
 import {
   archiveSourceLink,
   isArchiveCitationId,
+  MAX_SOURCE_LINKS,
   renderInlineCitations,
   sanitizeOutboundMessage,
   type MessageLink,
@@ -1145,6 +1146,12 @@ export function validateDirectAnswer(
   const liveCitedIds = input.proposal.citedMessageIds.filter((id) => !isArchiveCitationId(id));
   const archiveCitedIds = [...new Set(input.proposal.citedMessageIds.filter(isArchiveCitationId))];
   const archiveLinks: MessageLink[] = [];
+  // The source-link cap counts live and archive citations together. An answer
+  // without archive citations keeps the live rule unchanged.
+  const totalCited = new Set(liveCitedIds).size + archiveCitedIds.length;
+  if (archiveCitedIds.length > 0 && totalCited > MAX_SOURCE_LINKS) {
+    reasons.push(`the answer cites ${totalCited} sources; at most ${MAX_SOURCE_LINKS} are allowed`);
+  }
   if (archiveCitedIds.length > 0) {
     if (!input.archive) {
       reasons.push('archive citations are not allowed in this message');
