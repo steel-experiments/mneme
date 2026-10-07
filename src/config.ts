@@ -751,7 +751,7 @@ function parseArchive(
   return { path, platform: archivePlatform };
 }
 
-function rejectUnsafePath(path: string, setting: string): void {
+export function rejectUnsafePath(path: string, setting: string): void {
   // Reject traversal segments; absolute or relative paths are otherwise allowed.
   const segments = path.split(/[\\/]/);
   if (segments.includes('..')) {

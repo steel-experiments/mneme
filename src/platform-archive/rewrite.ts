@@ -1,9 +1,10 @@
 // ABOUTME: Writes a minimized copy of the read-only platform archive without the redacted rows (plan 011 step 10).
 // ABOUTME: The source archive is never opened for writing; redaction rows stay in the live database and keep applying.
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
+import { chmodSync, closeSync, existsSync, openSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { rejectUnsafePath } from '../config.js';
 import { normalizeJournalMode } from '../db/backup.js';
 import { loadRedactions } from './redactions.js';
 
@@ -136,21 +137,39 @@ function removeDependentRows(db: DatabaseSync): void {
  * already hide such a memory.
  */
 export function rewriteArchive(options: RewriteArchiveOptions): RewriteArchiveResult {
+  rejectUnsafePath(options.outPath, '--out');
   const out = resolve(options.outPath);
   const tmp = `${out}.tmp`;
-  if (existsSync(out)) throw new Error(`the output file already exists: ${out}`);
   if (out === resolve(options.archivePath)) throw new Error('the output path is the archive itself');
   if (existsSync(tmp)) throw new Error(`a temporary file already exists: ${tmp}`);
+  // Reserve the output path atomically: the exclusive create fails when the
+  // file exists, and nothing created at that path later can be overwritten
+  // except this owner-only placeholder, which the final rename replaces.
+  try {
+    closeSync(openSync(out, 'wx', 0o600));
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'EEXIST') throw new Error(`the output file already exists: ${out}`);
+    throw err;
+  }
 
-  const source = new DatabaseSync(options.archivePath, { readOnly: true, allowExtension: false });
+  const removeLeftovers = (): void => {
+    for (const path of [tmp, `${tmp}-journal`, `${tmp}-wal`, `${tmp}-shm`, out]) rmSync(path, { force: true });
+  };
+
   let workspaceId: string;
   try {
-    const workspaces = source.prepare('SELECT id FROM workspaces').all() as Array<{ id: string }>;
-    if (workspaces.length !== 1) throw new Error(`expected exactly one workspace in the archive, found ${workspaces.length}`);
-    workspaceId = workspaces[0]!.id;
-    source.exec(`VACUUM INTO '${tmp.replaceAll("'", "''")}'`);
-  } finally {
-    source.close();
+    const source = new DatabaseSync(options.archivePath, { readOnly: true, allowExtension: false });
+    try {
+      const workspaces = source.prepare('SELECT id FROM workspaces').all() as Array<{ id: string }>;
+      if (workspaces.length !== 1) throw new Error(`expected exactly one workspace in the archive, found ${workspaces.length}`);
+      workspaceId = workspaces[0]!.id;
+      source.exec(`VACUUM INTO '${tmp.replaceAll("'", "''")}'`);
+    } finally {
+      source.close();
+    }
+  } catch (err) {
+    removeLeftovers();
+    throw err;
   }
 
   try {
@@ -189,11 +208,11 @@ export function rewriteArchive(options: RewriteArchiveOptions): RewriteArchiveRe
       copy.close();
     }
     normalizeJournalMode(tmp);
+    chmodSync(tmp, 0o600);
     renameSync(tmp, out);
     return { outPath: out, sha256: sha256Of(out), removedMessages, removedMemories };
   } catch (err) {
-    rmSync(tmp, { force: true });
-    rmSync(`${tmp}-journal`, { force: true });
+    removeLeftovers();
     throw err;
   }
 }
