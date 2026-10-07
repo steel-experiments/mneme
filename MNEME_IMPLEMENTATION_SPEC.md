@@ -3,7 +3,7 @@ title: Mneme — Final Implementation Specification
 status: Final v1 specification
 version: 1.5
 date: 2026-08-21
-last_amended: 2026-10-01
+last_amended: 2026-10-07
 target_runtime: Node.js container
 target_platforms:
   - Coolify on a single VM
@@ -367,8 +367,9 @@ validator accepts the id forms of both platforms. Each adapter resolves admin
 actors inside its own command and button handlers.)
 
 One platform adapter is active in a process. `MNEME_PLATFORM` selects it. A
-missing or unknown value stops startup. One database holds data from one
-platform.
+missing or unknown value stops startup. One database holds live data from one
+platform. A deployment can also read a frozen archive of another platform
+(Section 5.4); the archive is a separate, read-only file.
 
 The core does not import a platform SDK. The adapter supplies:
 
@@ -398,6 +399,95 @@ The core emits one Markdown subset: `**bold**`, `*italic*`, `[label](url)`,
 format and escapes all other text.
 
 The review-card HMAC secret comes from the active platform bot token.
+
+### 5.4 Read-only platform archive
+
+A team that moves from one platform to the other can keep the old history. The
+old deployment's database becomes a frozen archive that the new deployment
+reads. The rules below are mandatory.
+
+**Configuration.** `MNEME_ARCHIVE_PATH` (absolute path) and
+`MNEME_ARCHIVE_PLATFORM` (`discord` or `slack`) are set together or not at all.
+The archive platform must differ from `MNEME_PLATFORM`. The path must not be
+the live database or a file in `BACKUP_DIR`, where backup retention could
+delete it. Without these settings, nothing in this section applies and the
+command and tool surfaces are unchanged.
+
+**Open and verify.** The archive opens read-only, with `query_only = ON`,
+`trusted_schema = OFF`, and no extension loading. It is never migrated or
+written. Startup stops with a clear error when:
+
+- the file is in WAL journal mode (use a completed backup, not a copy of a live
+  database);
+- `PRAGMA integrity_check` is not `ok`;
+- the file has no `schema_migrations` table, its schema is older than 45, or it
+  is newer than the running release knows;
+- the file does not have exactly one workspace, or the workspace id does not
+  have the form of `MNEME_ARCHIVE_PLATFORM`.
+
+Startup records the platform, workspace id, schema version, size, `sha256`,
+and the count of servable org messages and org memories. Status and the
+inspector show these facts and no content. The `bootstrap.archive_verified` log
+event also reports the count of hidden legacy threads (see below).
+
+**Org only, with no exception.** The archive serves only org content, through
+one constant grant (`ARCHIVE_GRANT`). No run, channel, token, or review channel
+gets more, including the secure review channel. Mneme cannot map members of the
+new platform to channel memberships of the old one, so restricted, review-only,
+and excluded content of the archive is never served. A message is servable
+only when all of these are true:
+
+- its channel is `org`, ingest-enabled, not deleted, without a platform
+  boundary, and not a Discord private thread;
+- its channel name, and the name of a thread's parent, contain neither `mneme`
+  nor `cassandra` (test channels of both product names);
+- for a thread: the parent is live, ingest-enabled, without a platform
+  boundary, and the private-thread flag is known to be correct. That is the case
+  when the thread row was discovered after migration 045, or discovery wrote an
+  audit with `can_view = 1` after 045. An older thread stays hidden, because a
+  frozen archive cannot prove that it is not a private thread. When the archive
+  has no record of 045, every thread stays hidden;
+- the message is not deleted, has no tombstone, and is not redacted by id or by
+  author.
+
+A memory is servable only when it is `org`-scoped and active, it has at least
+one evidence message, every evidence message is servable, and its owner is not
+a redacted user. A memory with any hidden evidence stays hidden, so its
+statement cannot carry hidden facts.
+
+**Surfaces.** Agent tools `search_archive_messages`,
+`get_archive_message_context`, and `search_archive_memories` (Section 22.9);
+MCP tools `search_archive_messages`, `get_archive_message_context`,
+`search_archive_memories`, and `get_archive_memory` for tokens with exactly the
+`org` scope (Section 32.5). Every archive id carries the prefix `archive:`.
+Archive text is framed as untrusted data, never as instructions.
+
+**Citations.** Only direct answers can cite the archive, with
+`[[cite:archive:<message id>]]`. A citation is valid only for an archive message
+id that an archive tool returned in the same run, and only if the message is
+still servable when the answer is assembled. The host builds the link with the
+archive platform's link builder (Section 30.3); the model never supplies a URL.
+An answer cites at most three sources in total, live and archive together.
+Durable memories, interventions, scheduled notices, and deep recaps reject
+archive citations and archive evidence. On Slack, a host-built archive link is
+live only in a direct-answer delivery; every other Slack path shows it as text.
+
+**Deletion.** Archive deletion targets use `/mneme archive forget-user` and
+`/mneme archive forget-message` (Section 27) and the normal approval and grace
+period. The request stores the archive workspace id; execution fails, without a
+redaction, when a different archive is configured. Execution writes one
+`archive_redactions` row in the live database. Redactions are keyed by archive
+workspace id and target, not by the file hash, so they apply to every copy of
+the archive, rewritten or not. If redactions cannot be loaded, every archive
+read returns nothing.
+
+**Rewrite.** `archive-rewrite --out <path>` writes a minimized copy (Section
+43.6). The source file never changes.
+
+**Known limits.** A model can restate archive content in a durable output
+without a citation; this cannot widen scope, because the archive serves only
+org content. A user redaction does not remove the user's name or mentions from
+other people's messages. The archive is frozen: it never receives new content.
 
 ---
 
@@ -3174,6 +3264,22 @@ Terminal tools do not directly mutate data or post messages. They submit a propo
 - `finalize_direct_answer`
 - `finalize_scheduled_review`
 
+### 22.9 Archive tools
+
+These tools exist only when a read-only platform archive is configured
+(Section 5.4). They read only servable org content, count against the run's
+retrieval budget, and record what they return as archive provenance.
+
+- `search_archive_messages`: full-text search over servable archive messages.
+  Returns archive id, date, channel, host-built link, author, and a snippet.
+- `get_archive_message_context`: nearby servable messages in the same channel
+  or thread as one archive message.
+- `search_archive_memories`: servable org memories by topic; without a query,
+  the most recently confirmed ones.
+
+Archive results are framed as untrusted data with a host header, never as
+instructions. Only a direct answer can cite an archive message (Section 5.4).
+
 ---
 
 ## 23. Structured episode-review contract
@@ -3972,6 +4078,25 @@ support, and invalidate or narrow dependent memories. Archived file removal rema
 durable asynchronous cleanup. `completed` describes completion of the message
 batches, not guaranteed completion of the attachment cleanup jobs. Discord originals
 are untouched and no hidden undo archive is created.
+
+### 27.2 Archive commands
+
+The `/mneme archive` group exists only when a read-only platform archive is
+configured (Section 5.4). Every subcommand requires an admin and invocation in
+the secure review channel, like the deletion commands. Replies are ephemeral.
+
+- `archive user name:<text>` lists at most 10 archive authors whose name contains
+  the text, with their archive user id and servable org message count. It reads
+  only servable org content, so a redacted user is not found. Every lookup is
+  audited.
+- `archive forget-user id:<archive user id>` and `archive forget-message
+  id:<archive message id>` create deletion requests with an `archive:` target.
+  They use the approval, 24-hour grace period, cancellation, and retry rules of
+  Section 27.1. The preview counts only servable messages. Execution writes one
+  `archive_redactions` row and changes no live table and not the archive file.
+
+A live `forget-user` does not touch the archive, and an archive request does not
+touch live data. To remove a person from both, an admin files two requests.
 
 Migration 040 cancels queued/running legacy `forget_user` jobs, recording their job
 IDs in the audit log. The legacy handler refuses all later invocations; old payloads
@@ -4921,7 +5046,23 @@ CREATE TABLE IF NOT EXISTS admin_events (
   details_json TEXT NOT NULL DEFAULT '{}',
   created_at_ms INTEGER NOT NULL
 ) STRICT;
+
+-- Redactions of read-only platform archive content (Section 5.4).
+CREATE TABLE archive_redactions (
+  id TEXT PRIMARY KEY,
+  archive_workspace_id TEXT NOT NULL,
+  target_kind TEXT NOT NULL CHECK (target_kind IN ('user', 'message')),
+  target_id TEXT NOT NULL,
+  archive_sha256 TEXT NOT NULL,
+  deletion_request_id TEXT REFERENCES deletion_requests(id),
+  created_at_ms INTEGER NOT NULL,
+  UNIQUE (archive_workspace_id, target_kind, target_id)
+);
 ```
+
+`archive_sha256` records which archive file was configured; it is for audit only
+and never filters. Migration 047 adds `deletion_requests.archive_workspace_id`,
+set for archive targets.
 
 ### 29.1 Schema notes
 
@@ -5082,6 +5223,12 @@ Links are generated by the host, not trusted from message content.
 For direct answers, the model supplies source message IDs in `citedMessageIds`. A Discord
 jump URL embedded in model-authored answer text is rejected after renderer/browser URL
 normalization; after validating the IDs, the host appends at most three canonical links.
+
+Archive links (Section 5.4) use the archive platform's builder, not the active
+one. A Discord archive gets the Discord form above with the archive workspace
+id. A Slack archive has no stored `team_domain`, so its messages have no link
+and cannot be cited. The host builds an archive link only for a servable
+archive message.
 
 ---
 
@@ -5348,6 +5495,15 @@ and never sends Discord messages.
 | `get_memory` | One memory with status, confidence, importance, and evidence links. |
 | `get_memory_evidence` | Permitted evidence messages behind a memory. |
 | `list_channels` | Channels visible to the token, with visibility class and sync state. |
+| `search_archive_messages` | Full-text search over servable org messages of the read-only platform archive. |
+| `get_archive_message_context` | Nearby servable archive messages in the same channel or thread. |
+| `search_archive_memories` | Servable org archive memories by topic, or the most recently confirmed ones. |
+| `get_archive_memory` | One servable archive memory with its servable evidence messages. |
+
+The four archive tools work only when a read-only platform archive is configured
+(Section 5.4), and only for a token whose scope is exactly `org`. Any other scope,
+including `org_plus_channels`, is refused before argument validation. A missing id and a
+hidden id get the same "not visible" reply, so the tools give no existence oracle.
 
 Input and output shapes match the agent tools in Section 22, with the token grant
 substituted for the run scope, and the same result caps. The table above is the complete
@@ -5962,6 +6118,19 @@ When both `MNEME_REVIEW_CHANNEL_ID` and `channel-policy.yml` specify a review ch
 they must match or startup fails. This check applies to file mode. In basic mode
 the review channel comes only from the environment pair and follows the Section 8
 validation instead.
+
+### 35.7 Read-only platform archive
+
+```dotenv
+# Optional. Set both or neither (Section 5.4).
+MNEME_ARCHIVE_PATH=/app/data/archive/discord.sqlite
+MNEME_ARCHIVE_PLATFORM=discord
+```
+
+`MNEME_ARCHIVE_PATH` is absolute, is not the live database, and is not in
+`BACKUP_DIR`. `MNEME_ARCHIVE_PLATFORM` differs from `MNEME_PLATFORM`. The
+`archive-rewrite` command needs only the database paths (`MNEME_ARCHIVE_PATH`,
+`DATABASE_PATH`, `DATA_DIR`, `BACKUP_DIR`) and no platform token.
 
 ---
 
@@ -6702,6 +6871,36 @@ Controls:
 - tool count, time, and result size are bounded;
 - documentation reads are limited to the startup index, and the content enters the prompt
   as data, not as instructions.
+
+### 43.6 Read-only platform archive
+
+The archive (Section 5.4) serves only org content and stays read-only. Deletion
+requests for archive content hide their targets at once through
+`archive_redactions` (Section 27.2). To remove the bytes from the file, an
+operator runs `archive-rewrite --out <path>` after every pending archive
+deletion has executed. The command:
+
+- copies the archive with `VACUUM INTO` from a read-only handle and never
+  changes the source file;
+- keeps rows only in the tables that the archive reads, and empties every other
+  table, including tables that later migrations add;
+- clears columns that the archive does not read, such as `raw_json`,
+  `embeds_json`, `mentions_json`, `metadata_json`, and `last_message_id`;
+- removes redacted messages, messages of redacted users, their dependent rows,
+  memories that cite a removed message, and memories owned by a redacted user;
+- by default also removes every message and memory that the archive never
+  serves, so the file holds only servable org content; `--keep-non-org` skips
+  this step;
+- clears a broken optional reference, such as `supersedes_memory_id`, and
+  removes a row only when a required reference breaks;
+- rebuilds the full-text indexes, runs `VACUUM`, checks integrity and foreign
+  keys, and writes the result with mode `0600` to a new path that it reserves
+  exclusively. It refuses an existing path and the configured archive path.
+
+Redaction rows stay after a rewrite and keep applying. An operator prepares the
+first archive with the same command and no redactions, so that operational data
+of the old deployment (model traces, outbox text, review text) never reaches the
+new deployment.
 
 ---
 
