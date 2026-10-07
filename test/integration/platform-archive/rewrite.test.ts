@@ -198,6 +198,26 @@ describe('archive rewrite', () => {
     expect(servedFrom(wide)).toEqual(before);
   });
 
+  it('keeps a served memory whose superseded predecessor is pruned, and clears the pointer', () => {
+    fixture.cleanup();
+    fixture = createArchiveFixture({
+      mutate: (db) => {
+        db.prepare('UPDATE memories SET supersedes_memory_id = ? WHERE id = ?').run(ARCHIVE_MEMORIES.superseded, ARCHIVE_MEMORIES.org);
+      },
+    });
+    const out = join(fixture.dir, 'superseded.sqlite');
+    rewriteArchive({ archivePath: fixture.path, outPath: out, liveDb: live.db });
+    const db = openArchiveDatabase(out);
+    try {
+      expect(count(db, 'SELECT count(*) AS n FROM memories WHERE id = ?', ARCHIVE_MEMORIES.org)).toBe(1);
+      expect(count(db, 'SELECT count(*) AS n FROM memories WHERE id = ?', ARCHIVE_MEMORIES.superseded)).toBe(0);
+      expect(count(db, 'SELECT count(*) AS n FROM memories WHERE id = ? AND supersedes_memory_id IS NULL', ARCHIVE_MEMORIES.org)).toBe(1);
+      expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
+    } finally {
+      db.close();
+    }
+  });
+
   it('writes the output readable by its owner only', () => {
     const out = join(fixture.dir, 'private.sqlite');
     rewriteArchive({ archivePath: fixture.path, outPath: out, liveDb: live.db });

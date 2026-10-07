@@ -127,14 +127,35 @@ function scalar(db: DatabaseSync, sql: string, ...args: string[]): unknown {
  */
 function removeDependentRows(db: DatabaseSync): void {
   for (let round = 0; round < MAX_CASCADE_ROUNDS; round += 1) {
-    const violations = db.prepare('PRAGMA foreign_key_check').all() as Array<{ table: string; rowid: number | null }>;
+    const violations = db.prepare('PRAGMA foreign_key_check').all() as Array<{ table: string; rowid: number | null; fkid: number }>;
     if (violations.length === 0) return;
     for (const v of violations) {
       if (v.rowid === null) throw new Error(`cannot remove a dependent row from ${v.table}: it has no rowid`);
-      db.prepare(`DELETE FROM "${v.table.replaceAll('"', '""')}" WHERE rowid = ?`).run(v.rowid);
+      const table = `"${v.table.replaceAll('"', '""')}"`;
+      // A broken optional pointer (for example supersedes_memory_id) is
+      // cleared, so the row that holds it stays. A broken required link
+      // removes the row. Rows of redacted users and messages are deleted
+      // before this cleanup, so clearing a pointer cannot bring them back.
+      const column = optionalForeignKeyColumn(db, v.table, v.fkid);
+      if (column) {
+        db.prepare(`UPDATE ${table} SET "${column.replaceAll('"', '""')}" = NULL WHERE rowid = ?`).run(v.rowid);
+      } else {
+        db.prepare(`DELETE FROM ${table} WHERE rowid = ?`).run(v.rowid);
+      }
     }
   }
   throw new Error(`dependent rows remain after ${MAX_CASCADE_ROUNDS} cleanup rounds`);
+}
+
+/**
+ * The column of foreign key `fkid` in `table` when it is a single nullable
+ * column, else null (a required link, or a multi-column key).
+ */
+function optionalForeignKeyColumn(db: DatabaseSync, table: string, fkid: number): string | null {
+  const parts = (db.prepare('SELECT "from" AS col FROM pragma_foreign_key_list(?) WHERE id = ?').all(table, fkid) as Array<{ col: string }>);
+  if (parts.length !== 1) return null;
+  const info = db.prepare('SELECT "notnull" AS nn FROM pragma_table_info(?) WHERE name = ?').get(table, parts[0]!.col) as { nn: number } | undefined;
+  return info && info.nn === 0 ? parts[0]!.col : null;
 }
 
 /**
