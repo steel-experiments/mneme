@@ -19,3 +19,28 @@ export function useMessageLinkBuilder(builder: MessageLinkBuilder): void {
 export function messageLink(workspaceId: string, channelId: string, messageId: string): string {
   return active(workspaceId, channelId, messageId);
 }
+
+/** The archive whose host-built links an adapter may render as links (plan 011). */
+export interface ArchiveLinkTarget {
+  platform: 'discord' | 'slack';
+  workspaceId: string;
+}
+
+let archiveTarget: ArchiveLinkTarget | null = null;
+
+/** Record the verified platform archive, or null when there is none. Startup calls this once. */
+export function useArchiveLinkTarget(target: ArchiveLinkTarget | null): void {
+  archiveTarget = target;
+}
+
+/**
+ * True when `url` is exactly a message link that the host builds for the
+ * verified archive: a Discord jump link in the archive's own workspace. Model
+ * text never carries such a link; the outbound sanitizer rejects it before the
+ * host adds its own links.
+ */
+export function isHostBuiltArchiveLink(url: string): boolean {
+  if (!archiveTarget || archiveTarget.platform !== 'discord') return false;
+  if (!/^\d{17,20}$/.test(archiveTarget.workspaceId)) return false;
+  return new RegExp(`^https://discord\\.com/channels/${archiveTarget.workspaceId}/\\d{17,20}/\\d{17,20}$`).test(url);
+}

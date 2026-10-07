@@ -1,5 +1,6 @@
 // ABOUTME: Converts the core Markdown subset to Slack mrkdwn (spec Section 24.5, plan 002 decision 7).
 // ABOUTME: A trust boundary: all text is escaped, so no Slack mention or link survives unless the host built it.
+import { isHostBuiltArchiveLink } from '../links.js';
 
 /** How the converted text is delivered. */
 export interface SlackMrkdwnOptions {
@@ -76,7 +77,7 @@ export function toSlackMrkdwn(content: string, options: SlackMrkdwnOptions): str
   text = text.replace(INLINE_CODE, (code) => keep(escapeSlackText(code)));
 
   text = text.replace(MARKDOWN_LINK, (_raw, label: string, url: string) => (
-    isHostBuiltSlackLink(url, options.teamDomain)
+    isHostBuiltSlackLink(url, options.teamDomain) || isHostBuiltArchiveLink(url)
       ? keep(`<${url}|${linkLabel(label)}>`)
       : keep(`${escapeSlackText(label)} (${escapeSlackText(url)})`)
   ));

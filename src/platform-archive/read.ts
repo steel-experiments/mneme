@@ -230,6 +230,21 @@ export function getArchiveMessageContext(
   };
 }
 
+/**
+ * One servable archive message, read at call time with the current
+ * redactions. Returns null when the id is not a servable archive message.
+ */
+export function getArchiveMessage(reader: ArchiveReader, id: string): ArchiveMessage | null {
+  const messageId = archiveMessageId(reader, id);
+  if (!messageId) return null;
+  const params = redactionParams(reader);
+  if (!params) return null;
+  const row = reader.db.prepare(`
+    SELECT ${MESSAGE_COLUMNS} FROM messages m ${MESSAGE_JOINS}
+     WHERE m.id = :id AND ${servableMessage('m', 'c', 'p')}`).get({ ...params, id: messageId }) as MessageRow | undefined;
+  return row ? toMessage(reader, row, false) : null;
+}
+
 type MemoryRow = { id: string; type: string; statement: string; last_confirmed_at_ms: number };
 
 function toMemory(reader: ArchiveReader, row: MemoryRow): ArchiveMemory {

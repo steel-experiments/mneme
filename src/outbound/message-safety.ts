@@ -439,6 +439,50 @@ export function buildSourceLinks(
   return links;
 }
 
+/** The prefix of a platform-archive citation id (plan 011). */
+export const ARCHIVE_CITATION_PREFIX = 'archive:';
+
+/** True when a cited id names a platform-archive row, not a live message. */
+export function isArchiveCitationId(id: string): boolean {
+  return typeof id === 'string' && id.startsWith(ARCHIVE_CITATION_PREFIX);
+}
+
+/**
+ * A host-built source link for one platform-archive message (plan 011). The
+ * caller resolves the message from the archive and passes the URL that the
+ * archive's own link builder made; the label is `archive · #channel · date`.
+ */
+export function archiveSourceLink(input: {
+  archiveId: string;
+  channelId: string;
+  channelName: string | null;
+  createdAtMs: number;
+  url: string;
+}): MessageLink {
+  const channel = input.channelName ? `#${input.channelName}` : 'archive';
+  const date = new Date(input.createdAtMs).toISOString().slice(0, 10);
+  const label = safeSourceLabel(`archive · ${channel} · ${date}`);
+  return { messageId: input.archiveId, channelId: input.channelId, url: input.url, masked: `[${label}](${input.url})` };
+}
+
+const ARCHIVE_MARKER = /\[\[cite:(archive:[A-Za-z0-9._:-]{1,64})\]\]/gu;
+
+/**
+ * Reasons to reject a message kind that may not cite the platform archive
+ * (plan 011 decision 4): interventions, scheduled notifications, and every
+ * other message except a direct answer. Checks the evidence ids and the
+ * inline markers.
+ */
+export function archiveCitationReasons(
+  kind: 'intervention' | 'scheduled notification',
+  message: string,
+  evidenceIds: readonly string[],
+): string[] {
+  const found = new Set<string>(evidenceIds.filter((id) => isArchiveCitationId(id)));
+  for (const match of message.matchAll(ARCHIVE_MARKER)) found.add(match[1]!);
+  return [...found].map((id) => `${kind}s cannot cite the platform archive: ${id}`);
+}
+
 export type InlineCitationResult =
   | { outcome: 'allow'; content: string; unusedLinks: MessageLink[]; markerCount: number }
   | { outcome: 'reject'; reasons: string[] };
