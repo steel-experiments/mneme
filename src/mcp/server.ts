@@ -16,6 +16,7 @@ import {
   mcpToolsListResult,
   mcpToolCall,
   mcpGrantToRetrievalGrant,
+  MCP_ARCHIVE_TOOLS,
   MCP_TOOLS,
   MCP_TOOL_LIST_TTL_MS,
   MCP_PROTOCOL_VERSION,
@@ -23,6 +24,7 @@ import {
   MCP_INSTRUCTIONS,
 } from './tools.js';
 import { APP_VERSION } from '../version.js';
+import type { ArchiveReader } from '../platform-archive/read.js';
 
 // Re-exported here so the public API of this module is unchanged: the error
 // codes, the JSON-RPC error/result shapes, the per-request context, and the
@@ -104,6 +106,8 @@ export interface McpServerOptions {
   audit?: McpAuditSink;
   /** Logger for the default audit sink; a fresh logger is created when omitted. */
   logger?: Logger;
+  /** The read-only platform archive; adds the archive tools for org-scope tokens (plan 011). */
+  archive?: ArchiveReader;
   /**
    * `WWW-Authenticate` value sent with every `401`. Defaults to a bare `Bearer`,
    * which tells a client only that a token is wanted. When OAuth discovery is
@@ -195,14 +199,16 @@ export function createMcpServer(options: McpServerOptions): McpServer {
     }),
     'tools/list': () => ({
       ok: true,
-      result: mcpToolsListResult(toolListTtlMs),
-      auditCount: MCP_TOOLS.length,
+      result: mcpToolsListResult(toolListTtlMs, { archive: options.archive !== undefined }),
+      auditCount: MCP_TOOLS.length + (options.archive ? MCP_ARCHIVE_TOOLS.length : 0),
     }),
     'tools/call': async (params, ctx) =>
       mcpToolCall(params, {
         grant: mcpGrantToRetrievalGrant(ctx.grant),
         db: ctx.db,
         nowMs: ctx.nowMs,
+        tokenScopeType: ctx.grant.scopeType,
+        ...(options.archive ? { archive: options.archive } : {}),
       }),
     ...options.methods,
   };

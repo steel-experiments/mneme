@@ -5,6 +5,7 @@ import { createMcpServer, MCP_JSONRPC_ERROR } from '../../src/mcp/server.js';
 import {
   MCP_UNTRUSTED_CONTENT_NOTE,
   MCP_TOOL_HANDLERS,
+  MCP_ARCHIVE_TOOL_NAMES,
   MCP_TOOL_NAMES,
 } from '../../src/mcp/tools.js';
 import { createMcpToken } from '../../src/mcp/auth.js';
@@ -478,7 +479,8 @@ describe('tools/call message tools are scoped to the token grant', () => {
   });
 
   it('the handler registry implements every advertised tool', () => {
-    expect(Object.keys(MCP_TOOL_HANDLERS).sort()).toEqual([...MCP_TOOL_NAMES].sort());
+    // Archive tools are advertised only when an archive is configured (plan 011).
+    expect(Object.keys(MCP_TOOL_HANDLERS).sort()).toEqual([...MCP_TOOL_NAMES, ...MCP_ARCHIVE_TOOL_NAMES].sort());
   });
 
   it('never renders review_only or excluded content under any token', async () => {

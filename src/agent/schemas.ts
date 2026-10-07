@@ -265,6 +265,11 @@ export const SearchArchiveMemoriesToolInput = strict({
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })),
 });
 
+/** One archive memory and its servable evidence (MCP `get_archive_memory`, plan 011 step 8). */
+export const GetArchiveMemoryToolInput = strict({
+  memoryId: ArchiveId,
+});
+
 export const ListMemoriesToolInput = strict({
   types: Type.Optional(Type.Array(MemoryTypeEnum, { maxItems: 10 })),
   statuses: Type.Optional(Type.Array(MemoryStatusEnum, { maxItems: 5 })),

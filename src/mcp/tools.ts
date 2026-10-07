@@ -28,6 +28,10 @@ import {
   type MemoryEvidenceResult,
 } from '../memory/search.js';
 import {
+  GetArchiveMemoryToolInput,
+  GetArchiveMessageContextToolInput,
+  SearchArchiveMemoriesToolInput,
+  SearchArchiveMessagesToolInput,
   GetMemoryEvidenceToolInput,
   GetMessageContextToolInput,
   ListRecentMessagesToolInput,
@@ -38,6 +42,15 @@ import {
 } from '../agent/schemas.js';
 import { listChannelsForGrant, type VisibleChannel } from '../db/repositories/channels.js';
 import { formatTimestamp } from '../agent/tools/render.js';
+import type { McpScopeType } from '../db/repositories/mcp-tokens.js';
+import {
+  getArchiveMemoryEvidence,
+  getArchiveMessageContext,
+  searchArchiveMemories,
+  searchArchiveMessages,
+  type ArchiveReader,
+} from '../platform-archive/read.js';
+import { ARCHIVE_TOOL_NOTE, renderArchiveMemory, renderArchiveMessage } from '../agent/tools/archive-render.js';
 
 /**
  * MCP tool catalog and server identity (Sections 32.5.1, 32.5.3; task T102).
@@ -219,6 +232,51 @@ export const MCP_TOOLS: readonly McpToolDefinition[] = [
   },
 ];
 
+/**
+ * The read-only platform-archive tools (plan 011 step 8). They are listed only
+ * when an archive is configured, and they serve only org-scope tokens. They
+ * always read through the archive's org-only rule, never the token's channels.
+ */
+export const MCP_ARCHIVE_TOOLS: readonly McpToolDefinition[] = [
+  {
+    name: 'search_archive_messages',
+    description: `Full-text search over the read-only archive of the previous chat platform. ${ARCHIVE_TOOL_NOTE}`,
+    inputSchema: describeInputSchema(SearchArchiveMessagesToolInput, {
+      query: 'Full-text search query.',
+      after: 'Only messages at or after this ISO timestamp.',
+      before: 'Only messages before this ISO timestamp.',
+      limit: 'Maximum results to return, 1-50 (default 10).',
+    }),
+  },
+  {
+    name: 'get_archive_message_context',
+    description: 'Nearby archive messages in the same channel or thread as an archive message.',
+    inputSchema: describeInputSchema(GetArchiveMessageContextToolInput, {
+      messageId: 'An archive message id ("archive:<id>").',
+      beforeCount: 'Number of preceding messages to include, 0-50 (default 5).',
+      afterCount: 'Number of following messages to include, 0-50 (default 5).',
+    }),
+  },
+  {
+    name: 'search_archive_memories',
+    description: 'Search archive memories by topic; without a query, list the most recently confirmed ones.',
+    inputSchema: describeInputSchema(SearchArchiveMemoriesToolInput, {
+      query: 'One concise topic term or tight AND-search phrase.',
+      limit: 'Maximum results to return, 1-50 (default 10).',
+    }),
+  },
+  {
+    name: 'get_archive_memory',
+    description: 'One archive memory with its archive evidence messages.',
+    inputSchema: describeInputSchema(GetArchiveMemoryToolInput, {
+      memoryId: 'An archive memory id ("archive:<id>").',
+    }),
+  },
+];
+
+/** The archive tool names, in listing order. */
+export const MCP_ARCHIVE_TOOL_NAMES: readonly string[] = MCP_ARCHIVE_TOOLS.map((t) => t.name);
+
 /** The stable tool list (a defensive copy is unnecessary: entries are readonly). */
 export function listMcpTools(): readonly McpToolDefinition[] {
   return MCP_TOOLS;
@@ -255,10 +313,13 @@ export function mcpServerDiscoverResult(
  * The `tools/list` result: the tool catalog plus a `_meta.ttlMs` cache hint so
  * clients do not re-fetch definitions on every call (Section 32.5.1).
  */
-export function mcpToolsListResult(ttlMs: number = MCP_TOOL_LIST_TTL_MS): Record<string, unknown> {
+export function mcpToolsListResult(
+  ttlMs: number = MCP_TOOL_LIST_TTL_MS,
+  options: { archive?: boolean } = {},
+): Record<string, unknown> {
   return {
     resultType: 'complete',
-    tools: MCP_TOOLS,
+    tools: options.archive ? [...MCP_TOOLS, ...MCP_ARCHIVE_TOOLS] : MCP_TOOLS,
     ttlMs,
     cacheScope: MCP_CACHE_SCOPE,
   };
@@ -319,6 +380,10 @@ export interface McpToolCallContext {
   grant: RetrievalGrant;
   db: DatabaseSync;
   nowMs: number;
+  /** The token's scope type. Only an `org` token may read the platform archive. */
+  tokenScopeType?: McpScopeType;
+  /** The read-only platform archive, when one is configured (plan 011). */
+  archive?: ArchiveReader;
 }
 
 /** A single read-only tool handler invoked by `tools/call`. */
@@ -696,6 +761,122 @@ const getMemoryEvidenceTool: McpToolHandler = (args, ctx) => {
   };
 };
 
+/**
+ * The archive a tool may read for this call, or the result to return instead:
+ * an archive tool serves only `org`-scope tokens (plan 011 step 8).
+ */
+function archiveFor(ctx: McpToolCallContext): { archive: ArchiveReader } | { refusal: McpMethodResult } {
+  if (!ctx.archive) {
+    return { refusal: { ok: false, error: { code: MCP_JSONRPC_ERROR.METHOD_NOT_FOUND, message: 'Unknown tool' } } };
+  }
+  if (ctx.tokenScopeType !== 'org') {
+    return {
+      refusal: {
+        ok: true,
+        result: {
+          resultType: 'complete',
+          content: [{ type: 'text', text: 'This token cannot read the platform archive. Use a token with organization scope.' }],
+          isError: true,
+        },
+        auditCount: 0,
+      },
+    };
+  }
+  return { archive: ctx.archive };
+}
+
+/** `search_archive_messages` — full-text search over servable org archive messages. */
+const searchArchiveMessagesTool: McpToolHandler = (args, ctx) => {
+  const access = archiveFor(ctx);
+  if ('refusal' in access) return access.refusal;
+  const invalid = validateMcpToolArgs('search_archive_messages', SearchArchiveMessagesToolInput, args);
+  if (invalid) return invalid;
+  const params = args as Static<typeof SearchArchiveMessagesToolInput>;
+  const after = parseIsoParam(params.after, 'after');
+  if (!after.ok) return after;
+  const before = parseIsoParam(params.before, 'before');
+  if (!before.ok) return before;
+  const rows = searchArchiveMessages(access.archive, {
+    query: params.query, limit: params.limit, afterMs: after.ms, beforeMs: before.ms,
+  });
+  const header = rows.length > 0 ? `${rows.length} archive message(s):` : 'No archive messages matched.';
+  return {
+    ok: true,
+    result: completeToolResult([{ type: 'text', text: `${header}\n${rows.map((row) => renderArchiveMessage(row)).join('\n')}` }],
+      MCP_UNTRUSTED_META),
+    auditCount: rows.length,
+  };
+};
+
+/** `get_archive_message_context` — servable neighbours of one servable archive message. */
+const getArchiveMessageContextTool: McpToolHandler = (args, ctx) => {
+  const access = archiveFor(ctx);
+  if ('refusal' in access) return access.refusal;
+  const invalid = validateMcpToolArgs('get_archive_message_context', GetArchiveMessageContextToolInput, args);
+  if (invalid) return invalid;
+  const params = args as Static<typeof GetArchiveMessageContextToolInput>;
+  const context = getArchiveMessageContext(access.archive, params.messageId, {
+    before: params.beforeCount, after: params.afterCount,
+  });
+  if (!context) {
+    return {
+      ok: true,
+      result: completeToolResult([{ type: 'text', text: `Archive message ${params.messageId} is not visible.` }], MCP_UNTRUSTED_META),
+      auditCount: 0,
+    };
+  }
+  const lines = [
+    ...context.before.map((row) => renderArchiveMessage(row, ' (before)')),
+    renderArchiveMessage(context.target, ' (target)'),
+    ...context.after.map((row) => renderArchiveMessage(row, ' (after)')),
+  ];
+  return {
+    ok: true,
+    result: completeToolResult([{ type: 'text', text: lines.join('\n') }], MCP_UNTRUSTED_META),
+    auditCount: lines.length,
+  };
+};
+
+/** `search_archive_memories` — servable org archive memories. */
+const searchArchiveMemoriesTool: McpToolHandler = (args, ctx) => {
+  const access = archiveFor(ctx);
+  if ('refusal' in access) return access.refusal;
+  const invalid = validateMcpToolArgs('search_archive_memories', SearchArchiveMemoriesToolInput, args);
+  if (invalid) return invalid;
+  const params = args as Static<typeof SearchArchiveMemoriesToolInput>;
+  const rows = searchArchiveMemories(access.archive, { query: params.query, limit: params.limit });
+  const header = rows.length > 0 ? `${rows.length} archive memory(ies):` : 'No archive memories matched.';
+  return {
+    ok: true,
+    result: completeToolResult([{ type: 'text', text: `${header}\n${rows.map(renderArchiveMemory).join('\n')}` }],
+      MCP_UNTRUSTED_META),
+    auditCount: rows.length,
+  };
+};
+
+/** `get_archive_memory` — one servable archive memory and its servable evidence. */
+const getArchiveMemoryTool: McpToolHandler = (args, ctx) => {
+  const access = archiveFor(ctx);
+  if ('refusal' in access) return access.refusal;
+  const invalid = validateMcpToolArgs('get_archive_memory', GetArchiveMemoryToolInput, args);
+  if (invalid) return invalid;
+  const params = args as Static<typeof GetArchiveMemoryToolInput>;
+  const found = getArchiveMemoryEvidence(access.archive, params.memoryId);
+  if (!found) {
+    return {
+      ok: true,
+      result: completeToolResult([{ type: 'text', text: `Archive memory ${params.memoryId} is not visible.` }], MCP_UNTRUSTED_META),
+      auditCount: 0,
+    };
+  }
+  const lines = [renderArchiveMemory(found.memory), ...found.evidence.map((row) => renderArchiveMessage(row, ' (evidence)'))];
+  return {
+    ok: true,
+    result: completeToolResult([{ type: 'text', text: lines.join('\n') }], MCP_UNTRUSTED_META),
+    auditCount: 1,
+  };
+};
+
 /** `list_channels` — channels visible to the token, with visibility class and sync state. */
 const listChannelsTool: McpToolHandler = (_args, ctx) => {
   const channels = listChannelsForGrant(ctx.db, ctx.grant);
@@ -726,6 +907,10 @@ export const MCP_TOOL_HANDLERS: Readonly<Record<string, McpToolHandler>> = {
   get_memory: getMemoryTool,
   get_memory_evidence: getMemoryEvidenceTool,
   list_channels: listChannelsTool,
+  search_archive_messages: searchArchiveMessagesTool,
+  get_archive_message_context: getArchiveMessageContextTool,
+  search_archive_memories: searchArchiveMemoriesTool,
+  get_archive_memory: getArchiveMemoryTool,
 };
 
 /**

@@ -5,6 +5,7 @@ import { createCounters, type Counters } from './observability.js';
 import { openDatabase, type DatabaseSync } from './db/database.js';
 import { ArchiveError, openArchiveDatabase, verifyArchive, type ArchiveSummary } from './platform-archive/database.js';
 import { useArchiveLinkTarget } from './platform/links.js';
+import { createArchiveReader } from './platform-archive/read.js';
 import { applyMigrations } from './db/migrations.js';
 import { startHttpServer, type HttpServerHandle, type ProbeResult } from './http/server.js';
 import { createLivenessProbe } from './http/health.js';
@@ -401,6 +402,9 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
         now,
         toolListTtlMs: config.mcp.toolListTtlMs,
         logger,
+        ...(platformArchive ? {
+          archive: createArchiveReader({ db: platformArchive.db, liveDb: db, summary: platformArchive.summary, logger }),
+        } : {}),
       }).handler;
     }
     httpServer = await startHttpServer({
