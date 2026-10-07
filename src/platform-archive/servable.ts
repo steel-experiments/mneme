@@ -2,12 +2,36 @@
 // ABOUTME: Every archive count and read uses these predicates; there is no grant parameter and no exception.
 
 /**
+ * When migration 045 started to record Discord private threads, in the
+ * archive's own source database. NULL when the archive has no such record.
+ */
+const PRIVATE_FLAG_SINCE = '(SELECT applied_at_ms FROM schema_migrations WHERE version = 45)';
+
+/**
+ * True when the private-thread flag of thread row `c` is known to be correct:
+ * the row was created after migration 045, or discovery observed it again
+ * after 045 (every discovery observation writes an access audit). Migration
+ * 045 gave every older row the flag 0, and a frozen archive is never observed
+ * again, so an older row that is a Discord private thread looks like a public
+ * one. Such a row fails this test and stays hidden. When the archive has no
+ * record of 045, every comparison is NULL and every thread stays hidden.
+ */
+export function privateFlagObserved(c: string): string {
+  return `(
+    ${c}.discovered_at_ms >= ${PRIVATE_FLAG_SINCE}
+    OR EXISTS (SELECT 1 FROM channel_access_audits aud
+                WHERE aud.channel_id = ${c}.id AND aud.checked_at_ms >= ${PRIVATE_FLAG_SINCE})
+  )`;
+}
+
+/**
  * An org channel or thread that Mneme can serve from the archive, with the
  * given table aliases for the channel and its parent. Org class, ingested, not
  * deleted, no platform boundary, not a Mneme test surface, and never a Discord
- * private thread (one stored as org before private threads defaulted to
- * restricted stays hidden). A thread also needs a live, ingested parent
- * without a platform boundary.
+ * private thread. A thread is served only when its private flag is known to be
+ * correct ({@link privateFlagObserved}); a thread last seen before migration
+ * 045 stays hidden. A thread also needs a live, ingested parent without a
+ * platform boundary.
  */
 export function servableOrgChannel(c: string, p: string): string {
   return `(
@@ -18,7 +42,8 @@ export function servableOrgChannel(c: string, p: string): string {
     AND ${c}.is_private_thread = 0
     AND INSTR(LOWER(COALESCE(${c}.name, '')), 'mneme') = 0
     AND (${c}.is_thread = 0 OR (
-      ${p}.id IS NOT NULL
+      ${privateFlagObserved(c)}
+      AND ${p}.id IS NOT NULL
       AND ${p}.deleted_at_ms IS NULL
       AND ${p}.ingest_enabled = 1
       AND ${p}.platform_boundary IS NULL
