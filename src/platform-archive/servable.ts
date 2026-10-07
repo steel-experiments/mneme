@@ -25,9 +25,20 @@ export function privateFlagObserved(c: string): string {
 }
 
 /**
+ * True when channel `c` is named like a Mneme test channel. The archive also
+ * matches "cassandra": before v2.0.0 the product was named Cassandra, and its
+ * test channels were named "cassandra-*". The live rule matches only "mneme".
+ */
+export function archiveTestSurfaceName(c: string): string {
+  return `(INSTR(LOWER(COALESCE(${c}.name, '')), 'mneme') > 0
+    OR INSTR(LOWER(COALESCE(${c}.name, '')), 'cassandra') > 0)`;
+}
+
+/**
  * An org channel or thread that Mneme can serve from the archive, with the
  * given table aliases for the channel and its parent. Org class, ingested, not
- * deleted, no platform boundary, not a Mneme test surface, and never a Discord
+ * deleted, no platform boundary, not a test surface under either product name
+ * ({@link archiveTestSurfaceName}), and never a Discord
  * private thread. A thread is served only when its private flag is known to be
  * correct ({@link privateFlagObserved}); a thread last seen before migration
  * 045 stays hidden. A thread also needs a live, ingested parent without a
@@ -40,14 +51,14 @@ export function servableOrgChannel(c: string, p: string): string {
     AND ${c}.deleted_at_ms IS NULL
     AND ${c}.platform_boundary IS NULL
     AND ${c}.is_private_thread = 0
-    AND INSTR(LOWER(COALESCE(${c}.name, '')), 'mneme') = 0
+    AND NOT ${archiveTestSurfaceName(c)}
     AND (${c}.is_thread = 0 OR (
       ${privateFlagObserved(c)}
       AND ${p}.id IS NOT NULL
       AND ${p}.deleted_at_ms IS NULL
       AND ${p}.ingest_enabled = 1
       AND ${p}.platform_boundary IS NULL
-      AND INSTR(LOWER(COALESCE(${p}.name, '')), 'mneme') = 0
+      AND NOT ${archiveTestSurfaceName(p)}
     ))
   )`;
 }
