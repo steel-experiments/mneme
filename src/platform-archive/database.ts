@@ -6,6 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import type { PlatformId } from '../config.js';
 import { isDiscordId } from '../platform/ids.js';
 import { isSlackTeamId } from '../platform/slack/ids.js';
+import { NO_REDACTIONS, servableMemory, servableMessage } from './servable.js';
 
 /** The oldest archive schema this release reads: 45 adds `channels.is_private_thread`. */
 export const ARCHIVE_MIN_SCHEMA_VERSION = 45;
@@ -83,16 +84,6 @@ function scalar(db: DatabaseSync, sql: string): unknown {
   return row ? Object.values(row)[0] : undefined;
 }
 
-// An org channel or thread that Mneme can serve: org class, ingested, not
-// deleted, no platform boundary, and not a Mneme test surface (spec §7.1).
-const SERVABLE_ORG_CHANNEL = `
-  c.visibility_class = 'org'
-  AND c.ingest_enabled = 1
-  AND c.deleted_at_ms IS NULL
-  AND c.platform_boundary IS NULL
-  AND INSTR(LOWER(COALESCE(c.name, '')), 'mneme') = 0
-  AND (c.is_thread = 0 OR (p.id IS NOT NULL AND INSTR(LOWER(COALESCE(p.name, '')), 'mneme') = 0))`;
-
 /**
  * Verify the archive and return its summary. Throws {@link ArchiveError}
  * when the file is not a usable backup of one workspace of `platform`.
@@ -123,12 +114,15 @@ export function verifyArchive(db: DatabaseSync, path: string, options: VerifyArc
     throw new ArchiveError(`the workspace id does not match MNEME_ARCHIVE_PLATFORM=${options.platform}`);
   }
 
-  const orgMessages = Number(scalar(db, `
-    SELECT COUNT(*) FROM messages m
-    JOIN channels c ON c.id = m.channel_id
+  // The counts use the same servable definition as every archive read,
+  // before redactions (which live in the live database).
+  const orgMessages = Number((db.prepare(`
+    SELECT COUNT(*) AS n FROM messages m
+    LEFT JOIN channels c ON c.id = m.channel_id
     LEFT JOIN channels p ON p.id = c.parent_id
-    WHERE m.deleted_at_ms IS NULL AND ${SERVABLE_ORG_CHANNEL}`));
-  const orgMemories = Number(scalar(db, "SELECT COUNT(*) FROM memories WHERE scope_type = 'org' AND status = 'active'"));
+    WHERE ${servableMessage('m', 'c', 'p')}`).get(NO_REDACTIONS) as { n: number }).n);
+  const orgMemories = Number((db.prepare(`
+    SELECT COUNT(*) AS n FROM memories mem WHERE ${servableMemory('mem')}`).get(NO_REDACTIONS) as { n: number }).n);
 
   return {
     platform: options.platform,
