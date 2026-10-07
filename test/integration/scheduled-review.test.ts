@@ -1272,6 +1272,18 @@ describe('createReviewDueMemoriesHandler', () => {
     );
   });
 
+  it('observes a notification that cites the platform archive', async () => {
+    const proposal = await persistScheduledNotification(notification({
+      message: 'The launch remains blocked, as decided long ago [[cite:archive:300000000000000110]].',
+      evidenceMessageIds: ['m-due', 'archive:300000000000000110'],
+    }));
+    expect(proposal.status).toBe('observed');
+    expect(proposal.message).toBeNull();
+    expect(proposal.reason).toContain(
+      'scheduled notifications cannot cite the platform archive: archive:300000000000000110',
+    );
+  });
+
   it('observes an existing citation that was never exposed by the originating run', async () => {
     const unexposedId = seedMessage('existing-but-unexposed', CHANNEL, 'Not shown to this run.');
     const proposal = await persistScheduledNotification(

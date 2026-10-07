@@ -4,6 +4,7 @@ import { createLogger } from './logger.js';
 import { createCounters, type Counters } from './observability.js';
 import { openDatabase, type DatabaseSync } from './db/database.js';
 import { ArchiveError, openArchiveDatabase, verifyArchive, type ArchiveSummary } from './platform-archive/database.js';
+import { useArchiveLinkTarget } from './platform/links.js';
 import { applyMigrations } from './db/migrations.js';
 import { startHttpServer, type HttpServerHandle, type ProbeResult } from './http/server.js';
 import { createLivenessProbe } from './http/health.js';
@@ -292,6 +293,10 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
   // Open and verify the read-only platform archive before anything can serve
   // it. A wrong, broken, or unknown archive stops startup (plan 011).
   const platformArchive = config.archive ? openPlatformArchive(db, config.archive, resources) : undefined;
+  // Adapters may render only the archive's own host-built links as links.
+  useArchiveLinkTarget(platformArchive
+    ? { platform: platformArchive.summary.platform, workspaceId: platformArchive.summary.workspaceId }
+    : null);
   if (platformArchive) {
     const { summary } = platformArchive;
     logger.info({

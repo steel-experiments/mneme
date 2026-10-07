@@ -23,8 +23,11 @@ import {
   type CompactMessage,
 } from '../../db/repositories/message-context.js';
 import {
+  archiveSourceLink,
+  isArchiveCitationId,
   renderInlineCitations,
   sanitizeOutboundMessage,
+  type MessageLink,
   type SourceLinkContext,
 } from '../../outbound/message-safety.js';
 import {
@@ -72,6 +75,7 @@ import {
   fingerprintExposedMessage,
 } from '../../agent/run-context.js';
 import { messageLink } from '../../platform/links.js';
+import { getArchiveMessage, type ArchiveReader } from '../../platform-archive/read.js';
 import type { PlatformFormat } from '../../platform/types.js';
 
 /**
@@ -337,6 +341,8 @@ export interface DirectAnswerHandlerDeps {
   now?: () => number;
   limits?: Partial<RunLimits>;
   logger?: Pick<Logger, 'info' | 'warn'>;
+  /** The read-only platform archive; direct answers may cite its servable rows (plan 011). */
+  archive?: ArchiveReader;
 }
 
 export type DirectAnswerOutcomeKind =
@@ -593,6 +599,7 @@ export function createDirectAnswerHandler(
       questionMessageId: messageId,
       runStartedAtMs: result.startedAtMs,
       allowTestConsoleQuestion,
+      ...(deps.archive ? { archive: deps.archive } : {}),
     });
 
     if (!validation.allow) {
@@ -1125,9 +1132,44 @@ export function validateDirectAnswer(
     runStartedAtMs: number;
     /** Narrow exception for the exact question in a Mneme-named reply console. */
     allowTestConsoleQuestion: boolean;
+    /**
+     * The read-only platform archive. Only a direct answer passes it; without
+     * it, an archive citation is rejected (plan 011 step 7).
+     */
+    archive?: ArchiveReader;
   },
 ): DirectAnswerValidation {
   const reasons: string[] = [];
+  // Live checks see only live citations; archive citations are checked
+  // separately against this run's archive exposure and the archive itself.
+  const liveCitedIds = input.proposal.citedMessageIds.filter((id) => !isArchiveCitationId(id));
+  const archiveCitedIds = [...new Set(input.proposal.citedMessageIds.filter(isArchiveCitationId))];
+  const archiveLinks: MessageLink[] = [];
+  if (archiveCitedIds.length > 0) {
+    if (!input.archive) {
+      reasons.push('archive citations are not allowed in this message');
+    } else {
+      const exposedArchiveIds = new Set(input.provenance.archiveIds ?? []);
+      for (const id of archiveCitedIds) {
+        if (!exposedArchiveIds.has(id)) {
+          reasons.push(`cited archive message "${id}" was not exposed to this run`);
+          continue;
+        }
+        const message = getArchiveMessage(input.archive, id);
+        if (!message || message.link === null) {
+          reasons.push(`cited archive message "${id}" is no longer servable`);
+          continue;
+        }
+        archiveLinks.push(archiveSourceLink({
+          archiveId: id,
+          channelId: message.channelId,
+          channelName: message.channelName,
+          createdAtMs: message.createdAtMs,
+          url: message.link,
+        }));
+      }
+    }
+  }
   const initialMessageIds = new Set(input.initialMessageIds);
   const currentPinnedChannel = getChannel(db, input.pinnedChannelId);
   const mayUseTestConsoleQuestion = Boolean(
@@ -1315,7 +1357,7 @@ export function validateDirectAnswer(
   // A visible, real message is not sufficient: the model may cite only exact
   // rows the host exposed during this run (initial context or a retrieval tool).
   const exposedMessageIds = new Set(input.provenance.messageIds ?? []);
-  for (const id of new Set(input.proposal.citedMessageIds)) {
+  for (const id of new Set(liveCitedIds)) {
     if (!exposedMessageIds.has(id)) {
       reasons.push(`cited message "${id}" was not exposed to this run`);
     }
@@ -1323,7 +1365,7 @@ export function validateDirectAnswer(
   if (
     input.snapshotCoverage
     && input.snapshotCoverage.exposedMessageIds.size > 0
-    && !input.proposal.citedMessageIds.some((id) =>
+    && !liveCitedIds.some((id) =>
       input.snapshotCoverage?.exposedMessageIds.has(id))
   ) {
     reasons.push('answer did not cite an exposed recent-activity snapshot message');
@@ -1365,7 +1407,7 @@ export function validateDirectAnswer(
   const sanitized = sanitizeOutboundMessage(
     {
       content: input.proposal.message,
-      sourceLinkMessageIds: input.proposal.citedMessageIds,
+      sourceLinkMessageIds: liveCitedIds,
       guildId: input.guildId,
       format: input.format,
     },
@@ -1415,7 +1457,7 @@ export function validateDirectAnswer(
   const evidence = validateOutboundEvidence(
     {
       target: input.target,
-      citedMessageIds: input.proposal.citedMessageIds,
+      citedMessageIds: liveCitedIds,
       referencedMemoryIds: [],
       replyToMessageId: input.replyToMessageId,
       requireInterventionsEnabled: false,
@@ -1452,7 +1494,7 @@ export function validateDirectAnswer(
   // source links (trusted, never model-controlled). Reject if assembly exceeds
   // Discord's hard limit.
   const inline = sanitized.outcome === 'allow'
-    ? renderInlineCitations(sanitized.content, sanitized.sourceLinks)
+    ? renderInlineCitations(sanitized.content, [...sanitized.sourceLinks, ...archiveLinks])
     : { outcome: 'reject' as const, reasons: ['outbound sanitization failed'] };
   if (inline.outcome === 'reject') {
     return { allow: false, reasons: inline.reasons };

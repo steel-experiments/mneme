@@ -6,6 +6,7 @@ import { getChannel, resolveRetrievableChannelScope, type ChannelRow } from '../
 import { scopeAnchorId } from '../policy/scope-anchor.js';
 import { getMessage } from '../db/repositories/messages.js';
 import { getMemoryDetails } from '../memory/search.js';
+import { isArchiveCitationId } from '../outbound/message-safety.js';
 import {
   createMemory,
   confirmMemory,
@@ -129,6 +130,8 @@ export interface AgentMemoryProposal {
 
 export type ProposalRejectionReason =
   | 'invented_evidence'
+  | 'archive_evidence_not_durable'
+  | 'archive_memory_read_only'
   | 'deleted_evidence'
   | 'evidence_not_exposed'
   | 'unsupported_evidence_quote'
@@ -373,6 +376,15 @@ function applyOne(
   }
   if (!Array.isArray(proposal.evidenceMessageIds) || proposal.evidenceMessageIds.length === 0) {
     return reject(base, 'no_evidence', 'at least one evidence message is required');
+  }
+  // The platform archive is read-only and never durable evidence (plan 011
+  // decision 4): its rows may support an answer, never a stored memory.
+  const archiveEvidence = proposal.evidenceMessageIds.find((id) => isArchiveCitationId(id));
+  if (archiveEvidence !== undefined) {
+    return reject(base, 'archive_evidence_not_durable', `archive evidence cannot support a durable memory: ${archiveEvidence}`);
+  }
+  if (typeof proposal.existingMemoryId === 'string' && isArchiveCitationId(proposal.existingMemoryId)) {
+    return reject(base, 'archive_memory_read_only', `an archive memory cannot be changed: ${proposal.existingMemoryId}`);
   }
   if (!Array.isArray(proposal.evidenceQuotes) || proposal.evidenceQuotes.length === 0) {
     return reject(base, 'malformed_proposal', 'at least one evidence quote is required');

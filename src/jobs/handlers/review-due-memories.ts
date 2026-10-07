@@ -23,7 +23,7 @@ import {
   validateRevisionEvidence,
 } from '../../memory/attention-repository.js';
 import { insertProposal } from '../../db/repositories/proposals.js';
-import { sanitizeOutboundMessage } from '../../outbound/message-safety.js';
+import { archiveCitationReasons, sanitizeOutboundMessage } from '../../outbound/message-safety.js';
 import { isMnemeTestSurface } from '../../ingestion/test-channels.js';
 import type { PromptCompiler } from '../../agent/prompts.js';
 import {
@@ -349,6 +349,12 @@ function prepareScheduledNotification(
   const rawEvidenceIds = Array.isArray(notification?.evidenceMessageIds)
     ? notification.evidenceMessageIds
     : [];
+  // A scheduled notification never cites the platform archive (plan 011 decision 4).
+  blockingReasons.push(...archiveCitationReasons(
+    'scheduled notification',
+    typeof notification?.message === 'string' ? notification.message : '',
+    rawEvidenceIds.filter((id): id is string => typeof id === 'string'),
+  ));
   const proposedIds: string[] = [];
   const seen = new Set<string>();
   let malformedEvidence = false;

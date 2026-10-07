@@ -89,7 +89,7 @@ import {
   setProposalStatus,
   type ProposalRow,
 } from './db/repositories/proposals.js';
-import { renderInlineCitations, sanitizeOutboundMessage, stripScheduledFooter, type MessageLink } from './outbound/message-safety.js';
+import { archiveCitationReasons, renderInlineCitations, sanitizeOutboundMessage, stripScheduledFooter, type MessageLink } from './outbound/message-safety.js';
 import {
   evaluateForcedReview,
   evaluateProvenanceGate,
@@ -952,11 +952,15 @@ export async function routeEpisodeIntervention(
   const assembly = sanitized.outcome === 'allow'
     ? assembleEpisodeIntervention(sanitized.content, sanitized.sourceLinks)
     : null;
-  const outboundSafety = sanitized.outcome === 'reject'
-    ? { outcome: 'reject' as const, reasons: sanitized.reasons }
-    : assembly !== null && assembly.outcome === 'reject'
-      ? { outcome: 'reject' as const, reasons: assembly.reasons }
-      : { outcome: 'allow' as const, reasons: [] as string[] };
+  // An intervention never cites the platform archive (plan 011 decision 4).
+  const archiveReasons = archiveCitationReasons('intervention', message, evidenceIds);
+  const outboundSafety = archiveReasons.length > 0
+    ? { outcome: 'reject' as const, reasons: archiveReasons }
+    : sanitized.outcome === 'reject'
+      ? { outcome: 'reject' as const, reasons: sanitized.reasons }
+      : assembly !== null && assembly.outcome === 'reject'
+        ? { outcome: 'reject' as const, reasons: assembly.reasons }
+        : { outcome: 'allow' as const, reasons: [] as string[] };
   const currentResolution = resolveCurrentReviewProvenance(
     ctx.db,
     input.result.provenance,
@@ -1483,6 +1487,8 @@ export async function createProductionJobRuntime(
     channelPolicyYml: () => snapshot().channelPolicyYml, mnemeYml: safeRead(ctx.config.mnemeConfigPath),
     systemPrompt, resolveChannelScope: scope, rateChecks: (channelId, content, now) => recentChecks(ctx, channelId, content, now),
     mode: () => ctx.config.mode, agent, docs: docsIndex, executeRun: gatedExecute, now: ctx.now, limits, logger: ctx.logger,
+    // Only direct answers may cite the platform archive (plan 011 decision 4).
+    ...(archiveReader ? { archive: archiveReader } : {}),
   }));
   worker.register('deep_recap', 1, createDeepRecapHandler({
     db: ctx.db,

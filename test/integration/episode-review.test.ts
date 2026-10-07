@@ -1098,6 +1098,27 @@ describe('episode intervention citation exposure', () => {
     expect(stored.reason).toContain('more than three inline citation markers');
   });
 
+  it('fails closed when an intervention cites the platform archive', async () => {
+    await expectMarkerRejection(
+      'The launch owner changed long ago [[cite:archive:300000000000000110]].',
+      'interventions cannot cite the platform archive: archive:300000000000000110',
+    );
+  });
+
+  it('fails closed when an intervention names archive evidence without a marker', async () => {
+    const seed = seedInlineInterventionCase('archive-evidence', ['We changed the launch owner.']);
+    const proposalId = await routeInlineCase(
+      seed,
+      'The launch owner changed.',
+      [...seed.evidenceIds, 'archive:300000000000000110'],
+    );
+    const { stored, decision } = storedDecision(proposalId);
+    expect(stored.status).toBe('observed');
+    expect(outboxCount()).toBe(0);
+    expect(decision.outboundSafety?.reasons.join('\n'))
+      .toContain('interventions cannot cite the platform archive: archive:300000000000000110');
+  });
+
   it('fails closed when an inline citation marker is unknown', async () => {
     await expectMarkerRejection(
       'The stored record is stale [[cite:m-inline-unknown-marker]].',
