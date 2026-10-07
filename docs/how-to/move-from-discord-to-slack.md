@@ -26,8 +26,12 @@ The same procedure works from Slack to Discord. Change the platform names.
   once on that release. On that start, discovery records which threads are
   private. Threads that discovery did not see again stay hidden in the archive,
   because Mneme cannot prove that they are public.
-- The release that you deploy for Slack includes the read-only archive (see
-  the [changelog](https://github.com/steel-experiments/mneme/blob/main/CHANGELOG.md)).
+- The Discord deployment already runs a release that includes the read-only
+  archive (see the
+  [changelog](https://github.com/steel-experiments/mneme/blob/main/CHANGELOG.md)).
+  Step 4 runs `archive-rewrite` inside the Discord deployment, so deploy that
+  release there first, while it is still on Discord. The Slack deployment uses
+  the same release.
 - You have the Slack app and its settings ready. See
   [Install Mneme](../tutorials/getting-started.md) and
   [Configuration](../reference/configuration.md).
