@@ -3,7 +3,7 @@
 import { getChannel } from '../../db/repositories/channels.js';
 import { runMnemeCommand, type CommandRouteDeps } from '../../commands/dispatcher.js';
 import { authorizeAdmin } from '../../policy/authorization.js';
-import { MNEME_SUBCOMMAND_GROUPS, MNEME_SUBCOMMANDS } from '../../commands/spec.js';
+import { MNEME_SUBCOMMANDS, mnemeSubcommandGroups } from '../../commands/spec.js';
 import type { Logger } from '../../logger.js';
 import type { SlackObject } from './api.js';
 import type { SlackEnvelope } from './connection.js';
@@ -78,7 +78,8 @@ export async function handleSlackCommand(deps: SlackCommandDeps, envelope: Slack
     await reply('Use /mneme in a workspace channel.');
     return 'refused';
   }
-  const parsed = parseSlackCommand(str(body.text), { subcommands: MNEME_SUBCOMMANDS, groups: MNEME_SUBCOMMAND_GROUPS });
+  const parsed = parseSlackCommand(str(body.text), { subcommands: MNEME_SUBCOMMANDS,
+    groups: mnemeSubcommandGroups({ archive: deps.routes.ctx.platformArchive !== undefined }) });
   if (!parsed.ok) {
     await reply(parsed.help ? parsed.text : parsed.error);
     return 'help';

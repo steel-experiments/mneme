@@ -6,8 +6,8 @@ import {
 import {
   MNEME_COMMAND_NAME,
   MNEME_ROOT_DESCRIPTION,
-  MNEME_SUBCOMMAND_GROUPS,
   MNEME_SUBCOMMANDS,
+  mnemeSubcommandGroups,
   type CommandOptionSpec,
 } from '../../commands/spec.js';
 
@@ -62,7 +62,7 @@ function addOptions(sub: SlashCommandSubcommandBuilder, options: readonly Comman
  * Build the `/mneme` application command from the declarative spec. Deterministic:
  * the same spec always yields the same command, so registration is convergent.
  */
-export function buildMnemeCommand(): SlashCommandBuilder {
+export function buildMnemeCommand(options: { archive?: boolean } = {}): SlashCommandBuilder {
   const root = new SlashCommandBuilder()
     .setName(MNEME_COMMAND_NAME)
     .setDescription(MNEME_ROOT_DESCRIPTION);
@@ -74,7 +74,7 @@ export function buildMnemeCommand(): SlashCommandBuilder {
       return sub;
     });
   }
-  for (const g of MNEME_SUBCOMMAND_GROUPS) {
+  for (const g of mnemeSubcommandGroups({ archive: options.archive === true })) {
     root.addSubcommandGroup((group) => {
       group.setName(g.name).setDescription(g.description);
       for (const s of g.subcommands) {

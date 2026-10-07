@@ -5,6 +5,13 @@ import { recordAdminEvent } from '../db/repositories/admin-events.js';
 import { authorizeAdmin } from '../policy/authorization.js';
 import { cancelJob, enqueue, getJob } from '../jobs/queue.js';
 import { isPlatformId } from '../platform/ids.js';
+import {
+  ARCHIVE_ID_PREFIX,
+  describeArchiveDeletionTarget,
+  isArchiveMessageId,
+  isArchiveUserId,
+  type ArchiveReader,
+} from '../platform-archive/read.js';
 
 export type DeletionSubcommand = 'status' | 'approve' | 'cancel' | 'retry';
 export interface DeletionCommandInput {
@@ -19,6 +26,13 @@ export interface DeletionCommandDeps {
   deletionApproverUserIds: readonly string[];
   reviewChannelId: string | undefined;
   nowMs: number;
+  /** The read-only platform archive, when one is configured (plan 011). */
+  archive?: ArchiveReader;
+}
+
+/** True when a deletion target names a row in the read-only platform archive. */
+export function isArchiveTarget(targetId: string): boolean {
+  return targetId.startsWith(ARCHIVE_ID_PREFIX);
 }
 
 function audit(input: DeletionCommandInput, deps: DeletionCommandDeps, action: string, target: string | null, result: string): void {
@@ -42,7 +56,10 @@ function describe(db: DatabaseSync, row: DeletionRequest): string {
   const job = row.job_id ? getJob(db, row.job_id) : undefined;
   const progress = `${row.processed_count}/${row.message_count} messages processed`;
   const time = row.execute_after_ms === null ? '' : `; purge no earlier than <t:${Math.floor(row.execute_after_ms / 1000)}:F>`;
-  const target = row.target_kind === 'user' ? `user <@${row.target_id}> (\`${row.target_id}\`)` : `message \`${row.target_id}\``;
+  const archiveId = isArchiveTarget(row.target_id) ? row.target_id.slice(ARCHIVE_ID_PREFIX.length) : null;
+  const target = archiveId !== null
+    ? `archive ${row.target_kind} \`${archiveId}\``
+    : row.target_kind === 'user' ? `user <@${row.target_id}> (\`${row.target_id}\`)` : `message \`${row.target_id}\``;
   return `Request \`${row.id}\`: ${target} — **${row.status}**; ${progress}${time}.`
     + ` Requested by <@${row.requester_user_id}>${row.approver_user_id ? `; approved by <@${row.approver_user_id}>` : ''}.`
     + (job?.status === 'failed' ? ' Worker failed; the original approver can use deletion retry.' : '');
@@ -55,6 +72,7 @@ export function requestDeletion(
 ): string {
   const denial = access(input, deps);
   if (denial) { audit(input, deps, 'request', null, 'denied'); return denial; }
+  if (isArchiveTarget(input.targetId)) return requestArchiveDeletion(input, deps);
   if (!isPlatformId(input.targetId)) {
     audit(input, deps, 'request', null, 'invalid_target');
     return 'Invalid target. Select a Discord user or provide a numeric Discord message ID.';
@@ -94,6 +112,66 @@ export function requestDeletion(
       + `A different authorized approver must run \`/mneme deletion approve id:${id} confirmation:DELETE\`. `
       + `Approval starts a 24-hour cancellation window. Cancel with \`/mneme deletion cancel id:${id}\`. `
       + 'The final purge cannot be undone. Discord originals are not deleted.';
+  });
+}
+
+const ARCHIVE_LIMIT_NOTE = 'A user redaction does not remove the user\u2019s name or mentions from other people\u2019s archive messages.';
+
+/**
+ * Request only, for a row in the read-only platform archive. The request goes
+ * through the same approval and grace period as a live request. Execution
+ * writes one archive redaction; the archive file itself never changes.
+ */
+function requestArchiveDeletion(
+  input: DeletionCommandInput & { targetKind: 'user' | 'message'; targetId: string },
+  deps: DeletionCommandDeps,
+): string {
+  const archive = deps.archive;
+  if (!archive) {
+    audit(input, deps, 'request', null, 'no_archive');
+    return 'No platform archive is configured, so archive targets cannot be deleted.';
+  }
+  const raw = input.targetId.slice(ARCHIVE_ID_PREFIX.length);
+  const valid = input.targetKind === 'user' ? isArchiveUserId(archive, raw) : isArchiveMessageId(archive, raw);
+  if (!valid) {
+    audit(input, deps, 'request', null, 'invalid_target');
+    return `Invalid archive target. Use an archive ${input.targetKind} id from the ${archive.summary.platform} archive, for example from \`/mneme archive user\`.`;
+  }
+  if (deps.deletionApproverUserIds.length === 0) {
+    audit(input, deps, 'request', input.targetId, 'disabled');
+    return 'Deletion is disabled until the server operator configures deletion approvers.';
+  }
+  return transactionImmediate(deps.db, () => {
+    const existing = deps.db.prepare(`SELECT * FROM deletion_requests
+      WHERE workspace_id = ? AND target_kind = ? AND target_id = ?
+        AND status IN ('pending', 'scheduled', 'executing')`).get(input.guildId, input.targetKind, input.targetId) as DeletionRequest | undefined;
+    if (existing) {
+      audit(input, deps, 'request', existing.id, 'already_active');
+      return `An active request already exists. ${describe(deps.db, existing)}`;
+    }
+    const target = describeArchiveDeletionTarget(archive, input.targetKind, raw);
+    if (target.kind === 'already_hidden') {
+      audit(input, deps, 'request', input.targetId, 'already_hidden');
+      return 'That archive target is already hidden by an earlier deletion. Nothing was scheduled.';
+    }
+    if (target.kind === 'no_match') {
+      audit(input, deps, 'request', input.targetId, 'no_matching_messages');
+      return 'No archive messages match that target. Nothing was scheduled.';
+    }
+    const id = randomUUID();
+    // The archive is read-only, so there is no manifest of live rows. The count
+    // is the number of archive messages that the redaction will hide.
+    deps.db.prepare(`INSERT INTO deletion_requests
+      (id, workspace_id, target_kind, target_id, requester_user_id, status, message_count, created_at_ms)
+      VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`)
+      .run(id, input.guildId, input.targetKind, input.targetId, input.actorUserId, target.messageCount, deps.nowMs);
+    audit(input, deps, 'request', id, 'pending');
+    return `${describe(deps.db, getDeletionRequest(deps.db, id, input.guildId)!)}\n`
+      + 'Nothing has been deleted. After approval and the grace period, Mneme hides these archive messages from every archive read; '
+      + 'the archive file changes only when an operator runs `archive-rewrite`.\n'
+      + (input.targetKind === 'user' ? `${ARCHIVE_LIMIT_NOTE}\n` : '')
+      + `A different authorized approver must run \`/mneme deletion approve id:${id} confirmation:DELETE\`. `
+      + `Approval starts a 24-hour cancellation window. Cancel with \`/mneme deletion cancel id:${id}\`.`;
   });
 }
 

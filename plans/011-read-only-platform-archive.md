@@ -374,7 +374,9 @@ archive → pass. Then an independent review of Part C.
   tables for an archive target, and a live target never writes a redaction.
 - The status and the deletion reply name the target as an archive target.
 - Add `/mneme` help text and `docs/reference/commands.md` wording.
-- Add an admin-only archive user lookup (`/mneme archive-user <name>`): it
+- Add an admin-only archive user lookup (`/mneme archive user name:<name>`;
+  the `archive` subcommand group is registered only when an archive is
+  configured, so a deployment without an archive keeps its command surface): it
   searches archive author names and returns the archive user id, display name,
   and the number of org messages. An admin needs it to file an `archive:<user>`
   deletion request for a person who asks in Slack. It reads only org content,

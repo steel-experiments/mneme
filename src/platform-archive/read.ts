@@ -6,7 +6,7 @@ import type { PlatformId } from '../config.js';
 import type { RetrievalGrant } from '../db/repositories/message-search.js';
 import { DEFAULT_LIMIT, MAX_RESULT_LIMIT, parseFtsQuery } from '../db/fts-query.js';
 import { discordMessageLink } from '../platform/links.js';
-import { isDiscordId, isPlatformId } from '../platform/ids.js';
+import { isDiscordId, isPlatformId, isSlackId, isSlackSyntheticId } from '../platform/ids.js';
 import type { ArchiveSummary } from './database.js';
 import { loadRedactions } from './redactions.js';
 import { servableMemory, servableMessage } from './servable.js';
@@ -304,4 +304,80 @@ export function getArchiveMemoryEvidence(reader: ArchiveReader, id: string): Arc
      WHERE ev.memory_id = :id AND ${servableMessage('m', 'c', 'p')}
      ORDER BY m.created_at_ms, m.id`).all({ ...params, id: memoryId }) as MessageRow[];
   return { memory: toMemory(reader, memory), evidence: evidence.map((row) => toMessage(reader, row, false)) };
+}
+
+/** One archive author that an admin can name in an archive user deletion request. */
+export interface ArchiveUser {
+  /** `archive:<user id>`. */
+  id: string;
+  userId: string;
+  displayName: string;
+  /** Servable org messages by this author. */
+  orgMessageCount: number;
+}
+
+/** True when `raw` is a user id on the archive's platform. */
+export function isArchiveUserId(reader: ArchiveReader, raw: string): boolean {
+  return reader.summary.platform === 'discord' ? isDiscordId(raw) : isSlackUserId(raw);
+}
+
+/** True when `raw` is a message id on the archive's platform. */
+export function isArchiveMessageId(reader: ArchiveReader, raw: string): boolean {
+  return reader.summary.platform === 'discord' ? isDiscordId(raw) : isSlackSyntheticId(raw);
+}
+
+function isSlackUserId(raw: string): boolean {
+  return isSlackId(raw) && (raw.startsWith('U') || raw.startsWith('W'));
+}
+
+/**
+ * Archive authors whose display name contains `name`, with their servable org
+ * message count. Only authors of servable, unredacted org messages appear, so
+ * a redacted user is not findable. `%` and `_` in `name` are plain text.
+ */
+export function searchArchiveUsers(reader: ArchiveReader, options: { name: string; limit?: number }): ArchiveUser[] {
+  const name = options.name.trim();
+  if (!name) return [];
+  const params = redactionParams(reader);
+  if (!params) return [];
+  const pattern = `%${name.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`;
+  const rows = reader.db.prepare(`
+    SELECT m.author_id AS user_id, MAX(m.author_display_name) AS display_name, COUNT(*) AS n
+      FROM messages m ${MESSAGE_JOINS}
+     WHERE m.author_id IS NOT NULL
+       AND m.author_display_name LIKE :pattern ESCAPE '\\'
+       AND ${servableMessage('m', 'c', 'p')}
+     GROUP BY m.author_id
+     ORDER BY n DESC, m.author_id
+     LIMIT :limit`).all({ ...params, pattern, limit: clampLimit(options.limit) }) as Array<{ user_id: string; display_name: string | null; n: number }>;
+  return rows.map((row) => ({
+    id: `${ARCHIVE_ID_PREFIX}${row.user_id}`,
+    userId: row.user_id,
+    displayName: row.display_name ?? 'unknown author',
+    orgMessageCount: Number(row.n),
+  }));
+}
+
+/** How a deletion request for an archive target stands before it is filed. */
+export type ArchiveDeletionTarget =
+  | { kind: 'ok'; messageCount: number }
+  | { kind: 'already_hidden' }
+  | { kind: 'no_match' };
+
+/**
+ * Count every archive message that a deletion of `targetId` covers, in any
+ * visibility class: a redaction hides all of them. Reports a target that a
+ * redaction already hides. The count reveals no content.
+ */
+export function describeArchiveDeletionTarget(
+  reader: ArchiveReader,
+  kind: 'user' | 'message',
+  targetId: string,
+): ArchiveDeletionTarget {
+  const hidden = reader.liveDb.prepare(`SELECT 1 FROM archive_redactions
+     WHERE archive_workspace_id = ? AND target_kind = ? AND target_id = ?`).get(reader.summary.workspaceId, kind, targetId);
+  if (hidden) return { kind: 'already_hidden' };
+  const field = kind === 'user' ? 'author_id' : 'id';
+  const n = Number(reader.db.prepare(`SELECT COUNT(*) AS n FROM messages WHERE ${field} = ?`).get(targetId)?.n ?? 0);
+  return n > 0 ? { kind: 'ok', messageCount: n } : { kind: 'no_match' };
 }

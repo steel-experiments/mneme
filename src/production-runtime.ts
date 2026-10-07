@@ -1747,7 +1747,9 @@ export async function createProductionJobRuntime(
     actorUserId: platform.selfUserId, now: ctx.now }));
   worker.register('forget_user', 1, createForgetUserHandler());
   worker.register('execute_deletion', 1, createExecuteDeletionHandler({ db: ctx.db, guildId: ctx.config.workspaceId,
-    deletionApproverUserIds: ctx.config.deletionApproverUserIds, now: ctx.now }));
+    deletionApproverUserIds: ctx.config.deletionApproverUserIds, now: ctx.now,
+    ...(ctx.platformArchive ? { archive: { workspaceId: ctx.platformArchive.summary.workspaceId,
+      sha256: ctx.platformArchive.summary.sha256 } } : {}) }));
   worker.register('discover_threads', ctx.config.ingestion.backfillConcurrency, async () => {
     await runPlatformDiscovery({ db: ctx.db, guildId: ctx.config.workspaceId, policy: snapshot().channelPolicy,
       channelPolicySource: ctx.config.channelPolicySource, now: ctx.now(), platform,

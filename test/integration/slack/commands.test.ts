@@ -13,6 +13,8 @@ import { handleSlackCommand, SLACK_COMMAND_FAILED, type SlackCommandDeps } from 
 import { attachSocket, SlackHealthTracker, type SlackEnvelope } from '../../../src/platform/slack/connection.js';
 import { handleChannelsCommand, formatChannelsReply } from '../../../src/commands/channels.js';
 import type { BootstrapContext } from '../../../src/bootstrap.js';
+import { createArchiveFixture } from '../../helpers/archive.js';
+import { openArchiveDatabase, verifyArchive } from '../../../src/platform-archive/database.js';
 
 const CHANNEL = 'C0000000001';
 const REVIEW = 'C0000000009';
@@ -164,6 +166,25 @@ describe('Slack /mneme handler', () => {
     const { api, deps, command } = await setup();
     api.conversations.set(UNKNOWN, conversation(UNKNOWN));
     expect(await handleSlackCommand(deps, command('channels', { channel_id: UNKNOWN }))).toBe('handled');
+  });
+
+  it('routes the archive group only when a platform archive is configured', async () => {
+    const { ctx, deps, replies, command } = await setup();
+    await handleSlackCommand(deps, command('archive user name:Archive'));
+    expect(replies.at(-1)).not.toMatch(/secure review channel/);
+    const fixture = createArchiveFixture();
+    const archiveDb = openArchiveDatabase(fixture.path);
+    try {
+      const summary = verifyArchive(archiveDb, fixture.path, { platform: 'discord', newestSchemaVersion: 1_000 });
+      const withArchive: SlackCommandDeps = { ...deps,
+        routes: { ...deps.routes, ctx: { ...ctx, platformArchive: { db: archiveDb, summary } } as unknown as BootstrapContext } };
+      await handleSlackCommand(withArchive, command('archive user name:Archive'));
+      // The archive handler answers: the lookup stays in the secure review channel.
+      expect(replies.at(-1)).toMatch(/secure review channel/);
+    } finally {
+      archiveDb.close();
+      fixture.cleanup();
+    }
   });
 
   it('applies the deletion review-channel rule unchanged', async () => {

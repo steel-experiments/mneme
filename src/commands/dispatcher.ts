@@ -15,6 +15,8 @@ import { handleMemorySearchCommand, formatMemorySearchReply,
   handleMemoryGetCommand, formatMemoryGetReply } from './memory-search.js';
 import { handleForgetMessageCommand } from './forget-message.js';
 import { handleForgetUserCommand } from './forget-user.js';
+import { handleArchiveCommand, type ArchiveSubcommand } from './archive.js';
+import { createArchiveReader } from '../platform-archive/read.js';
 import { handleDeletionCommand, type DeletionSubcommand } from './deletion.js';
 import { handleReloadPolicyCommand, formatReloadPolicyReply } from './reload-policy.js';
 import { handleIntegrityCheckCommand, formatIntegrityCheckReply } from './integrity.js';
@@ -287,7 +289,16 @@ function deletionDeps({ deps, common }: RouteArgs) {
   const safeReview = review?.secure && review.id === ctx.config.reviewChannelId
     && ['org', 'restricted', 'review_only'].every((scope) => review.accepts_scopes.some((accepted) => accepted === scope));
   return { ...common, deletionApproverUserIds: ctx.config.deletionApproverUserIds,
-    reviewChannelId: safeReview ? ctx.config.reviewChannelId : undefined };
+    reviewChannelId: safeReview ? ctx.config.reviewChannelId : undefined,
+    ...(ctx.platformArchive ? { archive: createArchiveReader({ db: ctx.platformArchive.db, liveDb: ctx.db,
+      summary: ctx.platformArchive.summary, logger: ctx.logger }) } : {}) };
+}
+
+/** `/mneme archive …`: registered only when a platform archive is configured. */
+function routeArchive(args: RouteArgs): string {
+  return handleArchiveCommand({ ...args.base, invocationChannelId: args.i.channelId,
+    subcommand: args.i.options.getSubcommand() as ArchiveSubcommand,
+    name: args.i.options.getString('name'), id: args.i.options.getString('id') }, deletionDeps(args));
 }
 
 const groupRoutes = completeRouteMap(MNEME_SUBCOMMAND_GROUPS.map((group) => group.name), [
@@ -340,7 +351,8 @@ export async function runMnemeCommand(i: CommandInvocation, base: RouteBase, dep
   // Read the subcommand first: an invocation without one throws here.
   const command = i.options.getSubcommand();
   const group = i.options.getSubcommandGroup(false);
-  const route = (group !== null ? groupRoutes.get(group) : undefined)
+  const route = (group === 'archive' ? routeArchive : undefined)
+    ?? (group !== null ? groupRoutes.get(group) : undefined)
     ?? commandRoutes.get(command)
     ?? (() => 'Unknown Mneme command.');
   return route({ i, deps, base, common });

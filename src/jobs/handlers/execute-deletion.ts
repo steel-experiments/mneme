@@ -1,9 +1,14 @@
+// ABOUTME: Executes approved deletion requests after the grace period, in bounded batches (spec Section 27).
+// ABOUTME: A live target purges stored rows; an archive target writes one archive redaction (plan 011).
+import { randomUUID } from 'node:crypto';
 import { transactionImmediate, type DatabaseSync } from '../../db/database.js';
 import { recordAdminEvent } from '../../db/repositories/admin-events.js';
 import { getDeletionRequest, DELETION_GRACE_MS } from '../../memory/deletion-requests.js';
 import { forgetMessageInTransaction } from '../../memory/deletion.js';
 import { continueJobAfterProgress, deferJob, getJob } from '../queue.js';
 import type { JobHandler } from '../worker.js';
+
+const ARCHIVE_TARGET_PREFIX = 'archive:';
 
 /** Each bounded batch commits the purge, progress, and continuation together. */
 export function createExecuteDeletionHandler(deps: {
@@ -12,6 +17,8 @@ export function createExecuteDeletionHandler(deps: {
   deletionApproverUserIds: readonly string[];
   now: () => number;
   batchSize?: number;
+  /** The verified platform archive, when one is configured (plan 011). */
+  archive?: { workspaceId: string; sha256: string };
 }): JobHandler<'execute_deletion'> {
   return async ({ requestId }, job) => {
     const now = deps.now();
@@ -42,6 +49,28 @@ export function createExecuteDeletionHandler(deps: {
       }
       if (now < request.execute_after_ms) {
         deferJob(deps.db, job.id, request.execute_after_ms, 'Deletion grace period has not elapsed', now);
+        return;
+      }
+      if (request.target_id.startsWith(ARCHIVE_TARGET_PREFIX)) {
+        // An archive target has no live rows. Without the archive, fail the job
+        // and keep the request scheduled; the original approver can retry.
+        if (!deps.archive) throw new Error('No platform archive is configured; the archive deletion was not executed');
+        recordAdminEvent(deps.db, { guildId: deps.guildId, actorUserId: request.approver_user_id,
+          action: 'deletion_started', target: request.id,
+          details: { requesterUserId: request.requester_user_id, messageCount: request.message_count }, createdAtMs: now });
+        // Redactions match on the archive workspace id; the file hash is kept
+        // for audit only, so the redaction also applies to every older copy.
+        deps.db.prepare(`INSERT INTO archive_redactions
+          (id, archive_workspace_id, target_kind, target_id, archive_sha256, deletion_request_id, created_at_ms)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT (archive_workspace_id, target_kind, target_id) DO NOTHING`)
+          .run(randomUUID(), deps.archive.workspaceId, request.target_kind,
+            request.target_id.slice(ARCHIVE_TARGET_PREFIX.length), deps.archive.sha256, request.id, now);
+        deps.db.prepare(`UPDATE deletion_requests SET status = 'completed', processed_count = message_count,
+          completed_at_ms = ? WHERE id = ?`).run(now, request.id);
+        recordAdminEvent(deps.db, { guildId: deps.guildId, actorUserId: request.approver_user_id,
+          action: 'deletion_completed', target: request.id,
+          details: { requesterUserId: request.requester_user_id, processed: request.message_count, archive: true }, createdAtMs: now });
         return;
       }
       const rows = deps.db.prepare(`SELECT dm.message_id FROM deletion_request_messages dm
