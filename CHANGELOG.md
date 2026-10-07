@@ -9,7 +9,7 @@ and this project adheres to
 This changelog starts at the launch baseline. Changes before that point are
 not recorded.
 
-## [Unreleased]
+## [3.2.0] - 2026-10-07
 
 ### Added
 
@@ -22,6 +22,11 @@ not recorded.
   `archive-rewrite` writes a minimized copy. Migrations 046 and 047 add
   `archive_redactions` and `deletion_requests.archive_workspace_id`. See
   [Move from Discord to Slack](docs/how-to/move-from-discord-to-slack.md).
+
+### Changed
+
+- **Dependencies.** Update `@earendil-works/pi-ai` and
+  `@earendil-works/pi-agent-core` to 1.0.0.
 
 ### Removed
 
