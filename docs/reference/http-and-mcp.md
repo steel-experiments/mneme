@@ -146,6 +146,20 @@ Available read-only tools:
 - `get_memory_evidence`
 - `list_channels`
 
+When a read-only platform archive is configured (`MNEME_ARCHIVE_PATH`), four
+more tools read it:
+
+- `search_archive_messages`
+- `get_archive_message_context`
+- `search_archive_memories`
+- `get_archive_memory`
+
+They return only org content of the archive, with `archive:` ids and links to
+the old platform. They work only for a token whose scope is exactly `org`; a
+channel-scoped token, including `org_plus_channels`, gets an error. A hidden
+id and a missing id get the same reply. See
+[Move from Discord to Slack](../how-to/move-from-discord-to-slack.md).
+
 Use `list_memories` to retrieve a bounded list of the highest-value permitted active
 memories, optionally filtered by type or status. Use `search_memories` for a topic; its
 query uses literal full-text AND semantics. Clients should send one concise canonical

@@ -152,6 +152,39 @@ applies mention, length, rate, and duplicate checks. It contains no retrieved fa
 counts, names, citations, provider errors, or existence hints. Deliberate policy or target
 suppression remains a recorded no-send outcome rather than bypassing the visibility gate.
 
+## Read-only platform archive
+
+A deployment can read a frozen archive of the platform that the team used
+before (see [Move from Discord to Slack](../how-to/move-from-discord-to-slack.md)).
+The archive has its own boundary:
+
+- **Org content only, with no exception.** Mneme cannot map members of the new
+  platform to channel memberships on the old one. So the archive serves only
+  org channels and org memories, also to admins and in the secure review
+  channel. Restricted, review-only, and excluded content is never served.
+- **Unproven threads stay hidden.** A thread that Mneme last saw before it
+  recorded Discord private threads (migration 045) could be private. The
+  archive cannot check it again, so such a thread is never served. Test
+  channels whose names contain `mneme` or `cassandra` are never served either.
+- **Read-only.** The file opens read-only and with `query_only`. Mneme never
+  migrates or writes it. A wrong, damaged, or unknown file stops startup.
+- **Links come from the host.** Only direct answers can cite the archive, and
+  only messages that an archive tool returned in the same run. The host builds
+  the link; a model-written link is rejected.
+- **Deletion.** `/mneme archive forget-user` and `forget-message` hide a target
+  at once after approval and the grace period. The redaction applies to every
+  copy of the archive. `archive-rewrite` then removes the bytes from the file.
+
+Known limits:
+
+- A model can restate archive content in a memory or notice without a
+  citation. This cannot widen scope, because the archive holds only org
+  content.
+- Hiding a user does not remove the user's name or mentions from other
+  people's messages.
+- The archive is frozen. It never receives edits or deletions from the old
+  platform.
+
 ## Secrets and logs
 
 Discord and Slack tokens, provider API keys, the HTTP admin token, and MCP
