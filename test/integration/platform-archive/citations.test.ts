@@ -78,7 +78,7 @@ function redactArchiveMessage(messageId: string): void {
 }
 
 /** A run that exposes the question, the given live messages, and the given archive ids. */
-function fakeRun(proposal: DirectAnswerProposal, exposed: { live?: string[]; archive?: string[] }) {
+function fakeRun(proposal: DirectAnswerProposal, exposed: { live?: string[]; archive?: string[]; archiveMemories?: string[] }) {
   return async (deps: ExecuteAgentRunDeps): Promise<AgentRunResult> => {
     deps.db.prepare(
       `INSERT INTO agent_runs (id, workspace_id, episode_id, run_type, prompt_version, provider, model, status, started_at_ms)
@@ -97,7 +97,8 @@ function fakeRun(proposal: DirectAnswerProposal, exposed: { live?: string[]; arc
           return fingerprint ? [{ messageId, fingerprint }] : [];
         }),
         memoryScopes: [], memoryIds: [], memoryFingerprints: [], charsExposed: 0, charBudget: 0,
-        ...(exposed.archive?.length ? { archiveIds: exposed.archive } : {}),
+        ...(exposed.archive?.length ? { archiveMessageIds: exposed.archive } : {}),
+        ...(exposed.archiveMemories?.length ? { archiveMemoryIds: exposed.archiveMemories } : {}),
       },
       finalProposal: { kind: 'direct_answer', proposal },
       startedAtMs: NOW, endedAtMs: NOW,
@@ -112,7 +113,7 @@ const orgScope: DirectAnswerChannelScope = {
 
 async function answer(
   proposal: Omit<DirectAnswerProposal, 'targetChannelId'>,
-  exposed: { live?: string[]; archive?: string[] },
+  exposed: { live?: string[]; archive?: string[]; archiveMemories?: string[] },
   options: { archive?: ArchiveReader | null; format?: PlatformFormat } = {},
 ): Promise<{ kind: string; content: string | null; reasons: string[] }> {
   const question = seedMessage('msg-question', '<@mneme> what did we decide about billing?');
@@ -172,6 +173,15 @@ describe('archive citations in direct answers', () => {
       message: `As decided earlier [[cite:${ARCHIVE_ORG}]].`,
       citedMessageIds: [ARCHIVE_ORG],
     }, { archive: [] });
+    expect(res.kind).not.toBe('answered');
+    expect(res.reasons.join('\n')).toContain(`cited archive message "${ARCHIVE_ORG}" was not exposed to this run`);
+  });
+
+  it('rejects an archive citation whose id the run saw only as an archive memory id', async () => {
+    const res = await answer({
+      message: `As decided earlier [[cite:${ARCHIVE_ORG}]].`,
+      citedMessageIds: [ARCHIVE_ORG],
+    }, { archiveMemories: [ARCHIVE_ORG] });
     expect(res.kind).not.toBe('answered');
     expect(res.reasons.join('\n')).toContain(`cited archive message "${ARCHIVE_ORG}" was not exposed to this run`);
   });

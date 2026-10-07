@@ -39,7 +39,7 @@ export function createSearchArchiveMemoriesTool(
         renderArchiveMemory,
         (n) => `[${n} more archive memory result(s) omitted — per-run character budget reached]`,
       );
-      for (const row of fit.included) ctx.retrieval.recordArchive(row.id);
+      for (const row of fit.included) ctx.retrieval.recordArchiveMemory(row.id);
       const header = fit.included.length > 0
         ? `${fit.included.length} archive memory result(s):`
         : 'No archive memories matched.';

@@ -115,7 +115,7 @@ describe('search_archive_messages', () => {
     const run = ctx(archive);
     await createSearchArchiveMessagesTool(run).execute('c1', { query: 'billing' });
     const provenance = run.retrieval.provenance();
-    expect(provenance.archiveIds).toContain(`archive:${ARCHIVE_MESSAGES.org}`);
+    expect(provenance.archiveMessageIds).toContain(`archive:${ARCHIVE_MESSAGES.org}`);
     expect(provenance.messageIds).toEqual([]);
     expect(provenance.channels).toEqual([]);
   });
@@ -142,7 +142,7 @@ describe('get_archive_message_context', () => {
     const out = text(await createGetArchiveMessageContextTool(run).execute('c1', { messageId: `archive:${ARCHIVE_MESSAGES.org}` }));
     expect(out).toContain(`archive:${ARCHIVE_MESSAGES.org}`);
     expect(out).toContain(`archive:${INJECTION}`);
-    expect(run.retrieval.provenance().archiveIds).toEqual(expect.arrayContaining([`archive:${ARCHIVE_MESSAGES.org}`, `archive:${INJECTION}`]));
+    expect(run.retrieval.provenance().archiveMessageIds).toEqual(expect.arrayContaining([`archive:${ARCHIVE_MESSAGES.org}`, `archive:${INJECTION}`]));
   });
 
   it.each([ARCHIVE_MESSAGES.restricted, ARCHIVE_MESSAGES.restrictedThread, '300000000000000999'])(
@@ -151,7 +151,7 @@ describe('get_archive_message_context', () => {
       const run = ctx(archive);
       const out = text(await createGetArchiveMessageContextTool(run).execute('c1', { messageId: `archive:${id}` }));
       expect(out).toBe('That archive message is not available.');
-      expect(run.retrieval.provenance().archiveIds ?? []).toEqual([]);
+      expect(run.retrieval.provenance().archiveMessageIds ?? []).toEqual([]);
     },
   );
 });
@@ -166,7 +166,8 @@ describe('search_archive_memories', () => {
     expect(out).not.toContain(ARCHIVE_MEMORIES.channel);
     expect(out).not.toContain(ARCHIVE_MEMORIES.reviewOnly);
     expect(out).not.toContain(ARCHIVE_MEMORIES.superseded);
-    expect(run.retrieval.provenance().archiveIds).toEqual([`archive:${ARCHIVE_MEMORIES.org}`]);
+    expect(run.retrieval.provenance().archiveMemoryIds).toEqual([`archive:${ARCHIVE_MEMORIES.org}`]);
+    expect(run.retrieval.provenance().archiveMessageIds).toBeUndefined();
     expect(run.retrieval.provenance().memoryIds).toEqual([]);
   });
 });

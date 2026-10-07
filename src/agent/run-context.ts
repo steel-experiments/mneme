@@ -91,8 +91,10 @@ export interface RetrievalProvenance {
   charBudget: number;
   /** Present only after `get_recent_activity_snapshot` executes successfully. */
   recentActivitySnapshot?: RecentActivitySnapshotCoverage;
-  /** `archive:` ids of platform-archive rows exposed to the model; present only when non-empty (plan 011). */
-  archiveIds?: string[];
+  /** `archive:` ids of platform-archive messages exposed to the model; present only when non-empty (plan 011). */
+  archiveMessageIds?: string[];
+  /** `archive:` ids of platform-archive memories exposed to the model; present only when non-empty. A citation never resolves against these. */
+  archiveMemoryIds?: string[];
 }
 
 export interface ExposedMessageFingerprint {
@@ -263,7 +265,8 @@ export class RunRetrievalState {
   private readonly memoryIds = new Set<string>();
   private readonly memoryFingerprints = new Map<string, string>();
   private recentActivitySnapshot: RecentActivitySnapshotCoverage | undefined;
-  private readonly archiveIds = new Set<string>();
+  private readonly archiveMessageIds = new Set<string>();
+  private readonly archiveMemoryIds = new Set<string>();
   private chars = 0;
 
   constructor(
@@ -288,10 +291,16 @@ export class RunRetrievalState {
     return this.recentActivitySnapshot !== undefined;
   }
 
-  /** Record one platform-archive row exposed to the model. Archive rows never
-   *  enter the live message, channel, or memory provenance (plan 011). */
-  recordArchive(archiveId: string): void {
-    this.archiveIds.add(archiveId);
+  /** Record one platform-archive message exposed to the model. Archive rows
+   *  never enter the live message, channel, or memory provenance (plan 011). */
+  recordArchiveMessage(archiveId: string): void {
+    this.archiveMessageIds.add(archiveId);
+  }
+
+  /** Record one platform-archive memory exposed to the model. Memory ids are
+   *  kept apart from message ids, so a citation cannot resolve against them. */
+  recordArchiveMemory(archiveId: string): void {
+    this.archiveMemoryIds.add(archiveId);
   }
 
   /** Reserve `chars` against the budget. Returns false without mutating if it
@@ -399,7 +408,8 @@ export class RunRetrievalState {
       charsExposed: this.chars,
       charBudget: this.charBudget,
     };
-    if (this.archiveIds.size > 0) provenance.archiveIds = [...this.archiveIds];
+    if (this.archiveMessageIds.size > 0) provenance.archiveMessageIds = [...this.archiveMessageIds];
+    if (this.archiveMemoryIds.size > 0) provenance.archiveMemoryIds = [...this.archiveMemoryIds];
     if (this.recentActivitySnapshot) {
       provenance.recentActivitySnapshot = {
         ...this.recentActivitySnapshot,
