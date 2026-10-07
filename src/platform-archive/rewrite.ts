@@ -1,4 +1,4 @@
-// ABOUTME: Writes a new copy of the read-only platform archive without the redacted rows (plan 011 step 10).
+// ABOUTME: Writes a minimized copy of the read-only platform archive without the redacted rows (plan 011 step 10).
 // ABOUTME: The source archive is never opened for writing; redaction rows stay in the live database and keep applying.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
@@ -25,6 +25,77 @@ export interface RewriteArchiveResult {
 
 /** Bound on the foreign-key cleanup rounds; each round removes one level of dependent rows. */
 const MAX_CASCADE_ROUNDS = 20;
+
+/**
+ * The tables whose rows the archive reads (src/platform-archive and the
+ * archive commands). A rewrite keeps rows only in these tables and in the
+ * full-text indexes, which it rebuilds. Every other table is emptied, also a
+ * table that a later migration adds, so a new table can never carry content
+ * into a rewritten archive.
+ */
+export const KEPT_ARCHIVE_TABLES = [
+  'schema_migrations',
+  'workspaces',
+  'channels',
+  'channel_access_audits',
+  'messages',
+  'message_tombstones',
+  'memories',
+  'memory_evidence',
+  'users',
+] as const;
+
+/** Full-text index tables; the rewrite rebuilds them from the kept rows. */
+const FTS_TABLE_PREFIXES = ['messages_fts', 'memories_fts'];
+
+/**
+ * Columns of kept tables that the archive never reads but that can hold copies
+ * of message content, quoted replies, or user ids. A rewrite clears them to
+ * their column default (NULL, or the empty JSON value for NOT NULL columns).
+ */
+const UNREAD_COLUMNS: Record<string, readonly string[]> = {
+  messages: ['raw_json', 'embeds_json', 'mentions_json', 'components_json', 'poll_json'],
+  channels: ['raw_json', 'last_message_id'],
+  users: ['raw_json'],
+  workspaces: ['raw_json', 'owner_id'],
+  memories: ['metadata_json'],
+  memory_evidence: ['note'],
+};
+
+function quoteIdent(name: string): string {
+  return `"${name.replaceAll('"', '""')}"`;
+}
+
+/**
+ * Empty every table that the archive does not read and clear the unread
+ * columns of the kept tables. Throws when a kept table has a foreign key into
+ * an emptied table: that would make the kept rows depend on removed rows.
+ */
+function minimizeArchive(db: DatabaseSync): void {
+  const kept = new Set<string>(KEPT_ARCHIVE_TABLES);
+  const isFts = (name: string) => FTS_TABLE_PREFIXES.some((prefix) => name.startsWith(prefix));
+  const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all() as Array<{ name: string }>)
+    .map((row) => row.name);
+  for (const table of KEPT_ARCHIVE_TABLES) {
+    const keys = db.prepare(`PRAGMA foreign_key_list(${quoteIdent(table)})`).all() as Array<{ table: string; from: string }>;
+    const outside = keys.find((key) => !kept.has(key.table));
+    if (outside) throw new Error(`kept table ${table} has a foreign key (${outside.from}) into ${outside.table}, which a rewrite empties`);
+  }
+  for (const table of tables) {
+    if (kept.has(table) || isFts(table)) continue;
+    db.exec(`DELETE FROM ${quoteIdent(table)}`);
+  }
+  for (const [table, columns] of Object.entries(UNREAD_COLUMNS)) {
+    const info = db.prepare(`PRAGMA table_info(${quoteIdent(table)})`).all() as Array<{ name: string; notnull: number; dflt_value: string | null }>;
+    for (const column of columns) {
+      const col = info.find((c) => c.name === column);
+      if (!col) continue;
+      const value = col.notnull ? col.dflt_value : 'NULL';
+      if (value === null) throw new Error(`cannot clear ${table}.${column}: it is NOT NULL and has no default`);
+      db.exec(`UPDATE ${quoteIdent(table)} SET ${quoteIdent(column)} = ${value}`);
+    }
+  }
+}
 
 function sha256Of(path: string): string {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
@@ -54,7 +125,8 @@ function removeDependentRows(db: DatabaseSync): void {
 }
 
 /**
- * Copy the archive with `VACUUM INTO`, then remove the redacted messages, the
+ * Copy the archive with `VACUUM INTO`, keep only the tables and columns that
+ * the archive reads (see {@link KEPT_ARCHIVE_TABLES}), then remove the redacted messages, the
  * redacted users, every memory that cites a removed message or is owned by a
  * redacted user, their tombstones, and every dependent row. Rebuild the search
  * indexes, compact, check integrity, and move the copy into place.
@@ -89,6 +161,7 @@ export function rewriteArchive(options: RewriteArchiveOptions): RewriteArchiveRe
     try {
       copy.exec('PRAGMA foreign_keys = OFF');
       copy.exec('BEGIN IMMEDIATE');
+      minimizeArchive(copy);
       const users = { users: JSON.stringify(redactions.userIds) };
       const both = { messages: JSON.stringify(redactions.messageIds), ...users };
       copy.exec('CREATE TEMP TABLE removed_messages (id TEXT PRIMARY KEY)');

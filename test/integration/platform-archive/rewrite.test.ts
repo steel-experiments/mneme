@@ -6,9 +6,10 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { createTestDb, type TestDb } from '../../helpers/db.js';
-import { ARCHIVE_AUTHOR, ARCHIVE_GUILD, ARCHIVE_MEMORIES, ARCHIVE_MESSAGES, ARCHIVE_NOW, createArchiveFixture, type ArchiveFixture } from '../../helpers/archive.js';
+import { ARCHIVE_AUTHOR, ARCHIVE_CHANNELS, ARCHIVE_GUILD, ARCHIVE_MEMORIES, ARCHIVE_MESSAGES, ARCHIVE_NOW, createArchiveFixture, type ArchiveFixture } from '../../helpers/archive.js';
 import { openArchiveDatabase, verifyArchive } from '../../../src/platform-archive/database.js';
-import { rewriteArchive } from '../../../src/platform-archive/rewrite.js';
+import { KEPT_ARCHIVE_TABLES, rewriteArchive } from '../../../src/platform-archive/rewrite.js';
+import { createArchiveReader, searchArchiveMessages } from '../../../src/platform-archive/read.js';
 import { runCli, CLI_FAIL, CLI_OK, CLI_USAGE } from '../../../src/cli/commands.js';
 import { openDatabase } from '../../../src/db/database.js';
 
@@ -31,6 +32,33 @@ function addDependents(db: DatabaseSync): void {
   db.prepare('INSERT INTO reaction_counts (message_id, emoji_key, count, updated_at_ms) VALUES (?, ?, 1, ?)').run(id, 'thumbs', ARCHIVE_NOW);
   db.prepare('INSERT INTO attachments (id, message_id, filename, created_at_ms, updated_at_ms) VALUES (?, ?, ?, ?, ?)').run('att-1', id, 'plan.pdf', ARCHIVE_NOW, ARCHIVE_NOW);
   db.prepare('INSERT INTO message_tombstones (message_id, channel_id, workspace_id, deleted_at_ms, created_at_ms) VALUES (?, NULL, NULL, ?, ?)').run(id, ARCHIVE_NOW, ARCHIVE_NOW);
+}
+
+const SECRET = 'zebra-quartz-secret-7731';
+
+/** Put the secret into tables and columns that the archive never reads. */
+function plantSecrets(db: DatabaseSync): void {
+  addDependents(db);
+  const org = ARCHIVE_CHANNELS.org;
+  db.prepare(`INSERT INTO episodes (id, workspace_id, conversation_channel_id, status, started_at_ms, last_activity_at_ms,
+      created_at_ms, updated_at_ms, summary) VALUES ('ep-secret', ?, ?, 'reviewed', ?, ?, ?, ?, ?)`)
+    .run(ARCHIVE_GUILD, org, ARCHIVE_NOW, ARCHIVE_NOW, ARCHIVE_NOW, ARCHIVE_NOW, SECRET);
+  db.prepare(`INSERT INTO agent_runs (id, workspace_id, run_type, prompt_version, provider, model, status, started_at_ms, error)
+      VALUES ('run-secret', ?, 'direct_answer', 'v', 'openai', 'm', 'failed', ?, ?)`).run(ARCHIVE_GUILD, ARCHIVE_NOW, SECRET);
+  db.prepare(`INSERT INTO outbox (id, channel_id, content, dedupe_key, next_attempt_at_ms, created_at_ms, updated_at_ms)
+      VALUES ('out-secret', ?, ?, 'dedupe-secret', ?, ?, ?)`).run(org, SECRET, ARCHIVE_NOW, ARCHIVE_NOW, ARCHIVE_NOW);
+  db.prepare(`INSERT INTO jobs (id, type, payload_json, run_after_ms, created_at_ms, updated_at_ms)
+      VALUES ('job-secret', 'probe', ?, ?, ?, ?)`).run(JSON.stringify({ text: SECRET }), ARCHIVE_NOW, ARCHIVE_NOW, ARCHIVE_NOW);
+  db.prepare(`INSERT INTO admin_events (id, workspace_id, actor_user_id, action, details_json, created_at_ms)
+      VALUES ('admin-secret', ?, ?, 'probe', ?, ?)`).run(ARCHIVE_GUILD, ARCHIVE_AUTHOR, JSON.stringify({ text: SECRET }), ARCHIVE_NOW);
+  const json = JSON.stringify({ quoted: SECRET });
+  db.prepare('UPDATE messages SET raw_json = ?, embeds_json = ?, mentions_json = ?, components_json = ?, poll_json = ?')
+    .run(json, json, json, json, json);
+  db.prepare('UPDATE channels SET raw_json = ?, last_message_id = ?').run(json, SECRET);
+  db.prepare('UPDATE users SET raw_json = ?').run(json);
+  db.prepare('UPDATE workspaces SET raw_json = ?, owner_id = ?').run(json, SECRET);
+  db.prepare('UPDATE memories SET metadata_json = ?').run(json);
+  db.prepare('UPDATE memory_evidence SET note = ?').run(SECRET);
 }
 
 function count(db: DatabaseSync, sql: string, ...args: string[]): number {
@@ -88,6 +116,34 @@ describe('archive rewrite', () => {
       expect(count(db, 'SELECT count(*) AS n FROM users WHERE id = ?', ARCHIVE_AUTHOR)).toBe(0);
       expect(count(db, 'SELECT count(*) AS n FROM memories')).toBe(0);
       expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
+    } finally {
+      db.close();
+    }
+  });
+
+  it('keeps only what the archive serves: no copy of other tables or unread columns survives in the file', () => {
+    fixture.cleanup();
+    fixture = createArchiveFixture({ mutate: plantSecrets });
+    expect(readFileSync(fixture.path).includes(SECRET)).toBe(true);
+    const out = join(fixture.dir, 'minimized.sqlite');
+    rewriteArchive({ archivePath: fixture.path, outPath: out, liveDb: live.db });
+
+    expect(readFileSync(out).includes(SECRET)).toBe(false);
+    const db = openArchiveDatabase(out);
+    try {
+      const summary = verifyArchive(db, out, { platform: 'discord', newestSchemaVersion: 1_000 });
+      const reader = createArchiveReader({ db, liveDb: live.db, summary });
+      const served = searchArchiveMessages(reader, { query: 'billing decision', limit: 50 }).map((row) => row.messageId);
+      // The org message itself carries a tombstone from addDependents, so it is not served; its thread sibling is.
+      expect(served.some((id) => id.endsWith(ARCHIVE_MESSAGES.orgThread))).toBe(true);
+      const kept = new Set<string>(KEPT_ARCHIVE_TABLES);
+      const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all() as Array<{ name: string }>)
+        .map((r) => r.name)
+        .filter((name) => !kept.has(name) && !name.startsWith('messages_fts') && !name.startsWith('memories_fts'));
+      expect(tables.length).toBeGreaterThan(20);
+      for (const table of tables) expect(count(db, `SELECT count(*) AS n FROM "${table}"`), table).toBe(0);
+      expect(count(db, 'SELECT count(*) AS n FROM messages WHERE id = ?', ARCHIVE_MESSAGES.org)).toBe(1);
+      expect(count(db, 'SELECT count(*) AS n FROM memories WHERE id = ?', ARCHIVE_MEMORIES.org)).toBe(1);
     } finally {
       db.close();
     }
