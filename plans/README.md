@@ -18,6 +18,7 @@ honor its STOP conditions, and update the row when done.
 | 008 | Add Sign in with Slack for MCP OAuth | P2 | M | 006 | DONE |
 | 009 | Archive Slack attachments | P2 | S | 006 | DONE |
 | 010 | Document Slack setup and ship the app manifest | P1 | M | 007, 008, 009 | DONE |
+| 011 | Read another platform's data as a frozen, read-only archive | P1 | L | 010 | TODO |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale — finding fixed independently or approach abandoned)
 
