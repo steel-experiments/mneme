@@ -213,6 +213,7 @@ function routeStatus({ deps, base, common }: RouteArgs): string {
       allTime: { costUsd: Number(modelRow.spent_total), inputTokens: Number(modelRow.in_total),
         outputTokens: Number(modelRow.out_total) } },
     backup, walSizeBytes,
+    ...(ctx.platformArchive ? { archive: ctx.platformArchive.summary } : {}),
     historicalCampaign: ctx.config.historicalMemory.campaignId
       ? { id: ctx.config.historicalMemory.campaignId,
           dayStartMs: orgDayStartMs(nowMs, ctx.config.organization.timezone) }

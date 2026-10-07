@@ -415,6 +415,7 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
         buildInfo,
         startedAtMs: statusStartedAtMs,
         now,
+        archive: platformArchive?.summary,
         discord: () => {
           const health = discord?.tracker?.snapshot?.();
           if (!health) return null;
@@ -442,6 +443,7 @@ async function bootstrapApplicationUnsafe(deps: BootstrapDeps, resources: Startu
             logger,
             now,
             timezone: config.organization.timezone,
+            archive: platformArchive?.summary,
             readiness: () => {
               const ready = runtime.isReady();
               return {
