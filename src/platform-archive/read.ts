@@ -365,9 +365,11 @@ export type ArchiveDeletionTarget =
   | { kind: 'no_match' };
 
 /**
- * Count every archive message that a deletion of `targetId` covers, in any
- * visibility class: a redaction hides all of them. Reports a target that a
- * redaction already hides. The count reveals no content.
+ * Count the servable org archive messages that a deletion of `targetId`
+ * covers, and report a target that a redaction already hides. The count and
+ * the match use the same servable rule as every archive read, so a request
+ * neither confirms nor counts restricted, review-only, or excluded content.
+ * When redactions cannot load, nothing matches (fail closed).
  */
 export function describeArchiveDeletionTarget(
   reader: ArchiveReader,
@@ -377,7 +379,10 @@ export function describeArchiveDeletionTarget(
   const hidden = reader.liveDb.prepare(`SELECT 1 FROM archive_redactions
      WHERE archive_workspace_id = ? AND target_kind = ? AND target_id = ?`).get(reader.summary.workspaceId, kind, targetId);
   if (hidden) return { kind: 'already_hidden' };
-  const field = kind === 'user' ? 'author_id' : 'id';
-  const n = Number(reader.db.prepare(`SELECT COUNT(*) AS n FROM messages WHERE ${field} = ?`).get(targetId)?.n ?? 0);
+  const params = redactionParams(reader);
+  if (!params) return { kind: 'no_match' };
+  const field = kind === 'user' ? 'm.author_id' : 'm.id';
+  const n = Number(reader.db.prepare(`SELECT COUNT(*) AS n FROM messages m ${MESSAGE_JOINS}
+     WHERE ${field} = :target AND ${servableMessage('m', 'c', 'p')}`).get({ ...params, target: targetId })?.n ?? 0);
   return n > 0 ? { kind: 'ok', messageCount: n } : { kind: 'no_match' };
 }
