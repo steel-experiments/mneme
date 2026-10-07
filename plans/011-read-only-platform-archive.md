@@ -381,6 +381,11 @@ archive → pass. Then an independent review of Part C.
   through `ARCHIVE_GRANT`, and it is subject to the same admin check as every
   other subcommand.
 
+Known limit: a user redaction hides the user's own messages and the memories
+that they own or that cite their messages. It does not scrub the user's name
+or mentions inside other people's messages, which stay servable. Record this
+limit in the Step 12 how-to and in the deletion reply.
+
 Tests: an archive message and an archive user disappear from every archive
 read function and MCP tool right after execution; the cancellable grace period
 and independent approval rules apply unchanged; a request for an archive target
@@ -432,6 +437,10 @@ and that a rewrite does not remove redaction rows.
   4. Set `MNEME_ARCHIVE_PATH` and `MNEME_ARCHIVE_PLATFORM=discord` on the Slack
      deployment and restart. Check the `Archive:` status line.
   5. Shut down the old deployment. Keep its last backup offline as well.
+  6. Known limits: threads that discovery last saw before migration 045 stay
+     hidden (status shows how many); a user redaction does not scrub the
+     user's name or mentions inside other people's messages; channels named
+     "mneme" or "cassandra" are test channels and are never served.
 - `docs/reference/configuration.md`, `docs/explanation/security-model.md`
   (org-only archive, redaction overlay), `docs/reference/http-and-mcp.md`,
   `docs/reference/commands.md`, `CHANGELOG.md` (Unreleased, Added).

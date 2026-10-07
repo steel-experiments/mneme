@@ -82,12 +82,15 @@ export function servableMessage(m: string, c: string, p: string): string {
 /**
  * An active org-scoped memory with at least one evidence message, all of whose
  * evidence messages are servable. A memory with any hidden, missing, or
- * redacted evidence is hidden, so its statement cannot carry hidden facts.
+ * redacted evidence is hidden, so its statement cannot carry hidden facts. A
+ * memory owned by a redacted user is hidden too, whoever wrote its evidence.
  */
 export function servableMemory(mem: string): string {
   return `(
     ${mem}.scope_type = 'org'
     AND ${mem}.status = 'active'
+    AND (${mem}.owner_user_id IS NULL
+      OR ${mem}.owner_user_id NOT IN (SELECT value FROM json_each(:redacted_users)))
     AND EXISTS (SELECT 1 FROM memory_evidence ev WHERE ev.memory_id = ${mem}.id)
     AND NOT EXISTS (
       SELECT 1 FROM memory_evidence ev
