@@ -44,7 +44,7 @@ export function createSearchArchiveMessagesTool(
         (row) => renderArchiveMessage(row),
         (n) => `[${n} more archive result(s) omitted — per-run character budget reached]`,
       );
-      for (const row of fit.included) ctx.retrieval.recordArchive(row.id);
+      for (const row of fit.included) ctx.retrieval.recordArchiveMessage(row.id);
       const header = fit.included.length > 0
         ? `${fit.included.length} archive message(s):`
         : 'No archive messages matched.';

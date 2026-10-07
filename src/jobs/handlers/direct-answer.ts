@@ -1156,7 +1156,8 @@ export function validateDirectAnswer(
     if (!input.archive) {
       reasons.push('archive citations are not allowed in this message');
     } else {
-      const exposedArchiveIds = new Set(input.provenance.archiveIds ?? []);
+      // Only archive MESSAGE ids received in this run can be cited.
+      const exposedArchiveIds = new Set(input.provenance.archiveMessageIds ?? []);
       for (const id of archiveCitedIds) {
         if (!exposedArchiveIds.has(id)) {
           reasons.push(`cited archive message "${id}" was not exposed to this run`);

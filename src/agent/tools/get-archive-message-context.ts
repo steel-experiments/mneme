@@ -54,7 +54,7 @@ export function createGetArchiveMessageContextTool(
         (item) => renderArchiveMessage(item.row, item.target ? ' (requested)' : ''),
         (n) => `[${n} more archive message(s) omitted — per-run character budget reached]`,
       );
-      for (const item of fit.included) ctx.retrieval.recordArchive(item.row.id);
+      for (const item of fit.included) ctx.retrieval.recordArchiveMessage(item.row.id);
       return {
         content: [{ type: 'text', text: `Archive context, oldest first:\n${fit.lines.join('\n')}` } as TextContent],
         details: {
