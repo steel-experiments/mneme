@@ -9,18 +9,21 @@ const PRIVATE_FLAG_SINCE = '(SELECT applied_at_ms FROM schema_migrations WHERE v
 
 /**
  * True when the private-thread flag of thread row `c` is known to be correct:
- * the row was created after migration 045, or discovery observed it again
- * after 045 (every discovery observation writes an access audit). Migration
- * 045 gave every older row the flag 0, and a frozen archive is never observed
- * again, so an older row that is a Discord private thread looks like a public
- * one. Such a row fails this test and stays hidden. When the archive has no
- * record of 045, every comparison is NULL and every thread stays hidden.
+ * the row was created after migration 045, or discovery saw it again after
+ * 045 and could view it. Only a discovery observation that can view the
+ * thread writes the flag from the Discord channel type; an audit that cannot
+ * view it (quarantine, missing access) never sets the flag, so it is no proof.
+ * Migration 045 gave every older row the flag 0, and a frozen archive is never
+ * observed again, so an older row that is a Discord private thread looks like
+ * a public one. Such a row fails this test and stays hidden. When the archive
+ * has no record of 045, every comparison is NULL and every thread stays hidden.
  */
 export function privateFlagObserved(c: string): string {
   return `(
     ${c}.discovered_at_ms >= ${PRIVATE_FLAG_SINCE}
     OR EXISTS (SELECT 1 FROM channel_access_audits aud
-                WHERE aud.channel_id = ${c}.id AND aud.checked_at_ms >= ${PRIVATE_FLAG_SINCE})
+                WHERE aud.channel_id = ${c}.id AND aud.can_view = 1
+                  AND aud.checked_at_ms >= ${PRIVATE_FLAG_SINCE})
   )`;
 }
 

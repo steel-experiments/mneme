@@ -91,6 +91,21 @@ describe('archive threads last seen before migration 045', () => {
     expect(ids).toContain(REOBSERVED_MESSAGE);
   });
 
+  it('hides a thread whose only later audit could not view it', () => {
+    // Discovery writes a can_view=0 audit when it quarantines or cannot see a
+    // thread, but that path never sets the private flag, so it is no proof.
+    const { reader } = setup((db) => {
+      seed(db);
+      db.prepare(
+        `INSERT INTO channel_access_audits (id, channel_id, checked_at_ms, can_view, can_read_history, can_send,
+           can_send_in_threads, can_manage_threads, warning) VALUES ('audit-no-view', ?, ?, 0, 0, 0, 0, 0, 'missing access')`,
+      ).run(LEGACY_THREAD, T45 + 2_000);
+    });
+    const ids = searchArchiveMessages(reader, { query: 'legacy thread billing', limit: 50 }).map((r) => r.messageId);
+    expect(ids).not.toContain(LEGACY_MESSAGE);
+    expect(ids).toContain(REOBSERVED_MESSAGE);
+  });
+
   it('refuses context for a message in such a thread', () => {
     const { reader } = setup();
     expect(getArchiveMessageContext(reader, `archive:${LEGACY_MESSAGE}`, { before: 2, after: 2 })).toBeNull();
