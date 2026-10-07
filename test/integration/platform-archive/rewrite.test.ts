@@ -142,11 +142,60 @@ describe('archive rewrite', () => {
         .filter((name) => !kept.has(name) && !name.startsWith('messages_fts') && !name.startsWith('memories_fts'));
       expect(tables.length).toBeGreaterThan(20);
       for (const table of tables) expect(count(db, `SELECT count(*) AS n FROM "${table}"`), table).toBe(0);
-      expect(count(db, 'SELECT count(*) AS n FROM messages WHERE id = ?', ARCHIVE_MESSAGES.org)).toBe(1);
-      expect(count(db, 'SELECT count(*) AS n FROM memories WHERE id = ?', ARCHIVE_MEMORIES.org)).toBe(1);
+      // The org message carries a tombstone (addDependents), so it and the memory
+      // that cites it are not servable and are dropped; the org thread stays.
+      expect(count(db, 'SELECT count(*) AS n FROM messages WHERE id = ?', ARCHIVE_MESSAGES.orgThread)).toBe(1);
+      expect(count(db, 'SELECT count(*) AS n FROM messages WHERE id = ?', ARCHIVE_MESSAGES.org)).toBe(0);
     } finally {
       db.close();
     }
+  });
+
+  it('drops content that the archive never serves, unless --keep-non-org is set', () => {
+    const NON_ORG = 'otter-basalt-nonorg-4419';
+    fixture.cleanup();
+    fixture = createArchiveFixture({
+      mutate: (db) => {
+        for (const role of ['restricted', 'reviewOnly', 'excluded', 'testSurface', 'restrictedThread', 'boundary'] as const) {
+          db.prepare('UPDATE messages SET content = ? WHERE id = ?').run(`${NON_ORG} ${role}`, ARCHIVE_MESSAGES[role]);
+        }
+        db.prepare('UPDATE memories SET statement = ? WHERE id IN (?, ?, ?)')
+          .run(NON_ORG, ARCHIVE_MEMORIES.channel, ARCHIVE_MEMORIES.reviewOnly, ARCHIVE_MEMORIES.superseded);
+        db.prepare("UPDATE channels SET topic = ? WHERE id IN (?, ?)").run(NON_ORG, ARCHIVE_CHANNELS.restricted, ARCHIVE_CHANNELS.excluded);
+      },
+    });
+    const servedFrom = (path: string): string[] => {
+      const db = openArchiveDatabase(path);
+      try {
+        const summary = verifyArchive(db, path, { platform: 'discord', newestSchemaVersion: 1_000 });
+        const reader = createArchiveReader({ db, liveDb: live.db, summary });
+        return searchArchiveMessages(reader, { query: 'billing decision', limit: 50 }).map((row) => row.messageId).sort();
+      } finally {
+        db.close();
+      }
+    };
+    const before = servedFrom(fixture.path);
+    expect(before.length).toBeGreaterThan(0);
+
+    const strict = join(fixture.dir, 'strict.sqlite');
+    rewriteArchive({ archivePath: fixture.path, outPath: strict, liveDb: live.db });
+    expect(readFileSync(strict).includes(NON_ORG)).toBe(false);
+    expect(servedFrom(strict)).toEqual(before);
+    const db = openArchiveDatabase(strict);
+    try {
+      const summary = verifyArchive(db, strict, { platform: 'discord', newestSchemaVersion: 1_000 });
+      expect(summary.hiddenLegacyThreads).toBe(0);
+      expect(count(db, 'SELECT count(*) AS n FROM memories WHERE id = ?', ARCHIVE_MEMORIES.org)).toBe(1);
+      expect(count(db, 'SELECT count(*) AS n FROM channels WHERE id = ?', ARCHIVE_CHANNELS.restricted)).toBe(0);
+      expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
+    } finally {
+      db.close();
+    }
+
+    const wide = join(fixture.dir, 'wide.sqlite');
+    rewriteArchive({ archivePath: fixture.path, outPath: wide, liveDb: live.db, keepNonOrg: true });
+    expect(readFileSync(wide).includes(NON_ORG)).toBe(true);
+    expect(servedFrom(wide)).toEqual(before);
   });
 
   it('writes the output readable by its owner only', () => {

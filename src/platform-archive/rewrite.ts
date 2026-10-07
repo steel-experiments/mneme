@@ -7,6 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { rejectUnsafePath } from '../config.js';
 import { normalizeJournalMode } from '../db/backup.js';
 import { loadRedactions } from './redactions.js';
+import { servableMemory, servableMessage } from './servable.js';
 
 export interface RewriteArchiveOptions {
   /** The current archive file. Read only. */
@@ -15,6 +16,13 @@ export interface RewriteArchiveOptions {
   outPath: string;
   /** The live database that holds `archive_redactions`. */
   liveDb: DatabaseSync;
+  /**
+   * Keep content that the archive never serves (non-org channels, test
+   * surfaces, shared or private threads, tombstoned rows, non-org memories).
+   * Off by default: the org-only rule means such content has no use in the
+   * archive. Only for an operator who may relax the rule later.
+   */
+  keepNonOrg?: boolean;
 }
 
 export interface RewriteArchiveResult {
@@ -22,6 +30,10 @@ export interface RewriteArchiveResult {
   sha256: string;
   removedMessages: number;
   removedMemories: number;
+  /** Messages, memories, and channels dropped because the archive never serves them. */
+  prunedMessages: number;
+  prunedMemories: number;
+  prunedChannels: number;
 }
 
 /** Bound on the foreign-key cleanup rounds; each round removes one level of dependent rows. */
@@ -126,6 +138,43 @@ function removeDependentRows(db: DatabaseSync): void {
 }
 
 /**
+ * Delete every row that the archive can never serve: messages that fail the
+ * servable rule, memories that fail it, the evidence of removed memories,
+ * tombstones, channels with no servable message (unless they are the parent of
+ * one), their access audits, and users that no kept row names. The servable
+ * rule needs channel rows, access audits, and schema_migrations, so the keep
+ * sets are computed before anything is deleted.
+ */
+function pruneNonServable(db: DatabaseSync, params: { redacted_messages: string; redacted_users: string }):
+  { messages: number; memories: number; channels: number } {
+  db.exec('CREATE TEMP TABLE keep_messages (id TEXT PRIMARY KEY)');
+  db.exec('CREATE TEMP TABLE keep_memories (id TEXT PRIMARY KEY)');
+  db.exec('CREATE TEMP TABLE keep_channels (id TEXT PRIMARY KEY)');
+  db.prepare(`INSERT INTO keep_messages (id)
+    SELECT m.id FROM messages m
+      LEFT JOIN channels c ON c.id = m.channel_id
+      LEFT JOIN channels p ON p.id = c.parent_id
+     WHERE ${servableMessage('m', 'c', 'p')}`).run(params);
+  db.prepare(`INSERT INTO keep_memories (id) SELECT mem.id FROM memories mem WHERE ${servableMemory('mem')}`).run(params);
+  db.exec(`INSERT OR IGNORE INTO keep_channels (id)
+    SELECT DISTINCT m.channel_id FROM messages m JOIN keep_messages k ON k.id = m.id`);
+  db.exec(`INSERT OR IGNORE INTO keep_channels (id)
+    SELECT DISTINCT c.parent_id FROM channels c JOIN keep_channels k ON k.id = c.id WHERE c.parent_id IS NOT NULL`);
+  const memories = Number(db.prepare('DELETE FROM memories WHERE id NOT IN (SELECT id FROM keep_memories)').run().changes);
+  db.exec('DELETE FROM memory_evidence WHERE memory_id NOT IN (SELECT id FROM keep_memories)');
+  db.exec('DELETE FROM message_tombstones');
+  const messages = Number(db.prepare('DELETE FROM messages WHERE id NOT IN (SELECT id FROM keep_messages)').run().changes);
+  db.exec('DELETE FROM channel_access_audits WHERE channel_id NOT IN (SELECT id FROM keep_channels)');
+  const channels = Number(db.prepare('DELETE FROM channels WHERE id NOT IN (SELECT id FROM keep_channels)').run().changes);
+  db.exec(`DELETE FROM users WHERE id NOT IN (SELECT author_id FROM messages WHERE author_id IS NOT NULL)
+    AND id NOT IN (SELECT owner_user_id FROM memories WHERE owner_user_id IS NOT NULL)`);
+  db.exec('DROP TABLE keep_messages');
+  db.exec('DROP TABLE keep_memories');
+  db.exec('DROP TABLE keep_channels');
+  return { messages, memories, channels };
+}
+
+/**
  * Copy the archive with `VACUUM INTO`, keep only the tables and columns that
  * the archive reads (see {@link KEPT_ARCHIVE_TABLES}), then remove the redacted messages, the
  * redacted users, every memory that cites a removed message or is owned by a
@@ -177,6 +226,9 @@ export function rewriteArchive(options: RewriteArchiveOptions): RewriteArchiveRe
     const copy = new DatabaseSync(tmp, { allowExtension: false });
     let removedMessages = 0;
     let removedMemories = 0;
+    let prunedMessages = 0;
+    let prunedMemories = 0;
+    let prunedChannels = 0;
     try {
       copy.exec('PRAGMA foreign_keys = OFF');
       copy.exec('BEGIN IMMEDIATE');
@@ -196,6 +248,13 @@ export function rewriteArchive(options: RewriteArchiveOptions): RewriteArchiveRe
       copy.exec('DELETE FROM messages WHERE id IN (SELECT id FROM removed_messages)');
       copy.prepare('DELETE FROM users WHERE id IN (SELECT value FROM json_each(:users))').run(users);
       removeDependentRows(copy);
+      if (!options.keepNonOrg) {
+        const pruned = pruneNonServable(copy, { redacted_messages: both.messages, redacted_users: users.users });
+        prunedMessages = pruned.messages;
+        prunedMemories = pruned.memories;
+        prunedChannels = pruned.channels;
+        removeDependentRows(copy);
+      }
       copy.exec('DROP TABLE removed_messages');
       copy.exec('COMMIT');
       copy.exec("INSERT INTO messages_fts(messages_fts) VALUES ('rebuild')");
@@ -210,7 +269,7 @@ export function rewriteArchive(options: RewriteArchiveOptions): RewriteArchiveRe
     normalizeJournalMode(tmp);
     chmodSync(tmp, 0o600);
     renameSync(tmp, out);
-    return { outPath: out, sha256: sha256Of(out), removedMessages, removedMemories };
+    return { outPath: out, sha256: sha256Of(out), removedMessages, removedMemories, prunedMessages, prunedMemories, prunedChannels };
   } catch (err) {
     removeLeftovers();
     throw err;
