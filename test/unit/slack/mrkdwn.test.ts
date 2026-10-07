@@ -139,12 +139,28 @@ describe('toSlackMrkdwn hostile input', () => {
     expect(out).toBe(`0 and <${LINK}|a>`);
   });
 
-  it('converts 10,000 stars in less than 100 ms', () => {
-    const started = performance.now();
-    convert('*'.repeat(10_000));
-    convert('**a'.repeat(5_000));
-    convert('['.repeat(5_000) + ']('.repeat(5_000));
-    expect(performance.now() - started).toBeLessThan(100);
+  it('converts adversarial input in linear time', () => {
+    // Compare the fastest of several runs at n and 8n characters. Linear work
+    // grows about 8 times; quadratic work grows about 64 times. A ratio bound
+    // does not depend on how busy the machine is, unlike a wall-clock bound.
+    const adversarial = (n: number): string[] => [
+      '*'.repeat(n),
+      '**a'.repeat(n / 2),
+      '['.repeat(n / 2) + ']('.repeat(n / 2),
+    ];
+    const fastestMs = (inputs: string[]): number => {
+      let best = Number.POSITIVE_INFINITY;
+      for (let i = 0; i < 5; i += 1) {
+        const started = performance.now();
+        for (const input of inputs) convert(input);
+        best = Math.min(best, performance.now() - started);
+      }
+      return best;
+    };
+    fastestMs(adversarial(2_000));
+    const small = Math.max(fastestMs(adversarial(5_000)), 0.5);
+    const large = fastestMs(adversarial(40_000));
+    expect(large / small).toBeLessThan(30);
   });
 });
 
