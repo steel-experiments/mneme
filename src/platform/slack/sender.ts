@@ -107,7 +107,7 @@ export function createSlackSender(deps: SlackSenderDeps): OutboxSender {
       try {
         const posted = await deps.api.postMessage({
           channel: target.channel,
-          text: toSlackMrkdwn(input.content, { teamDomain: deps.teamDomain() }),
+          text: toSlackMrkdwn(input.content, { teamDomain: deps.teamDomain(), archiveLinks: input.archiveLinks === true }),
           ...(threadTs ? { thread_ts: threadTs } : {}),
           ...(input.dedupeMarker
             ? { metadata: { event_type: OUTBOX_METADATA_EVENT_TYPE, event_payload: { marker: input.dedupeMarker } } }

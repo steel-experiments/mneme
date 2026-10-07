@@ -18,6 +18,7 @@ import { PermanentJobError, TransientJobError } from '../../src/jobs/errors.js';
 import type { Client } from 'discord.js';
 import type { JobRow } from '../../src/jobs/types.js';
 import { createProposalDeliverySyncHandler } from '../../src/outbox/proposal-delivery.js';
+import { completeDirectAnswerRequest, ensureDirectAnswerRequest } from '../../src/db/repositories/direct-answers.js';
 
 /**
  * Outbox Discord sender (Sections 9.1, 10.1, 24.5).
@@ -146,6 +147,26 @@ describe('send_outbox — success path', () => {
       content: 'heads up: this supersedes the onboarding decision',
       replyToMessageId: 'msg-42',
     });
+  });
+
+  it('lets only a direct-answer row render platform-archive links live', async () => {
+    seedRun('run-1');
+    const directId = enqueue({ content: 'direct answer' });
+    ensureDirectAnswerRequest(env.db, {
+      sourceMessageId: 'question-1', guildId: GUILD, targetChannelId: CHANNEL,
+      questionCreatedAtMs: NOW, deadlineAtMs: NOW + 60_000, now: NOW,
+    });
+    completeDirectAnswerRequest(env.db, {
+      sourceMessageId: 'question-1', outcomeKind: 'primary', reasonCategory: 'none',
+      runId: 'run-1', outboxId: directId, now: NOW,
+    });
+    const otherId = enqueue({ content: 'deep recap report' });
+    const { sender, calls } = fakeSender();
+
+    await createSendOutboxHandler(makeDeps(sender))({ outboxId: directId }, jobRow());
+    await createSendOutboxHandler(makeDeps(sender))({ outboxId: otherId }, jobRow());
+
+    expect(calls.map((c) => c.archiveLinks)).toEqual([true, false]);
   });
 
   it('reports proposal delivery only after sent state is durable', async () => {

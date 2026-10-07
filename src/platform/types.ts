@@ -118,6 +118,11 @@ export interface SendOutboxMessageInput {
   replyToMessageId?: string | null;
   /** Stable Discord nonce used only for crash reconciliation. */
   dedupeMarker?: string | null;
+  /**
+   * The content is a sanitized direct answer whose archive links the host
+   * built. Only then may an adapter render platform-archive links live.
+   */
+  archiveLinks?: boolean;
 }
 
 export interface SendResult {

@@ -34,10 +34,12 @@ export function useArchiveLinkTarget(target: ArchiveLinkTarget | null): void {
 }
 
 /**
- * True when `url` is exactly a message link that the host builds for the
- * verified archive: a Discord jump link in the archive's own workspace. Model
- * text never carries such a link; the outbound sanitizer rejects it before the
- * host adds its own links.
+ * True when `url` has exactly the shape of a message link that the host builds
+ * for the verified archive: a Discord jump link in the archive's own
+ * workspace. The shape alone does not prove that the host built the link.
+ * Only the sanitized direct-answer path, where the sanitizer rejects every
+ * Discord jump link in model text before the host adds its own, may render
+ * such a link live.
  */
 export function isHostBuiltArchiveLink(url: string): boolean {
   if (!archiveTarget || archiveTarget.platform !== 'discord') return false;
