@@ -55,6 +55,11 @@ export function createExecuteDeletionHandler(deps: {
         // An archive target has no live rows. Without the archive, fail the job
         // and keep the request scheduled; the original approver can retry.
         if (!deps.archive) throw new Error('No platform archive is configured; the archive deletion was not executed');
+        if (request.archive_workspace_id !== deps.archive.workspaceId) {
+          // The configured archive is not the one the request was made for. Keep
+          // the request scheduled; it runs once the original archive is back.
+          throw new Error('The configured archive is a different archive than the request names; the archive deletion was not executed');
+        }
         recordAdminEvent(deps.db, { guildId: deps.guildId, actorUserId: request.approver_user_id,
           action: 'deletion_started', target: request.id,
           details: { requesterUserId: request.requester_user_id, messageCount: request.message_count }, createdAtMs: now });

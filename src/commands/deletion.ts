@@ -161,10 +161,13 @@ function requestArchiveDeletion(
     const id = randomUUID();
     // The archive is read-only, so there is no manifest of live rows. The count
     // is the number of archive messages that the redaction will hide.
+    // The request names the archive it was made for. Execution refuses a
+    // different archive, so a file swap cannot move the redaction elsewhere.
     deps.db.prepare(`INSERT INTO deletion_requests
-      (id, workspace_id, target_kind, target_id, requester_user_id, status, message_count, created_at_ms)
-      VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`)
-      .run(id, input.guildId, input.targetKind, input.targetId, input.actorUserId, target.messageCount, deps.nowMs);
+      (id, workspace_id, target_kind, target_id, requester_user_id, status, message_count, created_at_ms, archive_workspace_id)
+      VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)`)
+      .run(id, input.guildId, input.targetKind, input.targetId, input.actorUserId, target.messageCount, deps.nowMs,
+        archive.summary.workspaceId);
     audit(input, deps, 'request', id, 'pending');
     return `${describe(deps.db, getDeletionRequest(deps.db, id, input.guildId)!)}\n`
       + 'Nothing has been deleted. After approval and the grace period, Mneme hides these archive messages from every archive read; '
