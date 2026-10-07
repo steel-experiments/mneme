@@ -7,6 +7,7 @@ import { runIntegrityCheck, runForeignKeyCheck } from '../db/maintenance.js';
 import { loadOperationalConfig, ConfigError, type OperationalConfig } from '../config.js';
 import { APP_VERSION } from '../version.js';
 import { createLogger } from '../logger.js';
+import { rewriteArchive } from '../platform-archive/rewrite.js';
 
 /**
  * Operational CLI (Sections 27, 37, 42).
@@ -31,7 +32,7 @@ import { createLogger } from '../logger.js';
 const REPO_MIGRATIONS = fileURLToPath(new URL('../../migrations/', import.meta.url));
 
 /** The recognized operational commands. */
-export type CliCommandName = 'migrate' | 'backup' | 'integrity-check';
+export type CliCommandName = 'migrate' | 'backup' | 'integrity-check' | 'archive-rewrite';
 
 /** Minimal structured-logger surface the CLI uses (pino satisfies this). */
 export interface CliLogger {
@@ -68,7 +69,7 @@ export const CLI_OK = 0;
 export const CLI_FAIL = 1;
 export const CLI_USAGE = 2;
 
-const KNOWN_COMMANDS: readonly string[] = ['migrate', 'backup', 'integrity-check'];
+const KNOWN_COMMANDS: readonly string[] = ['migrate', 'backup', 'integrity-check', 'archive-rewrite'];
 
 /**
  * Dispatch one operational command. `args` is the argv tail (e.g.
@@ -86,6 +87,8 @@ export async function runCli(args: readonly string[], deps: CliDeps): Promise<nu
       return runBackup(deps);
     case 'integrity-check':
       return runIntegrityCheckCommand(deps);
+    case 'archive-rewrite':
+      return runArchiveRewrite(args.slice(1), deps);
     case undefined:
     case 'help':
     case '--help':
@@ -165,6 +168,40 @@ async function runIntegrityCheckCommand(deps: CliDeps): Promise<number> {
 }
 
 
+/**
+ * `archive-rewrite --out <path>` — write a new copy of the platform archive
+ * (`MNEME_ARCHIVE_PATH`) without the rows that archive redactions hide. The
+ * archive itself is never changed, and the redaction rows stay and keep
+ * applying. Point `MNEME_ARCHIVE_PATH` at the new file and restart.
+ */
+async function runArchiveRewrite(args: readonly string[], deps: CliDeps): Promise<number> {
+  const outIndex = args.indexOf('--out');
+  const outPath = outIndex >= 0 ? args[outIndex + 1] : undefined;
+  if (!outPath || outPath.startsWith('--')) {
+    out(deps, 'Usage: mneme archive-rewrite --out <path>');
+    return CLI_USAGE;
+  }
+  const archivePath = deps.config.archivePath;
+  if (!archivePath) {
+    fail(deps, 'archive-rewrite', new Error('MNEME_ARCHIVE_PATH is not set'));
+    return CLI_FAIL;
+  }
+  let db: DatabaseSync | undefined;
+  try {
+    db = openDb(deps);
+    const result = rewriteArchive({ archivePath, outPath, liveDb: db });
+    out(deps, `archive-rewrite: wrote ${result.outPath}; removed ${result.removedMessages} message(s) and `
+      + `${result.removedMemories} memory row(s); sha256 ${result.sha256}`);
+    out(deps, 'archive-rewrite: point MNEME_ARCHIVE_PATH at the new file and restart. Redaction rows stay and keep applying.');
+    return CLI_OK;
+  } catch (err) {
+    fail(deps, 'archive-rewrite', err);
+    return CLI_FAIL;
+  } finally {
+    safeClose(db);
+  }
+}
+
 /** Print the supported commands. */
 function printUsage(deps: CliDeps): void {
   out(deps, 'Usage: mneme <command>');
@@ -172,6 +209,7 @@ function printUsage(deps: CliDeps): void {
   out(deps, '  migrate          Apply pending database migrations.');
   out(deps, '  backup           Create an online SQLite backup in BACKUP_DIR.');
   out(deps, '  integrity-check  Run integrity_check and foreign_key_check.');
+  out(deps, '  archive-rewrite  Write a copy of MNEME_ARCHIVE_PATH without redacted rows (--out <path>).');
 }
 
 /** Open the configured database via the (injectable) opener. */

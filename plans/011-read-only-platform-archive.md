@@ -400,9 +400,13 @@ fails cleanly when no archive is configured.
 Add CLI `node dist/cli/commands.js archive-rewrite --out <path>`:
 
 1. Copy the archive with `VACUUM INTO <out>.tmp` from a read-only handle.
-2. On the copy, delete the redacted messages and their revisions, reactions,
-   attachments rows, tombstones, memory evidence, and memories left without
-   evidence; rebuild FTS; `VACUUM`; `PRAGMA integrity_check`.
+2. On the copy, delete the redacted messages, the redacted users, their
+   tombstones, every memory that cites a removed message or is owned by a
+   redacted user, and every dependent row (revisions, reactions, attachment
+   rows, memory evidence, episode links: found generically with
+   `PRAGMA foreign_key_check`); rebuild FTS; `VACUUM`;
+   `PRAGMA integrity_check`. Archived attachment files are not in the archive
+   database, so the rewrite does not touch them.
 3. Rename to `<out>` and print the new `sha256`.
 
 The operator then points `MNEME_ARCHIVE_PATH` at the new file and restarts.

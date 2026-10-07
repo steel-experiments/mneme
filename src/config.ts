@@ -794,6 +794,8 @@ export interface OperationalConfig {
   databasePath: string;
   /** Backups directory — `BACKUP_DIR` if set, otherwise `DATA_DIR/backups` (§42.1). */
   backupDir: string;
+  /** The read-only platform archive (`MNEME_ARCHIVE_PATH`), for `archive-rewrite` (plan 011). */
+  archivePath?: string;
 }
 
 /**
@@ -813,7 +815,12 @@ export function loadOperationalConfig(options: LoadConfigOptions = {}): Operatio
 
   const backupDir = env(e, 'BACKUP_DIR') ?? deriveBackupDir(dataDir);
   rejectUnsafePath(backupDir, 'BACKUP_DIR');
-  return { dataDir, databasePath, backupDir };
+  const archivePath = env(e, 'MNEME_ARCHIVE_PATH');
+  if (archivePath !== undefined) {
+    rejectUnsafePath(archivePath, 'MNEME_ARCHIVE_PATH');
+    if (!isAbsolute(archivePath)) throw new ConfigError('expected an absolute path', 'MNEME_ARCHIVE_PATH');
+  }
+  return { dataDir, databasePath, backupDir, ...(archivePath !== undefined ? { archivePath } : {}) };
 }
 
 /**
