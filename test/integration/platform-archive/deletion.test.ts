@@ -199,6 +199,19 @@ describe('archive deletion requests', () => {
     expect(getJob(live.db, latest().job_id!)?.status).not.toBe('succeeded');
   });
 
+  it('stores the archive workspace and refuses to execute against a different archive', async () => {
+    handleForgetMessageCommand({ ...base, messageId: `archive:${ARCHIVE_MESSAGES.org}` }, deps);
+    const row = latest();
+    expect(row.archive_workspace_id).toBe(reader.summary.workspaceId);
+    approve(row);
+    // The operator pointed MNEME_ARCHIVE_PATH at another workspace's archive during the grace period.
+    expect(await execute({ workspaceId: '900000000000000999', sha256: 'other-archive' })).toBe('failed');
+    expect(redactionCount()).toBe(0);
+    expect(live.db.prepare('SELECT status FROM deletion_requests WHERE id = ?').get(row.id)?.status).toBe('scheduled');
+    expect(String(getJob(live.db, latest().job_id!)?.last_error)).toMatch(/different archive/);
+    expect(getArchiveMessage(reader, `archive:${ARCHIVE_MESSAGES.org}`)).not.toBeNull();
+  });
+
   it('refuses a second request for a target that is already hidden', async () => {
     handleForgetMessageCommand({ ...base, messageId: `archive:${ARCHIVE_MESSAGES.org}` }, deps);
     approve(latest());

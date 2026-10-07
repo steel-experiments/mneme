@@ -16,6 +16,8 @@ export interface DeletionRequest {
   execute_after_ms: number | null;
   completed_at_ms: number | null;
   job_id: string | null;
+  /** The platform archive workspace an archive request targets; NULL for a live target. */
+  archive_workspace_id: string | null;
 }
 
 export function getDeletionRequest(db: DatabaseSync, id: string, guildId: string): DeletionRequest | undefined {
