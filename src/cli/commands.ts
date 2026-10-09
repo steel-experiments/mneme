@@ -178,7 +178,7 @@ async function runArchiveRewrite(args: readonly string[], deps: CliDeps): Promis
   const outIndex = args.indexOf('--out');
   const outPath = outIndex >= 0 ? args[outIndex + 1] : undefined;
   if (!outPath || outPath.startsWith('--')) {
-    out(deps, 'Usage: mneme archive-rewrite --out <path> [--keep-non-org]');
+    out(deps, 'Usage: mneme archive-rewrite --out <path> [--keep-non-org] [--all-org]');
     return CLI_USAGE;
   }
   const archivePath = deps.config.archivePath;
@@ -190,13 +190,17 @@ async function runArchiveRewrite(args: readonly string[], deps: CliDeps): Promis
   try {
     db = openDb(deps);
     const keepNonOrg = args.includes('--keep-non-org');
-    const result = rewriteArchive({ archivePath, outPath, liveDb: db, keepNonOrg });
+    const allOrg = args.includes('--all-org');
+    const result = rewriteArchive({ archivePath, outPath, liveDb: db, keepNonOrg, allOrg });
     out(deps, `archive-rewrite: wrote ${result.outPath}; removed ${result.removedMessages} message(s) and `
       + `${result.removedMemories} memory row(s); sha256 ${result.sha256}`);
     out(deps, keepNonOrg
       ? 'archive-rewrite: kept content that the archive does not serve (--keep-non-org).'
       : `archive-rewrite: dropped ${result.prunedMessages} message(s), ${result.prunedMemories} memory row(s), and `
         + `${result.prunedChannels} channel row(s) that the archive never serves.`);
+    if (allOrg) {
+      out(deps, 'archive-rewrite: marked every stored channel org (--all-org); everyone who can ask Mneme can read it.');
+    }
     out(deps, 'archive-rewrite: point MNEME_ARCHIVE_PATH at the new file and restart. Redaction rows stay and keep applying.');
     return CLI_OK;
   } catch (err) {
@@ -214,7 +218,7 @@ function printUsage(deps: CliDeps): void {
   out(deps, '  migrate          Apply pending database migrations.');
   out(deps, '  backup           Create an online SQLite backup in BACKUP_DIR.');
   out(deps, '  integrity-check  Run integrity_check and foreign_key_check.');
-  out(deps, '  archive-rewrite  Write a minimized copy of MNEME_ARCHIVE_PATH with only servable org content (--out <path> [--keep-non-org]).');
+  out(deps, '  archive-rewrite  Write a minimized copy of MNEME_ARCHIVE_PATH with only servable org content (--out <path> [--keep-non-org] [--all-org]).');
 }
 
 /** Open the configured database via the (injectable) opener. */
