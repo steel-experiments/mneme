@@ -191,7 +191,7 @@ contain secrets.
 | `MNEME_REVIEW_CHANNEL_ID` | unset | Required in review and autonomous modes. Must match the review channel in the active channel policy. |
 | `MNEME_ADMIN_ROLE_IDS` | empty | Comma-separated Discord role IDs. An empty list authorizes nobody. |
 | `MNEME_ADMIN_USER_IDS` | none | Slack deployments only. Comma-separated Slack user IDs of the admins. Required, at least one. Slack has no roles, so a Slack deployment rejects `MNEME_ADMIN_ROLE_IDS`. |
-| `MNEME_DELETION_APPROVER_USER_IDS` | empty | Comma-separated **user** IDs (Discord or Slack, as the platform) allowed to approve another admin’s deletion request. Approvers must also be admins. Empty disables new deletion requests and approvals; removal revokes uncompleted purges at their next batch. Restart to apply changes. |
+| `MNEME_DELETION_APPROVER_USER_IDS` | empty | Comma-separated **user** IDs (Discord or Slack, as the platform) allowed to approve another admin’s deletion request. Approvers must also be admins. A deletion needs two people: an admin who files the request and a different person from this list who approves it. With only one admin, no deletion request can be approved. Empty disables new deletion requests and approvals; removal revokes uncompleted purges at their next batch. Restart to apply changes. |
 | `HTTP_ADMIN_TOKEN` | unset | Enables bearer-protected `GET /status`. Secret. |
 | `DIRECT_ANSWER_ENABLED` | `true` | Allows replies when Mneme is explicitly mentioned. |
 

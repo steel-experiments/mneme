@@ -9,6 +9,14 @@ and this project adheres to
 This changelog starts at the launch baseline. Changes before that point are
 not recorded.
 
+## [Unreleased]
+
+### Fixed
+
+- **Attachment download race.** If a channel is excluded or stops being
+  ingested while an attachment downloads, Mneme now deletes the file and keeps
+  only the metadata.
+
 ## [3.2.0] - 2026-10-07
 
 ### Added

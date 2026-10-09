@@ -191,7 +191,9 @@ review channel and need an admin.
 | `/mneme archive forget-message id:<archive-message-id>` | Creates a deletion request that hides one archive message. Deletes nothing yet. |
 
 Archive requests use the same approval, 24-hour grace period, cancellation, and
-`deletion` commands as live requests. `forget-message id:archive:<id>` and
+`deletion` commands as live requests. The approver must be a different person
+from the requester, so a deployment with one admin cannot complete an archive
+deletion; add a second admin first. `forget-message id:archive:<id>` and
 `forget-user` with an `archive:` id also work. At execution, Mneme does not
 change the archive file: it records a redaction in the live database, and every
 archive read, agent tool, MCP tool, and citation check hides the target from then

@@ -30,12 +30,28 @@ export function createArchiveAttachmentHandler(deps: {
       width: row.width, height: row.height, sourceUrl: row.source_url, proxyUrl: row.proxy_url,
     }, deps.config, deps.fetcher);
     const now = (deps.now ?? Date.now)();
-    const changed = setAttachmentArchive(deps.db, {
-      id: row.id, localPath: result.localPath ?? null, sha256: result.sha256 ?? null,
-      status: result.status === 'stored' ? 'stored' : result.status === 'failed' ? 'failed' : 'metadata',
-      updatedAtMs: now,
-    });
-    if (changed === 0 && result.localPath) {
+    // The channel can change while the bytes are in flight. Check it again in
+    // the same transaction as the write, and keep no file when it no longer
+    // qualifies.
+    let changed = 0;
+    let keepFile = false;
+    deps.db.exec('BEGIN IMMEDIATE');
+    try {
+      const current = getMessage(deps.db, row.message_id);
+      const eligible = current !== undefined && current !== null && current.deleted_at_ms === null
+        && channelIngestionIneligibilityReason(deps.db, current.channel_id) === null;
+      changed = setAttachmentArchive(deps.db, eligible
+        ? { id: row.id, localPath: result.localPath ?? null, sha256: result.sha256 ?? null,
+          status: result.status === 'stored' ? 'stored' : result.status === 'failed' ? 'failed' : 'metadata',
+          updatedAtMs: now }
+        : { id: row.id, localPath: null, sha256: null, status: 'metadata', updatedAtMs: now });
+      keepFile = eligible && changed > 0;
+      deps.db.exec('COMMIT');
+    } catch (err) {
+      deps.db.exec('ROLLBACK');
+      throw err;
+    }
+    if (!keepFile && result.localPath) {
       try { unlinkSync(result.localPath); } catch (err) {
         if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
       }
