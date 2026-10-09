@@ -626,25 +626,6 @@ function parseRedirectUris(raw: string | undefined): readonly string[] {
   return parts;
 }
 
-/**
- * `HISTORICAL_MEMORY_CHANNEL_IDS` for the active platform. A campaign runs per
- * channel, so Slack accepts channel ids only, not synthetic thread ids. Ids of
- * the other platform are refused, so a campaign left over from a switch cannot
- * run silently against channels that do not exist.
- */
-function parseCampaignChannelList(raw: string | undefined, platform: PlatformId): string[] {
-  const setting = 'HISTORICAL_MEMORY_CHANNEL_IDS';
-  if (platform === 'discord') return parseSnowflakeList(raw, setting);
-  if (raw === undefined || raw === '') return [];
-  const parts = raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
-  for (const part of parts) {
-    if (!isSlackChannelId(part)) {
-      throw new ConfigError('list contains a value that is not a Slack channel id', setting);
-    }
-  }
-  return parts;
-}
-
 function parseSnowflakeList(raw: string | undefined, setting: string): string[] {
   if (raw === undefined || raw === '') return [];
   const parts = raw
@@ -1056,7 +1037,7 @@ export function loadConfig(options: LoadConfigOptions = {}): AppConfig {
 
   const historicalMemory: HistoricalMemoryConfig = {
     enabled: parseBool(env(e, 'HISTORICAL_MEMORY_ENABLED'), false),
-    channelIds: parseCampaignChannelList(env(e, 'HISTORICAL_MEMORY_CHANNEL_IDS'), platform),
+    channelIds: parseIdList(env(e, 'HISTORICAL_MEMORY_CHANNEL_IDS'), 'HISTORICAL_MEMORY_CHANNEL_IDS', platform, 'channel'),
     batchMessages: parseInt_(env(e, 'HISTORICAL_MEMORY_BATCH_MESSAGES'), 200, 'HISTORICAL_MEMORY_BATCH_MESSAGES'),
     maxPendingReviews: parseInt_(env(e, 'HISTORICAL_MEMORY_MAX_PENDING_REVIEWS'), 4, 'HISTORICAL_MEMORY_MAX_PENDING_REVIEWS'),
     dailyBudgetUsd: parseNumber(env(e, 'HISTORICAL_MEMORY_DAILY_BUDGET_USD'), 1, 'HISTORICAL_MEMORY_DAILY_BUDGET_USD'),

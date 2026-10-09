@@ -272,10 +272,12 @@ export interface VisibleChannel {
   isArchived: boolean;
   /** Whether the channel is currently being ingested (sync state). */
   ingestEnabled: boolean;
-  /** The parent channel's name, for a thread that has no name of its own. */
+  /**
+   * The parent channel's name, for a thread that has no name of its own. Only
+   * set when the parent itself is a live, ingested org channel, so a label
+   * never names a channel that the caller may not see.
+   */
   parentName: string | null;
-  /** When the first stored message of the channel was sent; metadata only, never text. */
-  firstMessageAtMs: number | null;
 }
 
 function toVisibleChannel(row: Record<string, SQLOutputValue>): VisibleChannel {
@@ -288,14 +290,14 @@ function toVisibleChannel(row: Record<string, SQLOutputValue>): VisibleChannel {
     isArchived: Number(row.is_archived) === 1,
     ingestEnabled: Number(row.ingest_enabled) === 1,
     parentName: row.parent_name === null || row.parent_name === undefined ? null : String(row.parent_name),
-    firstMessageAtMs: row.first_message_at_ms === null || row.first_message_at_ms === undefined ? null : Number(row.first_message_at_ms),
   };
 }
 
 const VISIBLE_CHANNEL_COLS =
   `c.id, c.name, c.visibility_class, c.parent_id, c.is_thread, c.is_archived, c.ingest_enabled,
-   (SELECT p.name FROM channels p WHERE p.id = c.parent_id) AS parent_name,
-   (SELECT MIN(m.created_at_ms) FROM messages m WHERE m.channel_id = c.id) AS first_message_at_ms`;
+   (SELECT p.name FROM channels p
+     WHERE p.id = c.parent_id AND p.deleted_at_ms IS NULL AND p.ingest_enabled = 1
+       AND p.visibility_class = 'org' AND p.platform_boundary IS NULL) AS parent_name`;
 
 /**
  * List channels a retrieval grant may read (Sections 7.3, 32.5.3). `org`
