@@ -14,8 +14,9 @@ not recorded.
 ### Added
 
 - **`archive-rewrite --all-org`.** Marks every stored channel `org` in the
-  archive copy, so the archive serves all stored history. Test channels,
-  shared channels, and unproven threads stay hidden.
+  archive copy, so the archive serves all stored messages. Test channels,
+  shared channels, private or unproven threads, and deleted or redacted
+  messages stay hidden. Memories are not converted: only `org` memories stay.
 
 ### Changed
 

@@ -199,7 +199,7 @@ async function runArchiveRewrite(args: readonly string[], deps: CliDeps): Promis
       : `archive-rewrite: dropped ${result.prunedMessages} message(s), ${result.prunedMemories} memory row(s), and `
         + `${result.prunedChannels} channel row(s) that the archive never serves.`);
     if (allOrg) {
-      out(deps, 'archive-rewrite: marked every stored channel org (--all-org); everyone who can ask Mneme can read it.');
+      out(deps, 'archive-rewrite: marked every stored channel org (--all-org); everyone who can ask Mneme can read its messages. Only org memories were kept.');
     }
     out(deps, 'archive-rewrite: point MNEME_ARCHIVE_PATH at the new file and restart. Redaction rows stay and keep applying.');
     return CLI_OK;

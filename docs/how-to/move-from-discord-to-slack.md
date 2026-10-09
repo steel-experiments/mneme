@@ -72,12 +72,14 @@ later, classify it as `org` now:
 
 Check the result with `/mneme channels`.
 
-To keep all stored history findable without changing the Discord policy, use
+To keep all stored messages findable without changing the Discord policy, use
 `archive-rewrite --all-org` in step 4 instead. It marks every stored channel
 `org` in the archive copy only. This is an operator decision: everyone who can
-ask Mneme in Slack can then read content that was restricted, review-only, or
-excluded on Discord, for example hiring or deal channels. Test channels, shared
-channels, unproven threads, and deleted rows stay hidden.
+ask Mneme in Slack can then read messages that were restricted, review-only,
+or excluded on Discord, for example hiring or deal channels. Test channels,
+shared channels, private or unproven threads, and deleted, tombstoned, or
+redacted messages stay hidden. Memories are not converted: only memories that
+were already `org` stay; channel-scoped and review-only memories are removed.
 
 ## 3. Make the final backup
 
@@ -126,7 +128,7 @@ MNEME_ARCHIVE_PATH=/app/data/backups/mneme-20261007-120000.sqlite \
   gosu node node dist/cli/commands.js archive-rewrite --out /app/data/archive/discord.sqlite
 ```
 
-Add `--all-org` to keep all stored history findable (see step 2).
+Add `--all-org` to keep all stored messages findable (see step 2).
 
 !!! warning "Give the files to the `node` user"
     A `railway ssh` shell runs as `root`, and `archive-rewrite` writes its
@@ -168,7 +170,9 @@ railway variable set --service <service> --skip-deploys \
 
 Also set the Slack settings from [Configuration](../reference/configuration.md)
 (`SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `SLACK_TEAM_ID`, `MNEME_ADMIN_USER_IDS`,
-the review channel, the channel policy, and `FULL_HISTORY`). Then deploy.
+the review channel, the channel policy, and `FULL_HISTORY`). If the Discord
+deployment ran in `MNEME_MODE=autonomous`, start Slack in `MNEME_MODE=observe`
+and change the mode after the first checks. Then deploy.
 
 These settings stop a Slack start when you switch the same service:
 
@@ -177,7 +181,7 @@ These settings stop a Slack start when you switch the same service:
 | `MNEME_ADMIN_ROLE_IDS` | Delete it. Slack has no roles and refuses it. |
 | `MNEME_DELETION_APPROVER_USER_IDS` | Set Slack user ids. Discord ids are refused. |
 | `channel-policy.yml` with a Discord `review_channel` | Startup fails, because the file and `MNEME_REVIEW_CHANNEL_ID` must name the same channel. Use `CHANNEL_POLICY_SOURCE=basic` with `ORG_VISIBLE_CHANNEL_IDS` and `MNEME_REVIEW_CHANNEL_ID`, or write a Slack policy file. |
-| `HISTORICAL_MEMORY_*` | Turn the Discord campaign off (`HISTORICAL_MEMORY_ENABLED=false`). Its channel ids are Discord ids. |
+| `HISTORICAL_MEMORY_*` | Delete all of them. Slack checks `HISTORICAL_MEMORY_CHANNEL_IDS` on every start, also when the campaign is off, and Discord ids stop the start. |
 | `DISCORD_*` | Slack ignores them. You can keep them for a rollback. |
 
 With Railway CLI 5.25, `railway variable delete` did not start a deployment,
@@ -200,9 +204,9 @@ Delete `/tmp/planned.json` afterwards; it holds secrets.
 !!! warning "A failed start takes the service down"
     A Railway volume attaches to one deployment at a time, so Railway stops
     the old deployment before the new one starts. If the new one cannot start,
-    nothing serves. Remove the setting that fails, for example
-    `MNEME_ARCHIVE_PATH`, and redeploy. With the guarded deploy script, use
-    `--recover-deployment <failed deployment id>`.
+    nothing serves. To recover, remove the setting that fails, for example
+    `MNEME_ARCHIVE_PATH`, and redeploy, or redeploy the last working
+    deployment from the Railway dashboard. Then fix the cause and try again.
 
 MCP tokens and OAuth grants live in the old database. MCP clients must sign in
 again or get new tokens.
