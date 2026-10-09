@@ -529,7 +529,21 @@ function renderVisibleChannel(c: VisibleChannel): string {
   const thread = c.isThread ? ' thread' : '';
   const archived = c.isArchived ? ', archived' : '';
   const sync = c.ingestEnabled ? 'ingest:on' : 'ingest:off';
-  return `[${c.id}] #${c.name ?? c.id} (${c.visibilityClass}${thread}${archived}, ${sync})`;
+  return `[${c.id}] #${visibleChannelLabel(c)} (${c.visibilityClass}${thread}${archived}, ${sync})`;
+}
+
+/**
+ * The readable name of a listed channel. A thread without a name of its own
+ * (a Slack reply thread) is named after its parent and the date of its first
+ * stored message. The label is metadata only and never holds message text.
+ */
+function visibleChannelLabel(c: VisibleChannel): string {
+  if (c.name !== null) return c.name;
+  if (c.isThread && c.parentName !== null) {
+    const day = c.firstMessageAtMs === null ? null : new Date(c.firstMessageAtMs).toISOString().slice(0, 10);
+    return day === null ? `${c.parentName} › thread` : `${c.parentName} › thread from ${day}`;
+  }
+  return c.id;
 }
 
 /** `search_messages` (Section 22.1) — FTS over messages the token may read. */
