@@ -216,6 +216,12 @@ async function handleRequest(
     }
     return options.metricsHandler(req, res);
   }
+  // Streamable HTTP: a server without an SSE stream answers GET with 405. A
+  // disabled endpoint stays a plain 404, like an unknown route.
+  if (method === 'GET' && pathname === mcpPath && options.mcpEnabled && options.mcpHandler) {
+    sendJson(res, 405, { error: 'method_not_allowed' }, { allow: 'POST' });
+    return;
+  }
   if (method === 'POST' && pathname === mcpPath) {
     if (!options.mcpEnabled || !options.mcpHandler) {
       logUnmatched(options, method, pathname, req, 'feature_disabled');

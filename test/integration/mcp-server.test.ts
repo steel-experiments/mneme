@@ -90,16 +90,25 @@ async function post(base: string, body: string, headers: Record<string, string> 
 }
 
 describe('disabled MCP is indistinguishable from an absent route', () => {
-  it('returns the identical 404 body for a disabled endpoint, a non-POST, and an unknown path', async () => {
+  it('returns the identical 404 body for a disabled endpoint, a GET on it, and an unknown path', async () => {
     const { base, token } = await start({ enabled: false });
     const disabled = await post(base, rpc('echo', {}), { authorization: `Bearer ${token}` });
-    const enabledServer = await start({ enabled: true });
-    const nonPost = await fetch(`${enabledServer.base}${PATH}`, { method: 'GET' });
-    const unknown = await fetch(`${enabledServer.base}/nope`, { method: 'GET' });
-    for (const res of [disabled, nonPost, unknown]) {
+    const disabledGet = await fetch(`${base}${PATH}`, { method: 'GET' });
+    const unknown = await fetch(`${base}/nope`, { method: 'GET' });
+    for (const res of [disabled, disabledGet, unknown]) {
       expect(res.status).toBe(404);
       expect(await res.json()).toEqual({ error: 'not_found' });
     }
+  });
+});
+
+describe('an enabled MCP endpoint offers no SSE stream', () => {
+  it('answers GET with 405 and Allow: POST, as streamable HTTP requires', async () => {
+    const { base } = await start({ enabled: true });
+    const res = await fetch(`${base}${PATH}`, { method: 'GET', headers: { accept: 'text/event-stream' } });
+    expect(res.status).toBe(405);
+    expect(res.headers.get('allow')).toBe('POST');
+    expect(await res.json()).toEqual({ error: 'method_not_allowed' });
   });
 });
 

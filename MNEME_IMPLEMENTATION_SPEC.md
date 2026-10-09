@@ -5339,6 +5339,8 @@ no session state or held-open stream, and rides the existing `node:http` server.
 
 - `POST ${MCP_PATH}` (default `/mcp`) on the existing HTTP server.
 - Disabled by default; when `MCP_ENABLED` is false the path returns `404`.
+- Mneme offers no SSE stream. When MCP is enabled, `GET ${MCP_PATH}` returns `405`
+  with `Allow: POST`, as streamable HTTP requires.
 - Native 2026-07-28 clients use the stateless profile with no `initialize` handshake
   and no `Mcp-Session-Id`. Each request carries
   protocol version, client identity, and capabilities in the finalized namespaced
