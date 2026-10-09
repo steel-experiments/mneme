@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { existsSync, rmSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, rmSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { createTestDb, seedIdentity, makeTempDir, type TestDb } from '../helpers/db.js';
@@ -310,6 +310,37 @@ describe('attachment repository round-trip', () => {
       expect(stored.archive_status).toBe('stored');
       expect(stored.sha256).toBe(createHash('sha256').update(TEXT).digest('hex'));
       expect(existsSync(stored.local_path!)).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    ['excluded', "UPDATE channels SET visibility_class = 'excluded'"],
+    ['no longer ingested', 'UPDATE channels SET ingest_enabled = 0'],
+  ])('keeps no file when the channel was %s during the download', async (_label, sql) => {
+    const dir = makeTempDir();
+    try {
+      const a = attachment();
+      const msg = normalizeMessage(rawMessage({ attachments: [{
+        id: a.id, filename: a.filename, content_type: a.mimeType, size: a.sizeBytes,
+        width: null, height: null, url: a.sourceUrl, proxy_url: a.proxyUrl,
+      }] }));
+      ingestMessageCreate(db, msg, opts({ attachmentMode: 'archive', attachmentArchive: cfg(dir) }));
+      // The channel changes while the bytes are in flight.
+      const racing: FetchBytes = async () => { db.exec(sql); return TEXT; };
+      const worker = new JobWorker({ db, owner: 'archive-test', leaseMs: 60_000, pollIntervalMs: 5,
+        shutdownTimeoutMs: 1_000, clock: () => NOW });
+      worker.register('archive_attachment', 1, createArchiveAttachmentHandler({ db, config: cfg(dir),
+        now: () => NOW, fetcher: racing }));
+      await worker.runOnce();
+
+      const row = getAttachment(db, a.id)!;
+      expect(row.archive_status).toBe('metadata');
+      expect(row.local_path).toBeNull();
+      expect(row.sha256).toBeNull();
+      const leftovers = readdirSync(dir, { recursive: true }).filter((f) => String(f).includes(a.id));
+      expect(leftovers).toEqual([]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
