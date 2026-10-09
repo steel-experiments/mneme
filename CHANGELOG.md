@@ -9,7 +9,7 @@ and this project adheres to
 This changelog starts at the launch baseline. Changes before that point are
 not recorded.
 
-## [Unreleased]
+## [3.3.0] - 2026-10-09
 
 ### Added
 
