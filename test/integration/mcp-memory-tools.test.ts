@@ -552,6 +552,20 @@ describe('list_channels reveals only named restricted channels', () => {
     expect(ids.has(EXC)).toBe(false);
   });
 
+  it('names a thread without its own name after its parent and first message date, never its text', async () => {
+    const threadId = `${ORG}-T1790949700.173829`;
+    seedChannel(threadId, 'org', { parentId: ORG, isThread: true });
+    env.db.prepare('UPDATE channels SET name = NULL WHERE id = ?').run(threadId);
+    addMessage('thread-root-msg', threadId, 'secret root words that must not be listed');
+    const { base, orgToken } = await start();
+    const { body } = await call(base, orgToken, 'list_channels', {});
+    const text = textOf(body.result as Record<string, unknown>);
+    const day = new Date(NOW).toISOString().slice(0, 10);
+    expect(text).toContain(`[${threadId}] #${ORG} › thread from ${day}`);
+    expect(text).not.toContain(`#${threadId}`);
+    expect(text).not.toContain('secret root words');
+  });
+
   it('carries visibility class and sync state, and no untrusted-content note', async () => {
     const { base, channelToken } = await start();
     const { body } = await call(base, channelToken, 'list_channels', {});

@@ -272,6 +272,10 @@ export interface VisibleChannel {
   isArchived: boolean;
   /** Whether the channel is currently being ingested (sync state). */
   ingestEnabled: boolean;
+  /** The parent channel's name, for a thread that has no name of its own. */
+  parentName: string | null;
+  /** When the first stored message of the channel was sent; metadata only, never text. */
+  firstMessageAtMs: number | null;
 }
 
 function toVisibleChannel(row: Record<string, SQLOutputValue>): VisibleChannel {
@@ -283,11 +287,15 @@ function toVisibleChannel(row: Record<string, SQLOutputValue>): VisibleChannel {
     isThread: Number(row.is_thread) === 1,
     isArchived: Number(row.is_archived) === 1,
     ingestEnabled: Number(row.ingest_enabled) === 1,
+    parentName: row.parent_name === null || row.parent_name === undefined ? null : String(row.parent_name),
+    firstMessageAtMs: row.first_message_at_ms === null || row.first_message_at_ms === undefined ? null : Number(row.first_message_at_ms),
   };
 }
 
 const VISIBLE_CHANNEL_COLS =
-  'id, name, visibility_class, parent_id, is_thread, is_archived, ingest_enabled';
+  `c.id, c.name, c.visibility_class, c.parent_id, c.is_thread, c.is_archived, c.ingest_enabled,
+   (SELECT p.name FROM channels p WHERE p.id = c.parent_id) AS parent_name,
+   (SELECT MIN(m.created_at_ms) FROM messages m WHERE m.channel_id = c.id) AS first_message_at_ms`;
 
 /**
  * List channels a retrieval grant may read (Sections 7.3, 32.5.3). `org`
@@ -317,7 +325,7 @@ export function listChannelsForGrant(db: DatabaseSync, grant: RetrievalGrant): V
                AND parent.ingest_enabled = 1
           ))
           AND c.visibility_class IN (${classList})
-        ORDER BY COALESCE(name, id) ASC`,
+        ORDER BY COALESCE(c.name, c.id) ASC`,
     ).all() as Array<Record<string, SQLOutputValue>>;
     return rows.map(toVisibleChannel);
   }
@@ -335,7 +343,7 @@ export function listChannelsForGrant(db: DatabaseSync, grant: RetrievalGrant): V
          ))
          AND (c.visibility_class IN (${classList})
               OR (c.visibility_class = 'restricted' AND ${scopeAnchorSql('c')} IN (${ph})))
-       ORDER BY COALESCE(name, id) ASC`,
+       ORDER BY COALESCE(c.name, c.id) ASC`,
   ).all(...ids) as Array<Record<string, SQLOutputValue>>;
   return rows.map(toVisibleChannel);
 }
