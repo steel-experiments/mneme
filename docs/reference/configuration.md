@@ -271,7 +271,7 @@ sync paths may still touch older rows.
 | `DEEP_RECAP_MAX_BUDGET_USD` | `20` | Largest per-request whole-dollar ceiling. |
 | `DEEP_RECAP_DAILY_BUDGET_USD` | `20` | Separate organization-day ceiling for deep-recap chunk and synthesis runs. |
 | `HISTORICAL_MEMORY_ENABLED` | `false` | Reconstruct memories from fully backfilled org history. |
-| `HISTORICAL_MEMORY_CHANNEL_IDS` | unset | Optional comma-separated Discord channel allowlist for historical construction and review; empty means all eligible org channels. The list accepts only Discord ids, so a bounded campaign, which needs an explicit allowlist, cannot be configured on Slack yet. |
+| `HISTORICAL_MEMORY_CHANNEL_IDS` | unset | Optional comma-separated channel allowlist for historical construction and review; empty means all eligible org channels. Use ids of the active platform: Discord snowflakes, or Slack channel ids (`C…`, `G…`). Slack thread ids are refused, because a campaign runs per channel. Ids of the other platform stop startup, so a campaign left over after a platform switch cannot run unnoticed. |
 | `HISTORICAL_MEMORY_BATCH_MESSAGES` | `200` | Maximum historical messages scanned per durable batch. |
 | `HISTORICAL_MEMORY_MAX_PENDING_REVIEWS` | `4` | Backpressure ceiling for queued/running historical reviews. |
 | `HISTORICAL_MEMORY_DAILY_BUDGET_USD` | `1` | Dedicated org-day ceiling for historical model runs; `0` pauses them. |

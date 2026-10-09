@@ -127,4 +127,20 @@ describe('Slack configuration', () => {
       expect(loadConfig({ env: oauthEnv() }).adminRoleIds).toEqual([]);
     });
   });
+
+  describe('history campaign channels', () => {
+    it('refuses Discord ids in HISTORICAL_MEMORY_CHANNEL_IDS', () => {
+      const e = expectFail({ ...slackEnv(), HISTORICAL_MEMORY_CHANNEL_IDS: '1537468798733516861' }, 'HISTORICAL_MEMORY_CHANNEL_IDS');
+      expect(e.message).toContain('Slack channel id');
+    });
+
+    it('refuses a synthetic Slack thread id, because a campaign runs per channel', () => {
+      expectFail({ ...slackEnv(), HISTORICAL_MEMORY_CHANNEL_IDS: 'C0C7YK7KL8Y-T1791552275.858689' }, 'HISTORICAL_MEMORY_CHANNEL_IDS');
+    });
+
+    it('accepts Slack channel ids', () => {
+      const config = loadConfig({ env: { ...slackEnv(), HISTORICAL_MEMORY_CHANNEL_IDS: 'C0C7YK7KL8Y, G0C6Y1NNBGT' } });
+      expect(config.historicalMemory.channelIds).toEqual(['C0C7YK7KL8Y', 'G0C6Y1NNBGT']);
+    });
+  });
 });

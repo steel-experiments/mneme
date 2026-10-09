@@ -16,6 +16,14 @@ not recorded.
 - **Attachment download race.** If a channel is excluded or stops being
   ingested while an attachment downloads, Mneme now deletes the file and keeps
   only the metadata.
+- **Slack thread names.** `list_channels` names a Slack reply thread after its
+  parent channel and the date it started, not its internal id. The label never
+  holds message text, and it names the parent only when that channel is org.
+- **MCP `GET`.** An enabled MCP endpoint answers `GET` with `405` and
+  `Allow: POST`. A disabled endpoint still answers `404`.
+- **History campaign on Slack.** `HISTORICAL_MEMORY_CHANNEL_IDS` accepts Slack
+  channel ids. Ids of the other platform stop startup: remove a Discord
+  campaign before you switch a deployment to Slack.
 
 ## [3.2.0] - 2026-10-07
 
