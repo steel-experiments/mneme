@@ -1,10 +1,22 @@
-import type { DatabaseSync } from '../../db/database.js';
+import { transactionImmediate, type DatabaseSync } from '../../db/database.js';
 import { getAttachment, setAttachmentArchive } from '../../db/repositories/attachments.js';
 import { getMessage } from '../../db/repositories/messages.js';
 import { channelIngestionIneligibilityReason } from '../../ingestion/ingestion-eligibility.js';
-import { archiveAttachment, type AttachmentDownloadConfig, type FetchBytes } from '../../ingestion/attachments.js';
+import { archiveAttachment, resolveArchivePath, type AttachmentDownloadConfig, type FetchBytes } from '../../ingestion/attachments.js';
 import type { JobHandler } from '../worker.js';
 import { unlinkSync } from 'node:fs';
+
+/** Remove a file if it exists; a missing file is not an error. */
+function removeFile(path: string): void {
+  try { unlinkSync(path); } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+  }
+}
+
+/** The archive path of an attachment, or null when its id cannot have one. */
+function archivePathOf(config: AttachmentDownloadConfig, id: string, filename: string): string | null {
+  try { return resolveArchivePath(config, id, filename).path; } catch { return null; }
+}
 
 /** Download one authorized attachment outside a transaction and persist its outcome. */
 export function createArchiveAttachmentHandler(deps: {
@@ -23,6 +35,10 @@ export function createArchiveAttachmentHandler(deps: {
       || channelIngestionIneligibilityReason(deps.db, message.channel_id) !== null) {
       setAttachmentArchive(deps.db, { id: row.id, localPath: null, sha256: null, status: 'metadata',
         updatedAtMs: (deps.now ?? Date.now)() });
+      // An earlier attempt can have written the file and then failed before
+      // its record was saved. Remove that file too.
+      const leftover = archivePathOf(deps.config, row.id, row.filename);
+      if (leftover) removeFile(leftover);
       return;
     }
     const result = await archiveAttachment({
@@ -33,28 +49,27 @@ export function createArchiveAttachmentHandler(deps: {
     // The channel can change while the bytes are in flight. Check it again in
     // the same transaction as the write, and keep no file when it no longer
     // qualifies.
-    let changed = 0;
     let keepFile = false;
-    deps.db.exec('BEGIN IMMEDIATE');
     try {
-      const current = getMessage(deps.db, row.message_id);
-      const eligible = current !== undefined && current !== null && current.deleted_at_ms === null
-        && channelIngestionIneligibilityReason(deps.db, current.channel_id) === null;
-      changed = setAttachmentArchive(deps.db, eligible
-        ? { id: row.id, localPath: result.localPath ?? null, sha256: result.sha256 ?? null,
-          status: result.status === 'stored' ? 'stored' : result.status === 'failed' ? 'failed' : 'metadata',
-          updatedAtMs: now }
-        : { id: row.id, localPath: null, sha256: null, status: 'metadata', updatedAtMs: now });
-      keepFile = eligible && changed > 0;
-      deps.db.exec('COMMIT');
+      keepFile = transactionImmediate(deps.db, () => {
+        const current = getMessage(deps.db, row.message_id);
+        const eligible = current !== undefined && current !== null && current.deleted_at_ms === null
+          && channelIngestionIneligibilityReason(deps.db, current.channel_id) === null;
+        const changed = setAttachmentArchive(deps.db, eligible
+          ? { id: row.id, localPath: result.localPath ?? null, sha256: result.sha256 ?? null,
+            status: result.status === 'stored' ? 'stored' : result.status === 'failed' ? 'failed' : 'metadata',
+            updatedAtMs: now }
+          : { id: row.id, localPath: null, sha256: null, status: 'metadata', updatedAtMs: now });
+        return eligible && changed > 0;
+      });
     } catch (err) {
-      deps.db.exec('ROLLBACK');
+      // The record was not saved (for example, the database was locked), so
+      // keep no file that nothing points to.
+      if (result.localPath) removeFile(result.localPath);
       throw err;
     }
     if (!keepFile && result.localPath) {
-      try { unlinkSync(result.localPath); } catch (err) {
-        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-      }
+      removeFile(result.localPath);
       return;
     }
     if (result.status === 'failed') throw new Error(`attachment archive failed: ${result.reason ?? 'unknown'}`);

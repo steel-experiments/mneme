@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { existsSync, readdirSync, rmSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { createTestDb, seedIdentity, makeTempDir, type TestDb } from '../helpers/db.js';
 import type { DatabaseSync } from 'node:sqlite';
@@ -310,6 +310,58 @@ describe('attachment repository round-trip', () => {
       expect(stored.archive_status).toBe('stored');
       expect(stored.sha256).toBe(createHash('sha256').update(TEXT).digest('hex'));
       expect(existsSync(stored.local_path!)).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps no file when the write transaction cannot start (database locked)', async () => {
+    const dir = makeTempDir();
+    const exec = db.exec.bind(db);
+    try {
+      const a = attachment();
+      const msg = normalizeMessage(rawMessage({ attachments: [{
+        id: a.id, filename: a.filename, content_type: a.mimeType, size: a.sizeBytes,
+        width: null, height: null, url: a.sourceUrl, proxy_url: a.proxyUrl,
+      }] }));
+      ingestMessageCreate(db, msg, opts({ attachmentMode: 'archive', attachmentArchive: cfg(dir) }));
+      const handler = createArchiveAttachmentHandler({ db, config: cfg(dir), now: () => NOW,
+        fetcher: async () => {
+          // Make the next write transaction fail to start, once.
+          let locked = true;
+          db.exec = (sql: string) => {
+            if (locked && sql === 'BEGIN IMMEDIATE') { locked = false; throw new Error('database is locked'); }
+            return exec(sql);
+          };
+          return TEXT;
+        } });
+      await expect(handler({ attachmentId: a.id }, {} as never)).rejects.toThrow('database is locked');
+      const leftovers = readdirSync(dir, { recursive: true }).filter((f) => String(f).includes(a.id));
+      expect(leftovers).toEqual([]);
+    } finally {
+      db.exec = exec;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('removes a file left by an earlier attempt when the channel is no longer eligible', async () => {
+    const dir = makeTempDir();
+    try {
+      const a = attachment();
+      const msg = normalizeMessage(rawMessage({ attachments: [{
+        id: a.id, filename: a.filename, content_type: a.mimeType, size: a.sizeBytes,
+        width: null, height: null, url: a.sourceUrl, proxy_url: a.proxyUrl,
+      }] }));
+      ingestMessageCreate(db, msg, opts({ attachmentMode: 'archive', attachmentArchive: cfg(dir) }));
+      const { path } = resolveArchivePath(cfg(dir), a.id, a.filename);
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, TEXT);
+      db.exec("UPDATE channels SET visibility_class = 'excluded'");
+      const handler = createArchiveAttachmentHandler({ db, config: cfg(dir), now: () => NOW,
+        fetcher: async () => { throw new Error('no download expected'); } });
+      await handler({ attachmentId: a.id }, {} as never);
+      expect(existsSync(path)).toBe(false);
+      expect(getAttachment(db, a.id)!.archive_status).toBe('metadata');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
