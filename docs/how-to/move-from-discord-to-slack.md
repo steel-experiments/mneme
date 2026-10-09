@@ -72,6 +72,13 @@ later, classify it as `org` now:
 
 Check the result with `/mneme channels`.
 
+To keep all stored history findable without changing the Discord policy, use
+`archive-rewrite --all-org` in step 4 instead. It marks every stored channel
+`org` in the archive copy only. This is an operator decision: everyone who can
+ask Mneme in Slack can then read content that was restricted, review-only, or
+excluded on Discord, for example hiring or deal channels. Test channels, shared
+channels, unproven threads, and deleted rows stay hidden.
+
 ## 3. Make the final backup
 
 ```text
@@ -82,6 +89,26 @@ Wait for the direct message that names the file and says
 `integrity_check: ok`. Note the file name, for example
 `mneme-20261007-120000.sqlite` in `/app/data/backups`.
 
+If Discord no longer accepts commands (a read-only server), make the backup
+from a shell in the container instead:
+
+```bash
+node dist/cli/commands.js backup
+```
+
+You can also make the archive source straight from the Discord database. The
+archive refuses a file in WAL mode, so copy it with `VACUUM INTO`, which writes
+a new file in `DELETE` mode:
+
+```bash
+gosu node mkdir -p /app/data/archive
+gosu node node -e "const { DatabaseSync } = require('node:sqlite');
+  const db = new DatabaseSync('/app/data/mneme.sqlite', { readOnly: true });
+  db.exec(\"VACUUM INTO '/app/data/archive/discord-source.sqlite'\");"
+```
+
+Use the `DATABASE_PATH` of your Discord deployment.
+
 ## 4. Make the archive file
 
 Open a shell in the running container:
@@ -90,13 +117,28 @@ Open a shell in the running container:
 railway ssh --service <service>
 ```
 
-In the shell, make a minimized copy of the backup:
+In the shell, make a minimized copy of the backup. Run the commands as the
+`node` user, the user that runs Mneme:
 
 ```bash
-mkdir -p /app/data/archive
+gosu node mkdir -p /app/data/archive
 MNEME_ARCHIVE_PATH=/app/data/backups/mneme-20261007-120000.sqlite \
-  node dist/cli/commands.js archive-rewrite --out /app/data/archive/discord.sqlite
+  gosu node node dist/cli/commands.js archive-rewrite --out /app/data/archive/discord.sqlite
 ```
+
+Add `--all-org` to keep all stored history findable (see step 2).
+
+!!! warning "Give the files to the `node` user"
+    A `railway ssh` shell runs as `root`, and `archive-rewrite` writes its
+    output with mode `0600`. The container entrypoint changes the owner of the
+    data folder only when the folder itself is not writable, so a file that
+    `root` made stays unreadable to Mneme. Startup then fails with
+    `platform archive: cannot open … unable to open database file`. If you ran
+    a command as `root`, fix the owner before you set `MNEME_ARCHIVE_PATH`:
+
+    ```bash
+    chown -R node:node /app/data/archive
+    ```
 
 The command never changes the backup. In the copy, it keeps only what the
 archive serves: org messages, org memories, and the channel rows that they
@@ -126,9 +168,41 @@ railway variable set --service <service> --skip-deploys \
 
 Also set the Slack settings from [Configuration](../reference/configuration.md)
 (`SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `SLACK_TEAM_ID`, `MNEME_ADMIN_USER_IDS`,
-the review channel, the channel policy, and `FULL_HISTORY`). Remove the Discord
-settings, including `MNEME_ADMIN_ROLE_IDS`, which Slack does not accept. Start
-in `MNEME_MODE=observe`. Then deploy.
+the review channel, the channel policy, and `FULL_HISTORY`). Then deploy.
+
+These settings stop a Slack start when you switch the same service:
+
+| Setting | What to do |
+|---|---|
+| `MNEME_ADMIN_ROLE_IDS` | Delete it. Slack has no roles and refuses it. |
+| `MNEME_DELETION_APPROVER_USER_IDS` | Set Slack user ids. Discord ids are refused. |
+| `channel-policy.yml` with a Discord `review_channel` | Startup fails, because the file and `MNEME_REVIEW_CHANNEL_ID` must name the same channel. Use `CHANNEL_POLICY_SOURCE=basic` with `ORG_VISIBLE_CHANNEL_IDS` and `MNEME_REVIEW_CHANNEL_ID`, or write a Slack policy file. |
+| `HISTORICAL_MEMORY_*` | Turn the Discord campaign off (`HISTORICAL_MEMORY_ENABLED=false`). Its channel ids are Discord ids. |
+| `DISCORD_*` | Slack ignores them. You can keep them for a rollback. |
+
+With Railway CLI 5.25, `railway variable delete` did not start a deployment,
+so you can delete settings before the deploy. Check this with your CLI version.
+
+Before you deploy, check the planned settings with the release's configuration
+loader, on a machine with the release build:
+
+```bash
+railway variables --service <service> --json > /tmp/planned.json   # then edit it
+node --input-type=module -e "
+  import { readFileSync } from 'node:fs';
+  const { loadConfig } = await import('./dist/config.js');
+  const env = JSON.parse(readFileSync('/tmp/planned.json', 'utf8'));
+  loadConfig({ env }); console.log('configuration ok');"
+```
+
+Delete `/tmp/planned.json` afterwards; it holds secrets.
+
+!!! warning "A failed start takes the service down"
+    A Railway volume attaches to one deployment at a time, so Railway stops
+    the old deployment before the new one starts. If the new one cannot start,
+    nothing serves. Remove the setting that fails, for example
+    `MNEME_ARCHIVE_PATH`, and redeploy. With the guarded deploy script, use
+    `--recover-deployment <failed deployment id>`.
 
 MCP tokens and OAuth grants live in the old database. MCP clients must sign in
 again or get new tokens.
@@ -182,3 +256,6 @@ not touch the archive; file both requests when a person asks for both.
 - Channels whose names contain `mneme` or `cassandra` are test channels and are
   never served.
 - Threads that discovery last saw before Mneme v3.1.0 stay hidden.
+- Deletion requests need an approver who is not the requester. With one Slack
+  admin, nobody can approve an archive deletion; add a second admin to
+  `MNEME_ADMIN_USER_IDS` and `MNEME_DELETION_APPROVER_USER_IDS` first.
