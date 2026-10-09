@@ -7,7 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { rejectUnsafePath } from '../config.js';
 import { normalizeJournalMode } from '../db/backup.js';
 import { loadRedactions } from './redactions.js';
-import { servableMemory, servableMessage } from './servable.js';
+import { archiveTestSurfaceName, servableMemory, servableMessage } from './servable.js';
 
 export interface RewriteArchiveOptions {
   /** The current archive file. Read only. */
@@ -23,6 +23,15 @@ export interface RewriteArchiveOptions {
    * archive. Only for an operator who may relax the rule later.
    */
   keepNonOrg?: boolean;
+  /**
+   * Mark every stored channel `org` and ingest-enabled in the new copy, so the
+   * archive serves all stored content. An operator decision: everyone who can
+   * ask Mneme then reads content that was restricted, review-only, or excluded
+   * on the old platform. Test surfaces, shared (platform boundary) channels,
+   * unproven or private threads, and deleted rows stay hidden, and pruning
+   * then drops what is still not servable (unless `keepNonOrg` is set).
+   */
+  allOrg?: boolean;
 }
 
 export interface RewriteArchiveResult {
@@ -269,6 +278,12 @@ export function rewriteArchive(options: RewriteArchiveOptions): RewriteArchiveRe
       copy.exec('DELETE FROM messages WHERE id IN (SELECT id FROM removed_messages)');
       copy.prepare('DELETE FROM users WHERE id IN (SELECT value FROM json_each(:users))').run(users);
       removeDependentRows(copy);
+      if (options.allOrg) {
+        copy.exec(`UPDATE channels AS c SET visibility_class = 'org', ingest_enabled = 1
+          WHERE (c.visibility_class <> 'org' OR c.ingest_enabled <> 1)
+            AND c.platform_boundary IS NULL
+            AND NOT ${archiveTestSurfaceName('c')}`);
+      }
       if (!options.keepNonOrg) {
         const pruned = pruneNonServable(copy, { redacted_messages: both.messages, redacted_users: users.users });
         prunedMessages = pruned.messages;

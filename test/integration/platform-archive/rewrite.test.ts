@@ -198,6 +198,30 @@ describe('archive rewrite', () => {
     expect(servedFrom(wide)).toEqual(before);
   });
 
+  it('serves every stored channel with --all-org, except test surfaces and shared channels', () => {
+    fixture.cleanup();
+    fixture = createArchiveFixture();
+    const before = sha(fixture.path);
+    const out = join(fixture.dir, 'all-org.sqlite');
+    rewriteArchive({ archivePath: fixture.path, outPath: out, liveDb: live.db, allOrg: true });
+    expect(sha(fixture.path)).toBe(before);
+    const db = openArchiveDatabase(out);
+    try {
+      const summary = verifyArchive(db, out, { platform: 'discord', newestSchemaVersion: 1_000 });
+      const reader = createArchiveReader({ db, liveDb: live.db, summary });
+      const served = searchArchiveMessages(reader, { query: 'billing decision', limit: 50 }).map((row) => row.messageId);
+      for (const role of ['org', 'restricted', 'reviewOnly', 'excluded', 'orgThread', 'restrictedThread'] as const) {
+        expect(served).toContain(ARCHIVE_MESSAGES[role]);
+      }
+      expect(served).not.toContain(ARCHIVE_MESSAGES.testSurface);
+      expect(served).not.toContain(ARCHIVE_MESSAGES.boundary);
+      expect(count(db, "SELECT count(*) AS n FROM channels WHERE visibility_class <> 'org' AND id NOT IN (?, ?)",
+        ARCHIVE_CHANNELS.testSurface, ARCHIVE_CHANNELS.boundary)).toBe(0);
+    } finally {
+      db.close();
+    }
+  });
+
   it('keeps a served memory whose superseded predecessor is pruned, and clears the pointer', () => {
     fixture.cleanup();
     fixture = createArchiveFixture({
@@ -264,6 +288,19 @@ describe('archive-rewrite CLI', () => {
     const out = join(fixture.dir, 'cli.sqlite');
     expect(await runCli(['archive-rewrite', '--out', out], deps(fixture.path, lines))).toBe(CLI_OK);
     expect(lines.join('')).toContain(sha(out));
+  });
+
+  it('passes --all-org and says what it did', async () => {
+    const lines: string[] = [];
+    const out = join(fixture.dir, 'cli-all-org.sqlite');
+    expect(await runCli(['archive-rewrite', '--out', out, '--all-org'], deps(fixture.path, lines))).toBe(CLI_OK);
+    expect(lines.join('')).toContain('--all-org');
+    const db = openArchiveDatabase(out);
+    try {
+      expect(count(db, "SELECT count(*) AS n FROM channels WHERE id = ? AND visibility_class = 'org'", ARCHIVE_CHANNELS.restricted)).toBe(1);
+    } finally {
+      db.close();
+    }
   });
 
   it('needs --out and a configured archive', async () => {
