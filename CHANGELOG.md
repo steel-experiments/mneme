@@ -11,6 +11,19 @@ not recorded.
 
 ## [Unreleased]
 
+### Added
+
+- **`archive-rewrite --all-org`.** Marks every stored channel `org` in the
+  archive copy, so the archive serves all stored history. Test channels,
+  shared channels, and unproven threads stay hidden.
+
+### Changed
+
+- **Move from Discord to Slack.** The guide now covers the traps found in a
+  real switch: file ownership in the container, settings that stop a Slack
+  start, a configuration check before the deploy, recovery from a failed
+  start, and a backup from the container shell.
+
 ### Fixed
 
 - **Attachment download race.** If a channel is excluded or stops being

@@ -6893,6 +6893,9 @@ deletion has executed. The command:
 - by default also removes every message and memory that the archive never
   serves, so the file holds only servable org content; `--keep-non-org` skips
   this step;
+- with `--all-org`, first marks every stored channel `org` and ingest-enabled
+  in the copy, except test surfaces and channels with a platform boundary, so
+  that the archive serves all stored history (an operator decision);
 - clears a broken optional reference, such as `supersedes_memory_id`, and
   removes a row only when a required reference breaks;
 - rebuilds the full-text indexes, runs `VACUUM`, checks integrity and foreign
