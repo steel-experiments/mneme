@@ -6895,7 +6895,9 @@ deletion has executed. The command:
   this step;
 - with `--all-org`, first marks every stored channel `org` and ingest-enabled
   in the copy, except test surfaces and channels with a platform boundary, so
-  that the archive serves all stored history (an operator decision);
+  that the archive serves all stored messages (an operator decision); it does
+  not convert memories, so only `org` memories stay and the pruning removes
+  channel-scoped and review-only memories;
 - clears a broken optional reference, such as `supersedes_memory_id`, and
   removes a row only when a required reference breaks;
 - rebuilds the full-text indexes, runs `VACUUM`, checks integrity and foreign

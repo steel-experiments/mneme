@@ -103,11 +103,13 @@ org-only rule later; keep the full original backup on the source deployment
 in either case.
 
 `--all-org` marks every stored channel `org` and ingest-enabled in the new copy
-(not in the source). The archive then serves all stored content, also content
-that was restricted, review-only, or excluded on the old platform. This is an
+(not in the source). The archive then serves all stored messages, also messages
+that were restricted, review-only, or excluded on the old platform. This is an
 operator decision about who may read the old history. Test channels, shared
-channels, unproven or private threads, and deleted rows stay hidden, and the
-normal pruning then removes what is still not servable.
+channels, unproven or private threads, and deleted, tombstoned, or redacted
+messages stay hidden, and the normal pruning then removes what is still not
+servable. Memories are not converted: only `org` memories stay, and
+channel-scoped and review-only memories are removed.
 
 ### Both platforms
 
